@@ -1,47 +1,227 @@
-#include "ptlang_ast.h"
+#include "ptlang_ast_impl.h"
 
-ptlang_ast_module ptlang_ast_module_new() {}
+ptlang_ast_module ptlang_ast_module_new()
+{
+    ptlang_ast_module module = malloc(sizeof(struct ptlang_ast_module_s));
+    *module = (struct ptlang_ast_module_s){};
+    return module;
+}
 
-void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function) {}
-void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration) {}
-void ptlang_ast_module_add_struct_def(ptlang_ast_module module, char *name, uint64_t member_count, char **member_names, ptlang_ast_type *member_types) {}
-void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type) {}
+void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function)
+{
+    module->function_count++;
+    module->functions = realloc(module->functions, sizeof(ptlang_ast_func) * module->function_count);
+    module->functions[module->function_count - 1] = function;
+}
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type) {}
-void ptlang_ast_func_add_parameter(ptlang_ast_func function, char *name, ptlang_ast_type type) {}
+void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration)
+{
+    module->declaration_count++;
+    module->declarations = realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
+    module->declarations[module->declaration_count - 1] = declaration;
+}
 
-ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable) {}
+void ptlang_ast_module_add_struct_def(ptlang_ast_module module, char *name, uint64_t member_count, char **member_names, ptlang_ast_type *member_types)
+{
+    // TODO
+}
 
-ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size) {}
-ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size) {}
-ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, uint64_t parameter_count, ptlang_ast_type *parameter) {}
-ptlang_ast_type ptlang_ast_type_function_new() {}
-void ptlang_ast_type_function_set_return_type(ptlang_ast_type function_type, ptlang_ast_type return_type) {}
-void ptlang_ast_type_function_add_parameter(ptlang_ast_type function_type, ptlang_ast_type patameter) {}
-ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type) {}
-ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len) {}
-ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type type, bool writable) {}
+void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
+{
+    module->type_alias_count++;
+    module->type_aliases = realloc(module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
-ptlang_ast_exp ptlang_ast_exp_assignment_new(char *variable_name, ptlang_ast_exp exp) {}
-ptlang_ast_exp ptlang_ast_exp_addition_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_subtraction_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_multiplication_new(ptlang_ast_exp value) {}
-ptlang_ast_exp ptlang_ast_exp_division_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_modulo_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_greater_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_greater_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_less_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_less_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_left_shift_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_right_shift_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_and_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_or_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_not_new(ptlang_ast_exp value) {}
-ptlang_ast_exp ptlang_ast_exp_bitwise_and_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_bitwise_or_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_bitwise_xor_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) {}
-ptlang_ast_exp ptlang_ast_exp_bitwise_inverse_new(ptlang_ast_exp value) {}
+    size_t name_size = strlen(name) + 1;
+    module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
+        .name = malloc(name_size),
+        .type = type,
+    };
+    memcpy(module->type_aliases[module->type_alias_count - 1].name, name, name_size);
+}
+
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type)
+{
+    ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
+
+    size_t name_size = strlen(name) + 1;
+    *function = (struct ptlang_ast_func_s){
+        .name = malloc(name_size),
+        .type.return_type = return_type,
+    };
+    memcpy(function->name, name, name_size);
+
+    return function;
+}
+
+void ptlang_ast_func_add_parameter(ptlang_ast_func function, char *name, ptlang_ast_type type)
+{
+    function->type.parameter_count++;
+
+    function->parameter_names = realloc(function->parameter_names, sizeof(char *) * function->type.parameter_count);
+    size_t name_size = strlen(name) + 1;
+    function->parameter_names[function->type.parameter_count - 1] = malloc(name_size);
+    memcpy(function->parameter_names[function->type.parameter_count - 1], name, name_size);
+
+    function->type.parameters = realloc(function->type.parameters, sizeof(ptlang_ast_type) * function->type.parameter_count);
+    function->type.parameters[function->type.parameter_count - 1] = type;
+}
+
+ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
+{
+    ptlang_ast_decl declaration = malloc(sizeof(struct ptlang_ast_decl_s));
+    size_t name_size = strlen(name) + 1;
+    *declaration = (struct ptlang_ast_decl_s){
+        .type = type,
+        .name = malloc(name_size),
+        .writable = writable,
+    };
+    memcpy(declaration->name, name, name_size);
+    return declaration;
+}
+
+ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_INTEGER,
+        .content.integer = {
+            .is_signed = is_signed,
+            .size = size,
+        },
+    };
+    return type;
+}
+
+ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_FLOAT,
+        .content.float_size = size,
+    };
+    return type;
+}
+
+ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, uint64_t parameter_count, ptlang_ast_type *parameters)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_FUNCTION,
+        .content.function = {
+            .return_type = return_type,
+            .parameter_count = parameter_count,
+            .parameters = parameters,
+        },
+    };
+    return type;
+}
+
+ptlang_ast_type ptlang_ast_type_function_new(ptlang_ast_type return_type)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_FUNCTION,
+        .content.function = {
+            .return_type = return_type,
+        },
+    };
+    return type;
+}
+
+void ptlang_ast_type_function_add_parameter(ptlang_ast_type function_type, ptlang_ast_type patameter)
+{
+    assert(function_type->type == PTLANG_AST_TYPE_FUNCTION);
+
+    function_type->content.function.parameter_count++;
+    function_type->content.function.parameters = realloc(function_type->content.function.parameters, sizeof(ptlang_ast_type) * function_type->content.function.parameter_count);
+    function_type->content.function.parameters[function_type->content.function.parameter_count - 1] = patameter;
+}
+
+ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_HEAP_ARRAY,
+        .content.heap_array.type = element_type,
+    };
+    return type;
+}
+ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_ARRAY,
+        .content.array = {
+            .type = element_type,
+            .len = len,
+        },
+    };
+    return type;
+}
+ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool writable)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_REFERENCE,
+        .content.reference = {
+            .type = element_type,
+            .writable = writable,
+        },
+    };
+    return type;
+}
+
+ptlang_ast_exp ptlang_ast_exp_assignment_new(char *variable_name, ptlang_ast_exp exp)
+{
+    // TODO
+}
+
+#define BINARY_OP(lower, upper)                                                                        \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) \
+    {                                                                                                  \
+        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                  \
+        *exp = (struct ptlang_ast_exp_s){                                                              \
+            .type = PTLANG_AST_EXP_##upper,                                                            \
+            .content.binary_operator = {                                                               \
+                .left_value = left_value,                                                              \
+                .right_value = right_value,                                                            \
+            },                                                                                         \
+        };                                                                                             \
+        return exp;                                                                                    \
+    }
+
+#define UNARY_OP(lower, upper)                                        \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value) \
+    {                                                                 \
+        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s)); \
+        *exp = (struct ptlang_ast_exp_s){                             \
+            .type = PTLANG_AST_EXP_##upper,                           \
+            .content.unary_operator = value,                          \
+        };                                                            \
+        return exp;                                                   \
+    }
+
+BINARY_OP(addition, ADDITION)
+BINARY_OP(subtraction, SUBTRACTION)
+UNARY_OP(negation, NEGATION)
+BINARY_OP(multiplication, MULTIPLICATION)
+BINARY_OP(division, DIVISION)
+BINARY_OP(modulo, MODULO)
+BINARY_OP(equal, EQUAL)
+BINARY_OP(greater, GREATER)
+BINARY_OP(greater_equal, GREATER_EQUAL)
+BINARY_OP(less, LESS)
+BINARY_OP(less_equal, LESS_EQUAL)
+BINARY_OP(left_shift, LEFT_SHIFT)
+BINARY_OP(right_shift, RIGHT_SHIFT)
+BINARY_OP(and, AND)
+BINARY_OP(or, OR)
+UNARY_OP(not, NOT)
+BINARY_OP(bitwise_and, BITWISE_AND)
+BINARY_OP(bitwise_or, BITWISE_OR)
+BINARY_OP(bitwise_xor, BITWISE_XOR)
+UNARY_OP(bitwise_inverse, BITWISE_INVERSE)
+
 ptlang_ast_exp ptlang_ast_exp_function_call_new(char *function_name) {}
 void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call, ptlang_ast_exp parameter) {}
 ptlang_ast_exp ptlang_ast_exp_variable_new(char *str_prepresentation) {}
