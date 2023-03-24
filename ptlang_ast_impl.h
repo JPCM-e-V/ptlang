@@ -84,12 +84,6 @@ struct ptlang_ast_stmt_s
     } content;
 };
 
-struct ptlang_ast_exp_assignment_s
-{
-    ptlang_ast_exp assignable;
-    ptlang_ast_exp exp;
-};
-
 struct ptlang_ast_exp_binary_operator_s
 {
     ptlang_ast_exp left_value;
@@ -196,7 +190,6 @@ struct ptlang_ast_exp_s
     } type;
     union
     {
-        struct ptlang_ast_exp_assignment_s assignment;
         struct ptlang_ast_exp_binary_operator_s binary_operator;
         ptlang_ast_exp unary_operator;
         struct ptlang_ast_exp_function_call_s function_call;

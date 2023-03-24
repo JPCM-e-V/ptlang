@@ -44,7 +44,7 @@ ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type);
 ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len);
 ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type type, bool writable);
 
-ptlang_ast_exp ptlang_ast_exp_assignment_new(ptlang_ast_exp assignable, ptlang_ast_exp exp);
+ptlang_ast_exp ptlang_ast_exp_assignment_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_addition_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_subtraction_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_negation_new(ptlang_ast_exp value);
