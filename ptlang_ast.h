@@ -73,6 +73,10 @@ void ptlang_ast_exp_array_add_value(ptlang_ast_exp exp_array, ptlang_ast_exp val
 ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length);
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name);
+ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index);
+ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_dereference_new(ptlang_ast_exp value);
 
 ptlang_ast_stmt ptlang_ast_stmt_block_new();
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt);

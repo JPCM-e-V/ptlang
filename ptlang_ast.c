@@ -235,6 +235,46 @@ ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, p
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value) {}
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value) {}
 
+ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name)
+{
+    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    *exp = (struct ptlang_ast_exp_s){
+        .type = PTLANG_AST_EXP_STRUCT_MEMBER,
+        .content.struct_member = {
+            .struct_ = struct_,
+            .member_name = member_name,
+        },
+    };
+    return exp;
+}
+ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index)
+{
+    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    *exp = (struct ptlang_ast_exp_s){
+        .type = PTLANG_AST_EXP_ARRAY_ELEMENT,
+        .content.array_element = {
+            .array = array,
+            .index = index,
+        },
+    };
+    return exp;
+}
+
+ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
+{
+    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    *exp = (struct ptlang_ast_exp_s){
+        .type = PTLANG_AST_EXP_REFERENCE,
+        .content.reference = {
+            .writable = writable,
+            .value = value,
+        },
+    };
+    return exp;
+}
+
+UNARY_OP(dereference, DEREFERENCE)
+
 ptlang_ast_stmt ptlang_ast_stmt_block_new() {}
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt) {}
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp) {}
