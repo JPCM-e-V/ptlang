@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ptlang_ast_module_struct_def_s
+struct ptlang_ast_struct_def_s
 {
     char *name;
     uint64_t member_count;
@@ -28,7 +28,7 @@ struct ptlang_ast_module_s
     uint64_t declaration_count;
     ptlang_ast_decl *declarations;
     uint64_t struct_def_count;
-    struct ptlang_ast_module_struct_def_s *struct_defs;
+    ptlang_ast_struct_def *struct_defs;
     uint64_t type_alias_count;
     struct ptlang_ast_module_type_alias_s *type_aliases;
 };
@@ -140,7 +140,7 @@ struct ptlang_ast_exp_heap_array_from_length_s
 struct ptlang_ast_exp_struct_member_s
 {
     ptlang_ast_exp struct_;
-    char* member_name;
+    char *member_name;
 };
 
 struct ptlang_ast_exp_array_element_s

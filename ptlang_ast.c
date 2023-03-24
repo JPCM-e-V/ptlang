@@ -1,5 +1,25 @@
 #include "ptlang_ast_impl.h"
 
+ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name)
+{
+    ptlang_ast_struct_def struct_def = malloc(sizeof(struct ptlang_ast_struct_def_s));
+    *struct_def = (struct ptlang_ast_struct_def_s){
+        .name = name,
+    };
+    return struct_def;
+}
+
+void ptlang_ast_struct_def_add_member(ptlang_ast_struct_def struct_def, char *name, ptlang_ast_type type)
+{
+    struct_def->member_count++;
+
+    struct_def->member_names = realloc(struct_def->member_names, sizeof(char *) * struct_def->member_count);
+    struct_def->member_names[struct_def->member_count - 1] = name;
+
+    struct_def->member_types = realloc(struct_def->member_types, sizeof(ptlang_ast_type) * struct_def->member_count);
+    struct_def->member_types[struct_def->member_count - 1] = type;
+}
+
 ptlang_ast_module ptlang_ast_module_new()
 {
     ptlang_ast_module module = malloc(sizeof(struct ptlang_ast_module_s));
@@ -21,9 +41,11 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
     module->declarations[module->declaration_count - 1] = declaration;
 }
 
-void ptlang_ast_module_add_struct_def(ptlang_ast_module module, char *name, uint64_t member_count, char **member_names, ptlang_ast_type *member_types)
+void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def)
 {
-    // TODO
+    module->struct_def_count++;
+    module->struct_defs = realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
+    module->struct_defs[module->struct_def_count - 1] = struct_def;
 }
 
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
