@@ -171,9 +171,17 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
     return type;
 }
 
-ptlang_ast_exp ptlang_ast_exp_assignment_new(char *variable_name, ptlang_ast_exp exp)
+ptlang_ast_exp ptlang_ast_exp_assignment_new(ptlang_ast_exp assignable, ptlang_ast_exp exp)
 {
-    // TODO
+    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    *exp = (struct ptlang_ast_exp_s){
+        .type = PTLANG_AST_EXP_ASSIGNMENT,
+        .content.assignment = {
+            .assignable = assignable,
+            .exp = exp,
+        },
+    };
+    return exp;
 }
 
 #define BINARY_OP(lower, upper)                                                                        \
