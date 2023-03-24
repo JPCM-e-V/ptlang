@@ -31,24 +31,20 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     module->type_alias_count++;
     module->type_aliases = realloc(module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
-    size_t name_size = strlen(name) + 1;
     module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
-        .name = malloc(name_size),
+        .name = name,
         .type = type,
     };
-    memcpy(module->type_aliases[module->type_alias_count - 1].name, name, name_size);
 }
 
 ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
 
-    size_t name_size = strlen(name) + 1;
     *function = (struct ptlang_ast_func_s){
-        .name = malloc(name_size),
+        .name = name,
         .type.return_type = return_type,
     };
-    memcpy(function->name, name, name_size);
 
     return function;
 }
@@ -58,9 +54,7 @@ void ptlang_ast_func_add_parameter(ptlang_ast_func function, char *name, ptlang_
     function->type.parameter_count++;
 
     function->parameter_names = realloc(function->parameter_names, sizeof(char *) * function->type.parameter_count);
-    size_t name_size = strlen(name) + 1;
-    function->parameter_names[function->type.parameter_count - 1] = malloc(name_size);
-    memcpy(function->parameter_names[function->type.parameter_count - 1], name, name_size);
+    function->parameter_names[function->type.parameter_count - 1] = name;
 
     function->type.parameters = realloc(function->type.parameters, sizeof(ptlang_ast_type) * function->type.parameter_count);
     function->type.parameters[function->type.parameter_count - 1] = type;
@@ -69,13 +63,11 @@ void ptlang_ast_func_add_parameter(ptlang_ast_func function, char *name, ptlang_
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
 {
     ptlang_ast_decl declaration = malloc(sizeof(struct ptlang_ast_decl_s));
-    size_t name_size = strlen(name) + 1;
     *declaration = (struct ptlang_ast_decl_s){
         .type = type,
-        .name = malloc(name_size),
+        .name = name,
         .writable = writable,
     };
-    memcpy(declaration->name, name, name_size);
     return declaration;
 }
 
