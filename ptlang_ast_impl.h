@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-struct ptlang_ast_module_struct_def_s
+struct ptlang_ast_struct_def_s
 {
     char *name;
     uint64_t member_count;
@@ -28,7 +28,7 @@ struct ptlang_ast_module_s
     uint64_t declaration_count;
     ptlang_ast_decl *declarations;
     uint64_t struct_def_count;
-    struct ptlang_ast_module_struct_def_s *struct_defs;
+    ptlang_ast_struct_def *struct_defs;
     uint64_t type_alias_count;
     struct ptlang_ast_module_type_alias_s *type_aliases;
 };
@@ -84,12 +84,6 @@ struct ptlang_ast_stmt_s
     } content;
 };
 
-struct ptlang_ast_exp_assignment_s
-{
-    char *variable_name;
-    ptlang_ast_exp exp;
-};
-
 struct ptlang_ast_exp_binary_operator_s
 {
     ptlang_ast_exp left_value;
@@ -137,6 +131,24 @@ struct ptlang_ast_exp_heap_array_from_length_s
     ptlang_ast_exp length;
 };
 
+struct ptlang_ast_exp_struct_member_s
+{
+    ptlang_ast_exp struct_;
+    char *member_name;
+};
+
+struct ptlang_ast_exp_array_element_s
+{
+    ptlang_ast_exp array;
+    ptlang_ast_exp index;
+};
+
+struct ptlang_ast_exp_reference_s
+{
+    bool writable;
+    ptlang_ast_exp value;
+};
+
 struct ptlang_ast_exp_s
 {
     enum
@@ -171,10 +183,13 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH,
         PTLANG_AST_EXP_TERNARY,
         PTLANG_AST_EXP_CAST,
+        PTLANG_AST_EXP_STRUCT_MEMBER,
+        PTLANG_AST_EXP_ARRAY_ELEMENT,
+        PTLANG_AST_EXP_REFERENCE,
+        PTLANG_AST_EXP_DEREFERENCE,
     } type;
     union
     {
-        struct ptlang_ast_exp_assignment_s assignment;
         struct ptlang_ast_exp_binary_operator_s binary_operator;
         ptlang_ast_exp unary_operator;
         struct ptlang_ast_exp_function_call_s function_call;
@@ -184,6 +199,9 @@ struct ptlang_ast_exp_s
         struct ptlang_ast_exp_struct_s struct_;
         struct ptlang_ast_exp_array_s array;
         struct ptlang_ast_exp_cast_s cast;
+        struct ptlang_ast_exp_struct_member_s struct_member;
+        struct ptlang_ast_exp_array_element_s array_element;
+        struct ptlang_ast_exp_reference_s reference;
     } content;
 };
 

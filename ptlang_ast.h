@@ -10,6 +10,7 @@ typedef struct ptlang_ast_module_s *ptlang_ast_module;
 typedef struct ptlang_ast_func_s *ptlang_ast_func;
 typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
 typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
+typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
 
 enum ptlang_ast_type_float_size
 {
@@ -19,11 +20,14 @@ enum ptlang_ast_type_float_size
     PTLANG_AST_TYPE_FLOAT_128,
 };
 
+ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name);
+void ptlang_ast_struct_def_add_member(ptlang_ast_struct_def struct_def, char *name, ptlang_ast_type type);
+
 ptlang_ast_module ptlang_ast_module_new();
 
 void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function);
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration);
-void ptlang_ast_module_add_struct_def(ptlang_ast_module module, char *name, uint64_t member_count, char **member_names, ptlang_ast_type *member_types);
+void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def);
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type);
 
 ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type);
@@ -40,7 +44,7 @@ ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type);
 ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len);
 ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type type, bool writable);
 
-ptlang_ast_exp ptlang_ast_exp_assignment_new(char *variable_name, ptlang_ast_exp exp);
+ptlang_ast_exp ptlang_ast_exp_assignment_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_addition_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_subtraction_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_negation_new(ptlang_ast_exp value);
@@ -73,6 +77,10 @@ void ptlang_ast_exp_array_add_value(ptlang_ast_exp exp_array, ptlang_ast_exp val
 ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length);
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name);
+ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index);
+ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_dereference_new(ptlang_ast_exp value);
 
 ptlang_ast_stmt ptlang_ast_stmt_block_new();
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt);
@@ -85,5 +93,13 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value);
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value);
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level);
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level);
+
+void ptlang_ast_type_destroy(ptlang_ast_type type);
+void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt);
+void ptlang_ast_module_destroy(ptlang_ast_module module);
+void ptlang_ast_func_destroy(ptlang_ast_func func);
+void ptlang_ast_exp_destroy(ptlang_ast_exp exp);
+void ptlang_ast_decl_destroy(ptlang_ast_decl decl);
+void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def);
 
 #endif
