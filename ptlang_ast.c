@@ -225,13 +225,11 @@ UNARY_OP(bitwise_inverse, BITWISE_INVERSE)
 ptlang_ast_exp ptlang_ast_exp_function_call_new(char *function_name)
 {
     ptlang_ast_exp exp = malloc(sizeof(ptlang_ast_exp));
-    size_t name_size = strlen(function_name) + 1;
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_FUNCTION_CALL,
         .content.function_call = {
             .parameter_count = 0,
-            .function_name = malloc(name_size)}};
-    memcpy(exp->content.function_call.function_name, function_name, name_size);
+            .function_name = function_name}};
     return exp;
 }
 void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call, ptlang_ast_exp parameter)
@@ -243,16 +241,14 @@ void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call
     exp_function_call->content.function_call.parameters[exp_function_call->content.function_call.parameter_count - 1] = parameter;
 }
 
-#define STR_REPR(lower, upper)                                                  \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation)       \
-    {                                                                           \
-        ptlang_ast_exp exp = malloc(sizeof(ptlang_ast_exp));                    \
-        size_t str_size = strlen(str_representation) + 1;                       \
-        *exp = (struct ptlang_ast_exp_s){                                       \
-            .type = PTLANG_AST_EXP_##upper##,                                   \
-            .content.str_prepresentation = malloc(str_size)};                   \
-        memcpy(exp->content.str_prepresentation, str_representation, str_size); \
-        return exp;                                                             \
+#define STR_REPR(lower, upper)                                            \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation) \
+    {                                                                     \
+        ptlang_ast_exp exp = malloc(sizeof(ptlang_ast_exp));              \
+        *exp = (struct ptlang_ast_exp_s){                                 \
+            .type = PTLANG_AST_EXP_##upper##,                             \
+            .content.str_prepresentation = str_representation};           \
+        return exp;                                                       \
     }
 
 STR_REPR(variable, VARIABLE)
@@ -278,10 +274,8 @@ void ptlang_ast_exp_struct_add_value(ptlang_ast_exp exp_struct, char *name, ptla
     exp_struct->content.struct_.values = realloc(exp_struct->content.struct_.values, sizeof(ptlang_ast_exp) * exp_struct->content.struct_.length);
     exp_struct->content.struct_.values[exp_struct->content.struct_.length - 1] = value;
 
-    size_t name_size = strlen(name) + 1;
     exp_struct->content.struct_.names = realloc(exp_struct->content.struct_.names, sizeof(char *) * exp_struct->content.struct_.length);
-    exp_struct->content.struct_.names[exp_struct->content.struct_.length - 1] = malloc(name_size);
-    memcpy(exp_struct->content.struct_.names[exp_struct->content.struct_.length - 1], name, name_size);
+    exp_struct->content.struct_.names[exp_struct->content.struct_.length - 1] = name;
 }
 
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type)
@@ -409,21 +403,24 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
         .content.exp = return_value};
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value) {
+ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
+{
     ptlang_ast_stmt stmt = malloc(sizeof(ptlang_ast_stmt));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
         .content.exp = return_value};
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level) {
+ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
+{
     ptlang_ast_stmt stmt = malloc(sizeof(ptlang_ast_stmt));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BREAK,
         .content.nesting_level = nesting_level};
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level) {
+ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
+{
     ptlang_ast_stmt stmt = malloc(sizeof(ptlang_ast_stmt));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_CONTINUE,
