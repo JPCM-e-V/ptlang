@@ -94,4 +94,12 @@ ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value);
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level);
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level);
 
+void ptlang_ast_type_destroy(ptlang_ast_type type);
+void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt);
+void ptlang_ast_module_destroy(ptlang_ast_module module);
+void ptlang_ast_func_destroy(ptlang_ast_func func);
+void ptlang_ast_exp_destroy(ptlang_ast_exp exp);
+void ptlang_ast_decl_destroy(ptlang_ast_decl decl);
+void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def);
+
 #endif

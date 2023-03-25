@@ -296,3 +296,223 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value) {}
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value) {}
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level) {}
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level) {}
+
+void ptlang_ast_type_destroy(ptlang_ast_type type)
+{
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_FUNCTION:
+        ptlang_ast_type_destroy(type->content.function.return_type);
+        for (uint64_t i = 0; i < type->content.function.parameter_count; i++)
+        {
+            ptlang_ast_type_destroy(type->content.function.parameters[i]);
+        }
+        free(type->content.function.parameters);
+        break;
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        ptlang_ast_type_destroy(type->content.heap_array.type);
+        break;
+    case PTLANG_AST_TYPE_ARRAY:
+        ptlang_ast_type_destroy(type->content.array.type);
+        break;
+    case PTLANG_AST_TYPE_REFERENCE:
+        ptlang_ast_type_destroy(type->content.reference.type);
+        break;
+    case PTLANG_AST_TYPE_STRUCT:
+        free(type->content.structure);
+        break;
+    default:
+        break;
+    }
+    free(type);
+}
+
+void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
+{
+    switch (stmt->type)
+    {
+    case PTLANG_AST_STMT_BLOCK:
+        for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
+        {
+            ptlang_ast_stmt_destroy(stmt->content.block.stmts[i]);
+        }
+        free(stmt->content.block.stmts);
+        break;
+    case PTLANG_AST_STMT_EXP:
+    case PTLANG_AST_STMT_RETURN:
+    case PTLANG_AST_STMT_RET_VAL:
+        ptlang_ast_exp_destroy(stmt->content.exp);
+        break;
+    case PTLANG_AST_STMT_DECL:
+        ptlang_ast_decl_destroy(stmt->content.decl);
+        break;
+    case PTLANG_AST_STMT_IF:
+    case PTLANG_AST_STMT_WHILE:
+        ptlang_ast_exp_destroy(stmt->content.control_flow.condition);
+        ptlang_ast_stmt_destroy(stmt->content.control_flow.stmt);
+        break;
+    case PTLANG_AST_STMT_IF_ELSE:
+        ptlang_ast_exp_destroy(stmt->content.control_flow2.condition);
+        ptlang_ast_stmt_destroy(stmt->content.control_flow2.stmt[0]);
+        ptlang_ast_stmt_destroy(stmt->content.control_flow2.stmt[1]);
+        break;
+    default:
+        break;
+    }
+    free(stmt);
+}
+
+void ptlang_ast_module_destroy(ptlang_ast_module module)
+{
+    for (uint64_t i = 0; i < module->function_count; i++)
+    {
+        ptlang_ast_func_destroy(module->functions[i]);
+    }
+    free(module->functions);
+    for (uint64_t i = 0; i < module->declaration_count; i++)
+    {
+        ptlang_ast_decl_destroy(module->declarations[i]);
+    }
+    free(module->declarations);
+    for (uint64_t i = 0; i < module->struct_def_count; i++)
+    {
+        ptlang_ast_struct_def_destroy(module->struct_defs[i]);
+    }
+    free(module->struct_defs);
+    for (uint64_t i = 0; i < module->type_alias_count; i++)
+    {
+        free(module->type_aliases[i].name);
+        ptlang_ast_type_destroy(module->type_aliases[i].type);
+    }
+    free(module->type_aliases);
+
+    free(module);
+}
+
+void ptlang_ast_func_destroy(ptlang_ast_func func)
+{
+    free(func->name);
+    ptlang_ast_type_destroy(func->type.return_type);
+    for (uint64_t i = 0; i < func->type.parameter_count; i++)
+    {
+        ptlang_ast_type_destroy(func->type.parameters[i]);
+        free(func->parameter_names[i]);
+    }
+    free(func->type.parameters);
+    free(func->parameter_names);
+
+    free(func);
+}
+
+void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
+{
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    case PTLANG_AST_EXP_ADDITION:
+    case PTLANG_AST_EXP_SUBTRACTION:
+    case PTLANG_AST_EXP_MULTIPLICATION:
+    case PTLANG_AST_EXP_DIVISION:
+    case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_GREATER:
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+    case PTLANG_AST_EXP_LESS:
+    case PTLANG_AST_EXP_LESS_EQUAL:
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+    case PTLANG_AST_EXP_AND:
+    case PTLANG_AST_EXP_OR:
+    case PTLANG_AST_EXP_BITWISE_AND:
+    case PTLANG_AST_EXP_BITWISE_OR:
+    case PTLANG_AST_EXP_BITWISE_XOR:
+        ptlang_ast_exp_destroy(exp->content.binary_operator.left_value);
+        ptlang_ast_exp_destroy(exp->content.binary_operator.right_value);
+        break;
+    case PTLANG_AST_EXP_NEGATION:
+    case PTLANG_AST_EXP_NOT:
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_DEREFERENCE:
+        ptlang_ast_exp_destroy(exp->content.unary_operator);
+        break;
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+        free(exp->content.function_call.function_name);
+        for (uint64_t i = 0; i < exp->content.function_call.parameter_count; i++)
+        {
+            ptlang_ast_exp_destroy(exp->content.function_call.parameters[i]);
+        }
+        free(exp->content.function_call.parameters);
+        break;
+    case PTLANG_AST_EXP_VARIABLE:
+    case PTLANG_AST_EXP_INTEGER:
+    case PTLANG_AST_EXP_FLOAT:
+        free(exp->content.str_prepresentation);
+        break;
+    case PTLANG_AST_EXP_STRUCT:
+        ptlang_ast_type_destroy(exp->content.struct_.type);
+        for (uint64_t i = 0; i < exp->content.struct_.length; i++)
+        {
+            ptlang_ast_exp_destroy(exp->content.struct_.values[i]);
+            free(exp->content.struct_.names[i]);
+        }
+        free(exp->content.struct_.values);
+        free(exp->content.struct_.names);
+        break;
+    case PTLANG_AST_EXP_ARRAY:
+        ptlang_ast_type_destroy(exp->content.array.type);
+        for (uint64_t i = 0; i < exp->content.array.length; i++)
+        {
+            ptlang_ast_exp_destroy(exp->content.array.values[i]);
+        }
+        free(exp->content.array.values);
+        break;
+    case PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH:
+        ptlang_ast_type_destroy(exp->content.heap_array.type);
+        ptlang_ast_exp_destroy(exp->content.heap_array.length);
+        break;
+    case PTLANG_AST_EXP_TERNARY:
+        ptlang_ast_exp_destroy(exp->content.ternary_operator.condition);
+        ptlang_ast_exp_destroy(exp->content.ternary_operator.if_value);
+        ptlang_ast_exp_destroy(exp->content.ternary_operator.else_value);
+        break;
+    case PTLANG_AST_EXP_CAST:
+        ptlang_ast_type_destroy(exp->content.cast.type);
+        ptlang_ast_exp_destroy(exp->content.cast.value);
+        break;
+    case PTLANG_AST_EXP_STRUCT_MEMBER:
+        ptlang_ast_exp_destroy(exp->content.struct_member.struct_);
+        free(exp->content.struct_member.member_name);
+        break;
+    case PTLANG_AST_EXP_ARRAY_ELEMENT:
+        ptlang_ast_exp_destroy(exp->content.array_element.array);
+        ptlang_ast_exp_destroy(exp->content.array_element.index);
+        break;
+    case PTLANG_AST_EXP_REFERENCE:
+        ptlang_ast_exp_destroy(exp->content.reference.value);
+        break;
+    }
+
+    free(exp);
+}
+
+void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
+{
+    ptlang_ast_type_destroy(decl->type);
+    free(decl->name);
+
+    free(decl);
+}
+
+void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
+{
+    free(struct_def->name);
+    for (uint64_t i = 0; i < struct_def->member_count; i++)
+    {
+        free(struct_def->member_names[i]);
+        ptlang_ast_type_destroy(struct_def->member_types[i]);
+    }
+    free(struct_def->member_names);
+    free(struct_def->member_types);
+
+    free(struct_def);
+}
