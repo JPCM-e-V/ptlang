@@ -23,7 +23,12 @@ void ptlang_ast_struct_def_add_member(ptlang_ast_struct_def struct_def, char *na
 ptlang_ast_module ptlang_ast_module_new()
 {
     ptlang_ast_module module = malloc(sizeof(struct ptlang_ast_module_s));
-    *module = (struct ptlang_ast_module_s){0};
+    *module = (struct ptlang_ast_module_s){
+        .function_count = 0,
+        .declaration_count = 0,
+        .struct_def_count = 0,
+        .type_alias_count = 0,
+    };
     return module;
 }
 
@@ -59,13 +64,14 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type)
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_stmt stmt)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
 
     *function = (struct ptlang_ast_func_s){
         .name = name,
         .type.return_type = return_type,
+        .stmt = stmt,
     };
 
     return function;

@@ -179,7 +179,7 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_INTEGER,
         PTLANG_AST_EXP_FLOAT,
         PTLANG_AST_EXP_STRUCT,
-        PTLANG_AST_EXP_ARRAY, // Can be both a heap and a non-heap array
+        PTLANG_AST_EXP_ARRAY,
         PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH,
         PTLANG_AST_EXP_TERNARY,
         PTLANG_AST_EXP_CAST,
@@ -264,6 +264,7 @@ struct ptlang_ast_func_s
     char *name;
     struct ptlang_ast_type_function_s type;
     char **parameter_names;
+    ptlang_ast_stmt stmt;
 };
 
 #endif
