@@ -52,9 +52,7 @@ void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size);
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size);
-ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, uint64_t parameter_count, ptlang_ast_type *parameter);
-ptlang_ast_type ptlang_ast_type_function_new(ptlang_ast_type return_type);
-void ptlang_ast_type_function_add_parameter(ptlang_ast_type function_type, ptlang_ast_type patameter);
+ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type_list parameters);
 ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type);
 ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len);
 ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type type, bool writable);
@@ -80,15 +78,12 @@ ptlang_ast_exp ptlang_ast_exp_bitwise_and_new(ptlang_ast_exp left_value, ptlang_
 ptlang_ast_exp ptlang_ast_exp_bitwise_or_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_bitwise_xor_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_bitwise_inverse_new(ptlang_ast_exp value);
-ptlang_ast_exp ptlang_ast_exp_function_call_new(char *function_name);
-void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call, ptlang_ast_exp parameter);
+ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp_list parameters);
 ptlang_ast_exp ptlang_ast_exp_variable_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_integer_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_float_new(char *str_prepresentation);
-ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_type type);
-void ptlang_ast_exp_struct_add_value(ptlang_ast_exp exp_struct, char *name, ptlang_ast_exp value);
-ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type);
-void ptlang_ast_exp_array_add_value(ptlang_ast_exp exp_array, ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_type type, ptlang_ast_str_exp_list members);
+ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_list values);
 ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length);
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value);

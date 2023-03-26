@@ -122,9 +122,8 @@ struct ptlang_ast_exp_binary_operator_s
 
 struct ptlang_ast_exp_function_call_s
 {
-    char *function_name;
-    uint64_t parameter_count;
-    ptlang_ast_exp *parameters;
+    ptlang_ast_exp function;
+    ptlang_ast_exp_list parameters;
 };
 
 struct ptlang_ast_exp_ternary_operator_s
@@ -143,16 +142,13 @@ struct ptlang_ast_exp_cast_s
 struct ptlang_ast_exp_struct_s
 {
     ptlang_ast_type type;
-    uint64_t length; // Not the len of the struct, but the amount of initalized struct members
-    ptlang_ast_exp *values;
-    char **names;
+    ptlang_ast_str_exp_list members;
 };
 
 struct ptlang_ast_exp_array_s
 {
     ptlang_ast_type type;
-    uint64_t length;
-    ptlang_ast_exp *values;
+    ptlang_ast_exp_list values;
 };
 
 struct ptlang_ast_exp_heap_array_from_length_s
@@ -244,8 +240,7 @@ struct ptlang_ast_type_integer_s
 struct ptlang_ast_type_function_s
 {
     ptlang_ast_type return_type;
-    uint64_t parameter_count;
-    ptlang_ast_type *parameters;
+    ptlang_ast_type_list parameters;
 };
 
 struct ptlang_ast_type_heap_array_s
