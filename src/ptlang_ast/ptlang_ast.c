@@ -135,6 +135,25 @@ void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
     list->exps[list->count - 1] = exp;
 }
 
+ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new()
+{
+    ptlang_ast_str_exp_list str_exp_list = malloc(sizeof(struct ptlang_ast_str_exp_list_s));
+    *str_exp_list = (struct ptlang_ast_str_exp_list_s){
+        .count = 0,
+    };
+    return str_exp_list;
+}
+
+void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang_ast_exp exp)
+{
+    list->count++;
+    list->str_exps = realloc(list->str_exps, sizeof(struct ptlang_ast_str_exp_s) * list->count);
+    list->str_exps[list->count - 1] = (struct ptlang_ast_str_exp_s){
+        .str = str,
+        .exp = exp,
+    };
+}
+
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
 {
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
@@ -762,4 +781,15 @@ void ptlang_ast_exp_list_destroy(ptlang_ast_exp_list exp_list)
     }
     free(exp_list->exps);
     free(exp_list);
+}
+
+void ptlang_ast_str_exp_list_destroy(ptlang_ast_str_exp_list str_exp_list)
+{
+    for (uint64_t i = 0; i < str_exp_list->count; i++)
+    {
+        free(str_exp_list->str_exps[i].str);
+        ptlang_ast_exp_destroy(str_exp_list->str_exps[i].exp);
+    }
+    free(str_exp_list->str_exps);
+    free(str_exp_list);
 }

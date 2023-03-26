@@ -58,6 +58,18 @@ struct ptlang_ast_exp_list_s
     ptlang_ast_exp *exps;
 };
 
+struct ptlang_ast_str_exp_s
+{
+    char *str;
+    ptlang_ast_exp exp;
+};
+
+struct ptlang_ast_str_exp_list_s
+{
+    uint64_t count;
+    struct ptlang_ast_str_exp_s *str_exps;
+};
+
 struct ptlang_ast_stmt_block_s
 {
     uint64_t stmt_count;
