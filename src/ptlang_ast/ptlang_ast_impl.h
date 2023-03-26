@@ -46,6 +46,18 @@ struct ptlang_ast_decl_list_s
     ptlang_ast_decl *decls;
 };
 
+struct ptlang_ast_type_list_s
+{
+    uint64_t count;
+    ptlang_ast_type *types;
+};
+
+struct ptlang_ast_exp_list_s
+{
+    uint64_t count;
+    ptlang_ast_exp *exps;
+};
+
 struct ptlang_ast_stmt_block_s
 {
     uint64_t stmt_count;

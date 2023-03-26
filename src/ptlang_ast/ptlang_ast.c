@@ -103,6 +103,38 @@ void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
     list->decls[list->count - 1] = decl;
 }
 
+ptlang_ast_type_list ptlang_ast_type_list_new()
+{
+    ptlang_ast_type_list type_list = malloc(sizeof(struct ptlang_ast_type_list_s));
+    *type_list = (struct ptlang_ast_type_list_s){
+        .count = 0,
+    };
+    return type_list;
+}
+
+void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
+{
+    list->count++;
+    list->types = realloc(list->types, sizeof(ptlang_ast_type) * list->count);
+    list->types[list->count - 1] = type;
+}
+
+ptlang_ast_exp_list ptlang_ast_exp_list_new()
+{
+    ptlang_ast_exp_list exp_list = malloc(sizeof(struct ptlang_ast_exp_list_s));
+    *exp_list = (struct ptlang_ast_exp_list_s){
+        .count = 0,
+    };
+    return exp_list;
+}
+
+void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
+{
+    list->count++;
+    list->exps = realloc(list->exps, sizeof(ptlang_ast_exp) * list->count);
+    list->exps[list->count - 1] = exp;
+}
+
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
 {
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
@@ -265,7 +297,7 @@ void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call
     {                                                                     \
         ptlang_ast_exp exp = malloc(sizeof(ptlang_ast_exp));              \
         *exp = (struct ptlang_ast_exp_s){                                 \
-            .type = PTLANG_AST_EXP_##upper,                             \
+            .type = PTLANG_AST_EXP_##upper,                               \
             .content.str_prepresentation = str_representation};           \
         return exp;                                                       \
     }
@@ -710,4 +742,24 @@ void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list)
     }
     free(decl_list->decls);
     free(decl_list);
+}
+
+void ptlang_ast_type_list_destroy(ptlang_ast_type_list type_list)
+{
+    for (uint64_t i = 0; i < type_list->count; i++)
+    {
+        ptlang_ast_type_destroy(type_list->types[i]);
+    }
+    free(type_list->types);
+    free(type_list);
+}
+
+void ptlang_ast_exp_list_destroy(ptlang_ast_exp_list exp_list)
+{
+    for (uint64_t i = 0; i < exp_list->count; i++)
+    {
+        ptlang_ast_exp_destroy(exp_list->exps[i]);
+    }
+    free(exp_list->exps);
+    free(exp_list);
 }

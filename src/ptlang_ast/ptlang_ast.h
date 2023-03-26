@@ -12,6 +12,8 @@ typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
 typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
 typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
 typedef struct ptlang_ast_decl_list_s *ptlang_ast_decl_list;
+typedef struct ptlang_ast_type_list_s *ptlang_ast_type_list;
+typedef struct ptlang_ast_exp_list_s *ptlang_ast_exp_list;
 
 enum ptlang_ast_type_float_size
 {
@@ -37,6 +39,12 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
 
 ptlang_ast_decl_list ptlang_ast_decl_list_new();
 void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
+
+ptlang_ast_type_list ptlang_ast_type_list_new();
+void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type);
+
+ptlang_ast_exp_list ptlang_ast_exp_list_new();
+void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp);
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size);
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size);
@@ -105,5 +113,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp);
 void ptlang_ast_decl_destroy(ptlang_ast_decl decl);
 void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def);
 void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list);
+void ptlang_ast_type_list_destroy(ptlang_ast_type_list type_list);
+void ptlang_ast_exp_list_destroy(ptlang_ast_exp_list exp_list);
 
 #endif
