@@ -11,7 +11,7 @@ typedef struct ptlang_ast_func_s *ptlang_ast_func;
 typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
 typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
 typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
-typedef struct ptlang_ast_func_parameter_list_s *ptlang_ast_func_parameter_list;
+typedef struct ptlang_ast_decl_list_s *ptlang_ast_decl_list;
 
 enum ptlang_ast_type_float_size
 {
@@ -31,12 +31,12 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def);
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type);
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_func_parameter_list parameters, ptlang_ast_stmt stmt);
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt);
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable);
 
-ptlang_ast_func_parameter_list ptlang_ast_func_parameter_list_new();
-void ptlang_ast_func_parameter_list_add(ptlang_ast_func_parameter_list list, ptlang_ast_decl decl);
+ptlang_ast_decl_list ptlang_ast_decl_list_new();
+void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size);
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size);
@@ -104,6 +104,6 @@ void ptlang_ast_func_destroy(ptlang_ast_func func);
 void ptlang_ast_exp_destroy(ptlang_ast_exp exp);
 void ptlang_ast_decl_destroy(ptlang_ast_decl decl);
 void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def);
-void ptlang_ast_func_parameter_list_destroy(ptlang_ast_func_parameter_list func_parameter_list);
+void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list);
 
 #endif

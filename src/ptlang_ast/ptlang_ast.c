@@ -64,7 +64,7 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_func_parameter_list parameters, ptlang_ast_stmt stmt)
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
     *function = (struct ptlang_ast_func_s){
@@ -87,16 +87,16 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
     return declaration;
 }
 
-ptlang_ast_func_parameter_list ptlang_ast_func_parameter_list_new()
+ptlang_ast_decl_list ptlang_ast_decl_list_new()
 {
-    ptlang_ast_func_parameter_list func_parameter_list = malloc(sizeof(struct ptlang_ast_func_parameter_list_s));
-    *func_parameter_list = (struct ptlang_ast_func_parameter_list_s){
+    ptlang_ast_decl_list decl_list = malloc(sizeof(struct ptlang_ast_decl_list_s));
+    *decl_list = (struct ptlang_ast_decl_list_s){
         .count = 0,
     };
-    return func_parameter_list;
+    return decl_list;
 }
 
-void ptlang_ast_func_parameter_list_add(ptlang_ast_func_parameter_list list, ptlang_ast_decl decl)
+void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
 {
     list->count++;
     list->decls = realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
@@ -265,7 +265,7 @@ void ptlang_ast_exp_function_call_add_parameter(ptlang_ast_exp exp_function_call
     {                                                                     \
         ptlang_ast_exp exp = malloc(sizeof(ptlang_ast_exp));              \
         *exp = (struct ptlang_ast_exp_s){                                 \
-            .type = PTLANG_AST_EXP_##upper##,                             \
+            .type = PTLANG_AST_EXP_##upper,                             \
             .content.str_prepresentation = str_representation};           \
         return exp;                                                       \
     }
@@ -583,7 +583,7 @@ void ptlang_ast_func_destroy(ptlang_ast_func func)
 {
     free(func->name);
     ptlang_ast_type_destroy(func->return_type);
-    ptlang_ast_func_parameter_list_destroy(func->parameters);
+    ptlang_ast_decl_list_destroy(func->parameters);
     ptlang_ast_stmt_destroy(func->stmt);
 
     free(func);
@@ -702,12 +702,12 @@ void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
     free(struct_def);
 }
 
-void ptlang_ast_func_parameter_list_destroy(ptlang_ast_func_parameter_list func_parameter_list)
+void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list)
 {
-    for (uint64_t i = 0; i < func_parameter_list->count; i++)
+    for (uint64_t i = 0; i < decl_list->count; i++)
     {
-        ptlang_ast_decl_destroy(func_parameter_list->decls[i]);
+        ptlang_ast_decl_destroy(decl_list->decls[i]);
     }
-    free(func_parameter_list->decls);
-    free(func_parameter_list);
+    free(decl_list->decls);
+    free(decl_list);
 }
