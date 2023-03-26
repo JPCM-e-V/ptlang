@@ -64,28 +64,16 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_stmt stmt)
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_func_parameter_list parameters, ptlang_ast_stmt stmt)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
-
     *function = (struct ptlang_ast_func_s){
         .name = name,
-        .type.return_type = return_type,
+        .return_type = return_type,
+        .parameters = parameters,
         .stmt = stmt,
     };
-
     return function;
-}
-
-void ptlang_ast_func_add_parameter(ptlang_ast_func function, char *name, ptlang_ast_type type)
-{
-    function->type.parameter_count++;
-
-    function->parameter_names = realloc(function->parameter_names, sizeof(char *) * function->type.parameter_count);
-    function->parameter_names[function->type.parameter_count - 1] = name;
-
-    function->type.parameters = realloc(function->type.parameters, sizeof(ptlang_ast_type) * function->type.parameter_count);
-    function->type.parameters[function->type.parameter_count - 1] = type;
 }
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
@@ -97,6 +85,22 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
         .writable = writable,
     };
     return declaration;
+}
+
+ptlang_ast_func_parameter_list ptlang_ast_func_parameter_list_new()
+{
+    ptlang_ast_func_parameter_list func_parameter_list = malloc(sizeof(struct ptlang_ast_func_parameter_list_s));
+    *func_parameter_list = (struct ptlang_ast_func_parameter_list_s){
+        .count = 0,
+    };
+    return func_parameter_list;
+}
+
+void ptlang_ast_func_parameter_list_add(ptlang_ast_func_parameter_list list, ptlang_ast_decl decl)
+{
+    list->count++;
+    list->decls = realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
+    list->decls[list->count - 1] = decl;
 }
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
@@ -578,14 +582,9 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
 void ptlang_ast_func_destroy(ptlang_ast_func func)
 {
     free(func->name);
-    ptlang_ast_type_destroy(func->type.return_type);
-    for (uint64_t i = 0; i < func->type.parameter_count; i++)
-    {
-        ptlang_ast_type_destroy(func->type.parameters[i]);
-        free(func->parameter_names[i]);
-    }
-    free(func->type.parameters);
-    free(func->parameter_names);
+    ptlang_ast_type_destroy(func->return_type);
+    ptlang_ast_func_parameter_list_destroy(func->parameters);
+    ptlang_ast_stmt_destroy(func->stmt);
 
     free(func);
 }
@@ -701,4 +700,14 @@ void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
     free(struct_def->member_types);
 
     free(struct_def);
+}
+
+void ptlang_ast_func_parameter_list_destroy(ptlang_ast_func_parameter_list func_parameter_list)
+{
+    for (uint64_t i = 0; i < func_parameter_list->count; i++)
+    {
+        ptlang_ast_decl_destroy(func_parameter_list->decls[i]);
+    }
+    free(func_parameter_list->decls);
+    free(func_parameter_list);
 }

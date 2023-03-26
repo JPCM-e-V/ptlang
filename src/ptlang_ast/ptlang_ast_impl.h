@@ -40,6 +40,12 @@ struct ptlang_ast_decl_s
     bool writable;
 };
 
+struct ptlang_ast_func_parameter_list_s
+{
+    uint64_t count;
+    ptlang_ast_decl *decls;
+};
+
 struct ptlang_ast_stmt_block_s
 {
     uint64_t stmt_count;
@@ -262,8 +268,8 @@ struct ptlang_ast_type_s
 struct ptlang_ast_func_s
 {
     char *name;
-    struct ptlang_ast_type_function_s type;
-    char **parameter_names;
+    ptlang_ast_type return_type;
+    ptlang_ast_func_parameter_list parameters;
     ptlang_ast_stmt stmt;
 };
 
