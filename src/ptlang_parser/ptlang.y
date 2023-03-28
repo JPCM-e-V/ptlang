@@ -59,15 +59,15 @@
 %%
 
 module: { $$ = ptlang_ast_module_new(); }
-      | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }
+//       | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }
 
-func: type IDENT OPEN_BRACKET parameters CLOSE_BRACKET statement
+// func: type IDENT OPEN_BRACKET parameters CLOSE_BRACKET statement
 
-decls: { $$ = ptlang_ast_module_add_function(NULL, NULL) }
-     | type IDENT COMMA parameters { $$ = $4; ptlang_ast_func_add_parameter($$, $2, $1); }
-     | type IDENT { $$ = ptlang_ast_module_add_function(NULL, NULL); ptlang_ast_func_add_parameter($$, $2, $1); }
+// decls: { $$ = ptlang_ast_module_add_function(NULL, NULL) }
+//      | type IDENT COMMA parameters { $$ = $4; ptlang_ast_func_add_parameter($$, $2, $1); }
+//      | type IDENT { $$ = ptlang_ast_module_add_function(NULL, NULL); ptlang_ast_func_add_parameter($$, $2, $1); }
 
-parameters CLOSE_BRACKET statement { $$ = ptlang_ast_func }
+// parameters CLOSE_BRACKET statement { $$ = ptlang_ast_func }
 
-func: func_start
+// func: func_start
 %%
