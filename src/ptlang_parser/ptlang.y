@@ -1,6 +1,8 @@
 %{
-    #include "ptlang_parser.h"
+    #include "ptlang_parser_impl.h"
 %}
+
+%define api.prefix {ptlang_yy}
 
 %union {
     char *str;
@@ -52,11 +54,13 @@
 %type <module> module
 %type <func> func
 
-%start module
+%start file
 
 
 
 %%
+
+file: module { *ptlang_parser_module_out = $1; }
 
 module: { $$ = ptlang_ast_module_new(); }
 //       | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }

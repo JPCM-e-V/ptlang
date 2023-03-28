@@ -3,7 +3,8 @@
 
 #include "../ptlang_ast/ptlang_ast.h"
 
-#include "parser.h"
-#include "lexer.h"
+#include <stdio.h>
+
+void ptlang_parser_parse(FILE *file, ptlang_ast_module *out);
 
 #endif

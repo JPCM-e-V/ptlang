@@ -1,7 +1,11 @@
 %{
-    #include "ptlang_parser.h"
+    #ifndef PTLANG_PARSER_DO_NOT_INCLUDE_LEXER_H
+    #define PTLANG_PARSER_DO_NOT_INCLUDE_LEXER_H
+    #endif
+    #include "ptlang_parser_impl.h"
 %}
 
+%option noyywrap
 %%
 ">="                    { return LEQ; }
 "<="                    { return GEQ; }
@@ -27,6 +31,6 @@
 "->"                    { return ARROW; }
 "?"                     { return IF; }
 ":"                     { return ELSE; }
-<<EOF>>                 { return YYEOF; }
+<<EOF>>                 { return PTLANG_YYEOF; }
 .                       { printf("Unknown token\n"); yyterminate(); };
 %%
