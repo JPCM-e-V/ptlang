@@ -2,10 +2,15 @@
     #ifndef PTLANG_PARSER_DO_NOT_INCLUDE_LEXER_H
     #define PTLANG_PARSER_DO_NOT_INCLUDE_LEXER_H
     #endif
+
     #include "ptlang_parser_impl.h"
 %}
 
+%option prefix="ptlang_yy"
 %option noyywrap
+%option bison-bridge
+%option bison-locations
+
 %%
 ">="                    { return LEQ; }
 "<="                    { return GEQ; }

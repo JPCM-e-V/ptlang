@@ -15,6 +15,9 @@
     ptlang_ast_struct_def struct_def;
 }
 
+%define api.pure full
+%locations
+
 %token PLUS
 %token MINUS
 %token STAR
