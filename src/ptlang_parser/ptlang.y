@@ -13,6 +13,10 @@
     ptlang_ast_exp exp;
     ptlang_ast_decl decl;
     ptlang_ast_struct_def struct_def;
+    ptlang_ast_decl_list decl_list;
+    ptlang_ast_type_list type_list;
+    ptlang_ast_exp_list exp_list;
+    ptlang_ast_str_exp_list str_exp_list;
 }
 
 %define api.pure full
@@ -54,8 +58,17 @@
 %token ELSE
 %token WHILE
 
+%type <type> type
+%type <stmt> stmt
 %type <module> module
 %type <func> func
+%type <exp> exp
+%type <decl> decl
+%type <struct_def> struct_def
+%type <decl_list> params one_or_more_params
+%type <type_list> param_types
+%type <exp_list> param_values
+%type <str_exp_list> members
 
 %start file
 
@@ -66,9 +79,21 @@
 file: module { *ptlang_parser_module_out = $1; }
 
 module: { $$ = ptlang_ast_module_new(); }
-//       | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }
+      | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }
 
-// func: type IDENT OPEN_BRACKET parameters CLOSE_BRACKET statement
+func: type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6); }
+    | IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5); }
+
+params: { $$ = ptlang_ast_decl_list_new(); }
+      | one_or_more_params { $$ = $1; }
+
+one_or_more_params: decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
+                  | one_or_more_params COMMA decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
+
+decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
+
+type: IF { $$ = NULL; }
+stmt: ELSE { $$ = NULL; }
 
 // decls: { $$ = ptlang_ast_module_add_function(NULL, NULL) }
 //      | type IDENT COMMA parameters { $$ = $4; ptlang_ast_func_add_parameter($$, $2, $1); }
