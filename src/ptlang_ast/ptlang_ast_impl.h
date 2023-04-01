@@ -10,9 +10,7 @@
 struct ptlang_ast_struct_def_s
 {
     char *name;
-    uint64_t member_count;
-    char **member_names;
-    ptlang_ast_type *member_types;
+    ptlang_ast_decl_list members;
 };
 
 struct ptlang_ast_module_type_alias_s

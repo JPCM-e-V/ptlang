@@ -24,8 +24,7 @@ enum ptlang_ast_type_float_size
     PTLANG_AST_TYPE_FLOAT_128,
 };
 
-ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name);
-void ptlang_ast_struct_def_add_member(ptlang_ast_struct_def struct_def, char *name, ptlang_ast_type type);
+ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl_list members);
 
 ptlang_ast_module ptlang_ast_module_new();
 
