@@ -2,7 +2,7 @@
 
 void ptlang_yyerror(PTLANG_YYLTYPE *yylloc, char const *s)
 {
-    fprintf(stderr, "%s\n", s);
+    fprintf(stderr, "error from %d:%d to %d:%d : %s\n", yylloc->first_line, yylloc->first_column, yylloc->last_line, yylloc->last_column, s);
 }
 
 ptlang_ast_module *ptlang_parser_module_out;

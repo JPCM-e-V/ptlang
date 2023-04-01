@@ -11,6 +11,11 @@
 %option bison-bridge
 %option bison-locations
 
+%option nounistd
+%option nodefault
+%option warn
+%option always-interactive
+
 %%
 ">="                    { return LEQ; }
 "<="                    { return GEQ; }
@@ -37,5 +42,5 @@
 "?"                     { return IF; }
 ":"                     { return ELSE; }
 <<EOF>>                 { return PTLANG_YYEOF; }
-.                       { printf("Unknown token\n"); yyterminate(); };
+.                       { ptlang_yyerror(yylloc, "Unknown token\n"); yyterminate(); };
 %%
