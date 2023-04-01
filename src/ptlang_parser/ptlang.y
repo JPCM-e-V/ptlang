@@ -75,7 +75,7 @@
 %type <exp_list> param_values
 %type <str_exp_list> members
 
-%precedence "single_if"
+%precedence single_if
 %precedence ELSE
 
 %start file
@@ -90,7 +90,7 @@ module: { $$ = ptlang_ast_module_new(); }
       | module STRUCT_DEF IDENT OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
         { $$ = $1; ptlang_ast_module_add_struct_def($$, ptlang_ast_struct_def_new($3, $5)); }
       | module TYPE_ALIAS IDENT type { $$ = $1; ptlang_ast_module_add_type_alias($$, $3, $4); }
-      
+
 struct_members: { $$ = ptlang_ast_decl_list_new(); }
       | one_or_more_struct_members { $$ = $1; }
       | one_or_more_struct_members COMMA { $$ = $1; }
@@ -118,7 +118,7 @@ type: IF { $$ = NULL; }
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }
     | decl SEMICOLON { $$ = ptlang_ast_stmt_decl_new($1); }
-    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt %prec "single_if" { $$ = ptlang_ast_stmt_if_new($3, $5); }
+    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt %prec single_if { $$ = ptlang_ast_stmt_if_new($3, $5); }
     | IF OPEN_BRACKET exp CLOSE_BRACKET stmt ELSE stmt { $$ = ptlang_ast_stmt_if_else_new($3, $5, $7); }
     | WHILE OPEN_BRACKET exp CLOSE_BRACKET stmt { $$ = ptlang_ast_stmt_while_new($3, $5); }
     | RET_VAL exp SEMICOLON {$$ = ptlang_ast_stmt_ret_val_new($2); }

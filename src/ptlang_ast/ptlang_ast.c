@@ -488,28 +488,31 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
 
 void ptlang_ast_type_destroy(ptlang_ast_type type)
 {
-    switch (type->type)
+    if (type != NULL)
     {
-    case PTLANG_AST_TYPE_FUNCTION:
-        ptlang_ast_type_destroy(type->content.function.return_type);
-        ptlang_ast_type_list_destroy(type->content.function.parameters);
-        break;
-    case PTLANG_AST_TYPE_HEAP_ARRAY:
-        ptlang_ast_type_destroy(type->content.heap_array.type);
-        break;
-    case PTLANG_AST_TYPE_ARRAY:
-        ptlang_ast_type_destroy(type->content.array.type);
-        break;
-    case PTLANG_AST_TYPE_REFERENCE:
-        ptlang_ast_type_destroy(type->content.reference.type);
-        break;
-    case PTLANG_AST_TYPE_STRUCT:
-        free(type->content.structure);
-        break;
-    default:
-        break;
+        switch (type->type)
+        {
+        case PTLANG_AST_TYPE_FUNCTION:
+            ptlang_ast_type_destroy(type->content.function.return_type);
+            ptlang_ast_type_list_destroy(type->content.function.parameters);
+            break;
+        case PTLANG_AST_TYPE_HEAP_ARRAY:
+            ptlang_ast_type_destroy(type->content.heap_array.type);
+            break;
+        case PTLANG_AST_TYPE_ARRAY:
+            ptlang_ast_type_destroy(type->content.array.type);
+            break;
+        case PTLANG_AST_TYPE_REFERENCE:
+            ptlang_ast_type_destroy(type->content.reference.type);
+            break;
+        case PTLANG_AST_TYPE_STRUCT:
+            free(type->content.structure);
+            break;
+        default:
+            break;
+        }
+        free(type);
     }
-    free(type);
 }
 
 void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
