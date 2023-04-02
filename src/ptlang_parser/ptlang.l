@@ -5,17 +5,31 @@
 
     #include "ptlang_parser_impl.h"
 
-    // #define SAVE_STR                              \
-    //     {                                         \
-    //         size_t str_len = strlen(yytext) + 1;  \
-    //         yylval->str = malloc(str_len);        \
-    //         memcpy(yylval->str, yytext, str_len); \
-    //     }
-    #define SAVE_STR                           \
-    {                                            \
-        yylval->str = malloc(strlen(yytext) + 1); \
-        strcpy(yylval->str, yytext);              \
-    }
+    #define SAVE_STR                              \
+        {                                         \
+            size_t str_len = strlen(yytext) + 1;  \
+            yylval->str = malloc(str_len);        \
+            memcpy(yylval->str, yytext, str_len); \
+        }
+
+    // https://stackoverflow.com/a/22125500
+    #define YY_USER_ACTION                              \
+        {                                               \
+            yylloc->first_line = yylloc->last_line;     \
+            yylloc->first_column = yylloc->last_column; \
+            for (int i = 0; yytext[i] != '\0'; i++)     \
+            {                                           \
+                if (yytext[i] == '\n')                  \
+                {                                       \
+                    yylloc->last_line++;                \
+                    yylloc->last_column = 1;            \
+                }                                       \
+                else                                    \
+                {                                       \
+                    yylloc->last_column++;              \
+                }                                       \
+            }                                           \
+        }
 %}
 
 %option prefix="ptlang_yy"
@@ -27,6 +41,7 @@
 %option nodefault
 %option warn
 %option always-interactive
+%option yylineno
 
 %%
 ">="                    { return LEQ; }
@@ -38,16 +53,17 @@
 ">"                     { return GREATER; }
 ";"                     { return SEMICOLON; }
 [ \t\n]                 {}
-"f16"                  { return F16; }
-"f32"                  { return F32; }
-"f64"                  { return F64; }
-"f128"                 { return F128; }
+"f16"                   { return F16; }
+"f32"                   { return F32; }
+"f64"                   { return F64; }
+"f128"                  { return F128; }
 "["                     { return OPEN_SQUARE_BRACKET; }
 "]"                     { return CLOSE_SQUARE_BRACKET; }
 "("                     { return OPEN_BRACKET; }
 ")"                     { return CLOSE_BRACKET; }
 "{"                     { return OPEN_CURLY_BRACE; }
 "}"                     { return CLOSE_CURLY_BRACE; }
+","                     { return COMMA; }
 "if"                    { return IF; }
 "else"                  { return ELSE; }
 "const"                 { return CONST; }

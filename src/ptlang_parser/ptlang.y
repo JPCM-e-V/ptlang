@@ -113,7 +113,7 @@ non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
 decl: non_const_decl {$$ = $1;}
     | CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false); }
 
-type: IF { $$ = NULL; }
+type: DUMMY { $$ = NULL; }
 
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }
