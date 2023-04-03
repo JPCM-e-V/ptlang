@@ -52,6 +52,18 @@
 "<"                     { return LESSER; }
 ">"                     { return GREATER; }
 ";"                     { return SEMICOLON; }
+"<<"                    { return LEFT_SHIFT; }
+">>"                    { return RIGHT_SHIFT; }
+"&&"                    { return AND; }
+"||"                    { return OR; }
+"!"                     { return NOT; }
+"&"                     { return AMPERSAND; }
+"|"                     { return VERTICAL_BAR; }
+"^"                     { return CIRCUMFLEX; }
+"~"                     { return TILDE; }
+"."                     { return DOT; }
+"?"                     { return QUESTION_MARK; }
+":"                     { return COLON; }
 [ \t\n]                 {}
 "f16"                   { return F16; }
 "f32"                   { return F32; }
