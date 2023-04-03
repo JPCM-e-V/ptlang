@@ -23,6 +23,9 @@
 
 void ptlang_yyerror(PTLANG_YYLTYPE *yylloc, char const *s);
 
+// str: [sSuU][1-9][0-9]{0,6}
+ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, PTLANG_YYLTYPE *yylloc);
+
 extern ptlang_ast_module *ptlang_parser_module_out;
 
 #endif

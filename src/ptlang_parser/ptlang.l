@@ -44,49 +44,52 @@
 %option yylineno
 
 %%
-">="                    { return LEQ; }
-"<="                    { return GEQ; }
-"="                     { return EQ; }
-"=="                    { return EQEQ; }
-"!="                    { return NEQ; }
-"<"                     { return LESSER; }
-">"                     { return GREATER; }
-";"                     { return SEMICOLON; }
-"<<"                    { return LEFT_SHIFT; }
-">>"                    { return RIGHT_SHIFT; }
-"&&"                    { return AND; }
-"||"                    { return OR; }
-"!"                     { return NOT; }
-"&"                     { return AMPERSAND; }
-"|"                     { return VERTICAL_BAR; }
-"^"                     { return CIRCUMFLEX; }
-"~"                     { return TILDE; }
-"."                     { return DOT; }
-"?"                     { return QUESTION_MARK; }
-":"                     { return COLON; }
-[ \t\n]                 {}
-"f16"                   { return F16; }
-"f32"                   { return F32; }
-"f64"                   { return F64; }
-"f128"                  { return F128; }
-"["                     { return OPEN_SQUARE_BRACKET; }
-"]"                     { return CLOSE_SQUARE_BRACKET; }
-"("                     { return OPEN_BRACKET; }
-")"                     { return CLOSE_BRACKET; }
-"{"                     { return OPEN_CURLY_BRACE; }
-"}"                     { return CLOSE_CURLY_BRACE; }
-","                     { return COMMA; }
-"if"                    { return IF; }
-"else"                  { return ELSE; }
-"const"                 { return CONST; }
-"return"                { return RETURN; }
-"retval"                { return RET_VAL; }
-"break"                 { return BREAK; }
-"continue"              { return CONTINUE; }
-"typealias"             { return TYPE_ALIAS; }
-"struct"                { return STRUCT_DEF; }
-"dummy"                 { return DUMMY; }
-[a-zA-Z_][a-zA-Z_0-9]*  { SAVE_STR; return IDENT; }
-<<EOF>>                 { return PTLANG_YYEOF; }
-.                       { ptlang_yyerror(yylloc, "Unknown token\n"); yyterminate(); };
+">="                                                                    { return LEQ; }
+"<="                                                                    { return GEQ; }
+"="                                                                     { return EQ; }
+"=="                                                                    { return EQEQ; }
+"!="                                                                    { return NEQ; }
+"<"                                                                     { return LESSER; }
+">"                                                                     { return GREATER; }
+";"                                                                     { return SEMICOLON; }
+"<<"                                                                    { return LEFT_SHIFT; }
+">>"                                                                    { return RIGHT_SHIFT; }
+"&&"                                                                    { return AND; }
+"||"                                                                    { return OR; }
+"!"                                                                     { return NOT; }
+"&"                                                                     { return AMPERSAND; }
+"|"                                                                     { return VERTICAL_BAR; }
+"^"                                                                     { return CIRCUMFLEX; }
+"~"                                                                     { return TILDE; }
+"."                                                                     { return DOT; }
+"?"                                                                     { return QUESTION_MARK; }
+":"                                                                     { return COLON; }
+[ \t\n]                                                                 {}
+[0-9]+([sSuU][1-9][0-9]{0,6})?                                          { SAVE_STR; return INT_VAL; }
+([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?([fF](16|32|64|128))?  { SAVE_STR; return FLOAT_VAL; }
+[sSuU][1-9][0-9]{0,6}                                                   { SAVE_STR; return INT_TYPE; }
+[fF]16                                                                  { return F16; }
+[fF]32                                                                  { return F32; }
+[fF]64                                                                  { return F64; }
+[fF]128                                                                 { return F128; }
+"["                                                                     { return OPEN_SQUARE_BRACKET; }
+"]"                                                                     { return CLOSE_SQUARE_BRACKET; }
+"("                                                                     { return OPEN_BRACKET; }
+")"                                                                     { return CLOSE_BRACKET; }
+"{"                                                                     { return OPEN_CURLY_BRACE; }
+"}"                                                                     { return CLOSE_CURLY_BRACE; }
+","                                                                     { return COMMA; }
+"if"                                                                    { return IF; }
+"else"                                                                  { return ELSE; }
+"const"                                                                 { return CONST; }
+"return"                                                                { return RETURN; }
+"retval"                                                                { return RET_VAL; }
+"break"                                                                 { return BREAK; }
+"continue"                                                              { return CONTINUE; }
+"typealias"                                                             { return TYPE_ALIAS; }
+"struct"                                                                { return STRUCT_DEF; }
+"dummy"                                                                 { return DUMMY; }
+[a-zA-Z_][a-zA-Z_0-9]*                                                  { SAVE_STR; return IDENT; }
+<<EOF>>                                                                 { return PTLANG_YYEOF; }
+.                                                                       { ptlang_yyerror(yylloc, "Unknown token\n"); yyterminate(); };
 %%
