@@ -40,8 +40,7 @@
 %token F32
 %token F64
 %token F128
-%token <str> UINT
-%token <str> INT
+%token <str> INT_TYPE
 %token <str> INT_VAL
 %token <str> FLOAT_VAL
 %token OPEN_SQUARE_BRACKET
@@ -85,7 +84,7 @@
 %type <struct_def> struct_def
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
 %type <type_list> param_types
-%type <exp_list> param_values
+%type <exp_list> exps one_or_more_exps
 %type <str_exp_list> members
 
 %precedence single_if
@@ -104,7 +103,7 @@
 %left PLUS MINUS
 %left STAR SLASH PERCENT
 %right negation NOT TILDE reference dereference cast
-%left DOT OPEN_SQUARE_BRACKET
+%left DOT OPEN_SQUARE_BRACKET OPEN_BRACKET
 
 %start file
 
@@ -158,7 +157,8 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
 block: { $$ = ptlang_ast_stmt_block_new(); }
      | block stmt { $$ = $1; ptlang_ast_stmt_block_add_stmt($$, $2); }
 
-exp: exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3); }
+exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
+   | exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3); }
    | exp PLUS exp { $$ = ptlang_ast_exp_addition_new($1, $3); }
    | exp MINUS exp { $$ = ptlang_ast_exp_subtraction_new($1, $3); }
    | MINUS exp %prec negation { $$ = ptlang_ast_exp_negation_new($2); }
@@ -179,20 +179,28 @@ exp: exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3); }
    | exp VERTICAL_BAR exp { $$ = ptlang_ast_exp_bitwise_or_new($1, $3); }
    | exp CIRCUMFLEX exp { $$ = ptlang_ast_exp_bitwise_xor_new($1, $3); }
    | TILDE exp { $$ = ptlang_ast_exp_bitwise_inverse_new($2); }
-//    | exp OPEN_BRACKET CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3); }
+   | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3); }
    | IDENT { $$ = ptlang_ast_exp_variable_new($1); }
-//    | exp EQ exp { $$ = ptlang_ast_exp_integer_new($1); }
-//    | exp EQ exp { $$ = ptlang_ast_exp_float_new($1); }
-//    | exp EQ exp { $$ = ptlang_ast_exp_struct_new($1, $3); }
-//    | exp EQ exp { $$ = ptlang_ast_exp_array_new($1, $3); }
-   | type OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_heap_array_from_length_new($1, $3); }
+   /* | exp EQ exp { $$ = ptlang_ast_exp_integer_new($1); } */
+   /* | exp EQ exp { $$ = ptlang_ast_exp_float_new($1); } */
+   /* | exp EQ exp { $$ = ptlang_ast_exp_struct_new($1, $3); } */
+   /* | exp EQ exp { $$ = ptlang_ast_exp_array_new($1, $3); } */
+   /* | type OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_heap_array_from_length_new($1, $3); } */
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
    | OPEN_BRACKET type CLOSE_BRACKET exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
    | exp DOT IDENT { $$ = ptlang_ast_exp_struct_member_new($1, $3); }
-   | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3); }
+   /* | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3); } */
    | AMPERSAND exp %prec reference { $$ = ptlang_ast_exp_reference_new(true, $2); }
    | AMPERSAND CONST exp %prec reference { $$ = ptlang_ast_exp_reference_new(false, $3); }
    | STAR exp %prec dereference { $$ = ptlang_ast_exp_dereference_new($2); }
+   /* | DUMMY { $$ = NULL; } */
+
+exps: { $$ = ptlang_ast_exp_list_new(); }
+    | one_or_more_exps { $$ = $1; }
+    | one_or_more_exps COMMA { $$ = $1; }
+
+one_or_more_exps: exp { $$ = ptlang_ast_exp_list_new(); ptlang_ast_exp_list_add($$, $1); }
+                | one_or_more_exps COMMA exp { $$ = $1; ptlang_ast_exp_list_add($$, $3); }
 
 // decls: { $$ = ptlang_ast_module_add_function(NULL, NULL) }
 //      | type IDENT COMMA parameters { $$ = $4; ptlang_ast_func_add_parameter($$, $2, $1); }
