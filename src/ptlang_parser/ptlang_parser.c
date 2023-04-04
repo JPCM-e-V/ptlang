@@ -19,5 +19,12 @@ ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, PTLANG_YYLTYPE *
 {
     bool is_signed = str[0] == 's' || str[0] == 'S';
     uint32_t size = strtoul(str + sizeof(char), NULL, 10);
+
+    if (size > 1 << 23)
+    {
+        char msg[sizeof("Size of Integer must be below 8388608, but is XXXXXXX.")];
+        sprintf(msg, "Size of integer must be below 8388608, but is %u.", size);
+        ptlang_yyerror(yylloc, msg);
+    }
     return ptlang_ast_type_integer(is_signed, size);
 }

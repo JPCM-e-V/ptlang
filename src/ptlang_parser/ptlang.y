@@ -17,6 +17,7 @@
     ptlang_ast_type_list type_list;
     ptlang_ast_exp_list exp_list;
     ptlang_ast_str_exp_list str_exp_list;
+    enum ptlang_ast_type_float_size float_size;
 }
 
 %define api.pure full
@@ -36,11 +37,8 @@
 %token GREATER
 %token SEMICOLON
 %token <str> IDENT
-%token F16
-%token F32
-%token F64
-%token F128
 %token <str> INT_TYPE
+%token <float_size> FLOAT_TYPE
 %token <str> INT_VAL
 %token <str> FLOAT_VAL
 %token OPEN_SQUARE_BRACKET
@@ -105,6 +103,9 @@
 %right negation NOT TILDE reference dereference cast
 %left DOT OPEN_SQUARE_BRACKET OPEN_BRACKET
 
+/* %precedence array_type */
+
+
 %start file
 
 %%
@@ -140,7 +141,15 @@ non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
 decl: non_const_decl {$$ = $1;}
     | CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false); }
 
-type: DUMMY { $$ = NULL; }
+type: OPEN_BRACKET type CLOSE_BRACKET { $$ = $2; }
+    | INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
+    | FLOAT_TYPE { $$ = ptlang_ast_type_float($1); }
+    /* | { $$ = ptlang_ast_type_function(); } */
+    | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_type_heap_array($1); }
+    | type OPEN_SQUARE_BRACKET INT_VAL CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_type_array($1, strtoul($3, NULL, 0)); } // TODO Overflow
+    | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true); }
+    | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false); }
+    /* | DUMMY { $$ = NULL; } */
 
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }

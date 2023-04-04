@@ -12,6 +12,8 @@
             memcpy(yylval->str, yytext, str_len); \
         }
 
+    #define SAVE_FLOAT_SIZE(size) yylval->float_size = PTLANG_AST_TYPE_FLOAT_##size
+
     // https://stackoverflow.com/a/22125500
     #define YY_USER_ACTION                              \
         {                                               \
@@ -68,10 +70,10 @@
 [0-9]+([sSuU][1-9][0-9]{0,6})?                                          { SAVE_STR; return INT_VAL; }
 ([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?([fF](16|32|64|128))?  { SAVE_STR; return FLOAT_VAL; }
 [sSuU][1-9][0-9]{0,6}                                                   { SAVE_STR; return INT_TYPE; }
-[fF]16                                                                  { return F16; }
-[fF]32                                                                  { return F32; }
-[fF]64                                                                  { return F64; }
-[fF]128                                                                 { return F128; }
+[fF]16                                                                  { SAVE_FLOAT_SIZE(16); return FLOAT_TYPE; }
+[fF]32                                                                  { SAVE_FLOAT_SIZE(32); return FLOAT_TYPE; }
+[fF]64                                                                  { SAVE_FLOAT_SIZE(64); return FLOAT_TYPE; }
+[fF]128                                                                 { SAVE_FLOAT_SIZE(128); return FLOAT_TYPE; }
 "["                                                                     { return OPEN_SQUARE_BRACKET; }
 "]"                                                                     { return CLOSE_SQUARE_BRACKET; }
 "("                                                                     { return OPEN_BRACKET; }
