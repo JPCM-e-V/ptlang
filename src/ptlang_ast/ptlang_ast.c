@@ -214,6 +214,16 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
     return type;
 }
 
+ptlang_ast_type ptlang_ast_type_named(char *name)
+{
+    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_NAMED,
+        .content.name = name,
+    };
+    return type;
+}
+
 #define BINARY_OP(lower, upper)                                                                        \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) \
     {                                                                                                  \
@@ -505,8 +515,8 @@ void ptlang_ast_type_destroy(ptlang_ast_type type)
         case PTLANG_AST_TYPE_REFERENCE:
             ptlang_ast_type_destroy(type->content.reference.type);
             break;
-        case PTLANG_AST_TYPE_STRUCT:
-            free(type->content.structure);
+        case PTLANG_AST_TYPE_NAMED:
+            free(type->content.name);
             break;
         default:
             break;

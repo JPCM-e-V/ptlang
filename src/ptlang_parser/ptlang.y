@@ -149,7 +149,10 @@ type: OPEN_BRACKET type CLOSE_BRACKET { $$ = $2; }
     | type OPEN_SQUARE_BRACKET INT_VAL CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_type_array($1, strtoul($3, NULL, 0)); } // TODO Overflow
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false); }
+    | IDENT { $$ = ptlang_ast_type_named($1); }
     /* | DUMMY { $$ = NULL; } */
+
+// []f128
 
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }

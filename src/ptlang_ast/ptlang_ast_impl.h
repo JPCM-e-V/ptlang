@@ -268,7 +268,7 @@ struct ptlang_ast_type_s
         PTLANG_AST_TYPE_HEAP_ARRAY,
         PTLANG_AST_TYPE_ARRAY,
         PTLANG_AST_TYPE_REFERENCE,
-        PTLANG_AST_TYPE_STRUCT,
+        PTLANG_AST_TYPE_NAMED,
     } type;
     union
     {
@@ -278,7 +278,7 @@ struct ptlang_ast_type_s
         struct ptlang_ast_type_heap_array_s heap_array;
         struct ptlang_ast_type_array_s array;
         struct ptlang_ast_type_reference_s reference;
-        char *structure;
+        char *name;
     } content;
 };
 
