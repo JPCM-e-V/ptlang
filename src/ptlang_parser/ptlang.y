@@ -81,7 +81,7 @@
 %type <decl> decl non_const_decl
 %type <struct_def> struct_def
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
-%type <type_list> param_types
+%type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
 %type <str_exp_list> members
 
@@ -141,16 +141,23 @@ non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
 decl: non_const_decl {$$ = $1;}
     | CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false); }
 
-type: OPEN_BRACKET type CLOSE_BRACKET { $$ = $2; }
-    | INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
+type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
     | FLOAT_TYPE { $$ = ptlang_ast_type_float($1); }
-    /* | { $$ = ptlang_ast_type_function(); } */
-    | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_type_heap_array($1); }
-    | type OPEN_SQUARE_BRACKET INT_VAL CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_type_array($1, strtoul($3, NULL, 0)); } // TODO Overflow
+    | OPEN_BRACKET types CLOSE_BRACKET COLON type { $$ = ptlang_ast_type_function($5, $2); }
+    | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3); }
+    | OPEN_SQUARE_BRACKET INT_VAL CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, strtoul($2, NULL, 0)); } // TODO Overflow
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false); }
     | IDENT { $$ = ptlang_ast_type_named($1); }
     /* | DUMMY { $$ = NULL; } */
+
+types: { $$ = ptlang_ast_type_list_new(); }
+    | one_or_more_types { $$ = $1; }
+    | one_or_more_types COMMA { $$ = $1; }
+
+one_or_more_types: type { $$ = ptlang_ast_type_list_new(); ptlang_ast_type_list_add($$, $1); }
+                 | one_or_more_types COMMA type { $$ = $1; ptlang_ast_type_list_add($$, $3); }
+
 
 // []f128
 
@@ -197,11 +204,11 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
    /* | exp EQ exp { $$ = ptlang_ast_exp_struct_new($1, $3); } */
    /* | exp EQ exp { $$ = ptlang_ast_exp_array_new($1, $3); } */
-   /* | type OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_heap_array_from_length_new($1, $3); } */
+   | OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_exp_heap_array_from_length_new($4, $2); }
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
-   | OPEN_BRACKET type CLOSE_BRACKET exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
+   | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
    | exp DOT IDENT { $$ = ptlang_ast_exp_struct_member_new($1, $3); }
-   /* | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3); } */
+   | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3); }
    | AMPERSAND exp %prec reference { $$ = ptlang_ast_exp_reference_new(true, $2); }
    | AMPERSAND CONST exp %prec reference { $$ = ptlang_ast_exp_reference_new(false, $3); }
    | STAR exp %prec dereference { $$ = ptlang_ast_exp_dereference_new($2); }
