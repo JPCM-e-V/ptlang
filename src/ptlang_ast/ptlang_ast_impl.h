@@ -10,9 +10,7 @@
 struct ptlang_ast_struct_def_s
 {
     char *name;
-    uint64_t member_count;
-    char **member_names;
-    ptlang_ast_type *member_types;
+    ptlang_ast_decl_list members;
 };
 
 struct ptlang_ast_module_type_alias_s
@@ -38,6 +36,36 @@ struct ptlang_ast_decl_s
     ptlang_ast_type type;
     char *name;
     bool writable;
+};
+
+struct ptlang_ast_decl_list_s
+{
+    uint64_t count;
+    ptlang_ast_decl *decls;
+};
+
+struct ptlang_ast_type_list_s
+{
+    uint64_t count;
+    ptlang_ast_type *types;
+};
+
+struct ptlang_ast_exp_list_s
+{
+    uint64_t count;
+    ptlang_ast_exp *exps;
+};
+
+struct ptlang_ast_str_exp_s
+{
+    char *str;
+    ptlang_ast_exp exp;
+};
+
+struct ptlang_ast_str_exp_list_s
+{
+    uint64_t count;
+    struct ptlang_ast_str_exp_s *str_exps;
 };
 
 struct ptlang_ast_stmt_block_s
@@ -92,9 +120,8 @@ struct ptlang_ast_exp_binary_operator_s
 
 struct ptlang_ast_exp_function_call_s
 {
-    char *function_name;
-    uint64_t parameter_count;
-    ptlang_ast_exp *parameters;
+    ptlang_ast_exp function;
+    ptlang_ast_exp_list parameters;
 };
 
 struct ptlang_ast_exp_ternary_operator_s
@@ -112,17 +139,14 @@ struct ptlang_ast_exp_cast_s
 
 struct ptlang_ast_exp_struct_s
 {
-    ptlang_ast_type type;
-    uint64_t length; // Not the len of the struct, but the amount of initalized struct members
-    ptlang_ast_exp *values;
-    char **names;
+    char *type;
+    ptlang_ast_str_exp_list members;
 };
 
 struct ptlang_ast_exp_array_s
 {
     ptlang_ast_type type;
-    uint64_t length;
-    ptlang_ast_exp *values;
+    ptlang_ast_exp_list values;
 };
 
 struct ptlang_ast_exp_heap_array_from_length_s
@@ -161,6 +185,7 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_DIVISION,
         PTLANG_AST_EXP_MODULO,
         PTLANG_AST_EXP_EQUAL,
+        PTLANG_AST_EXP_NOT_EQUAL,
         PTLANG_AST_EXP_GREATER,
         PTLANG_AST_EXP_GREATER_EQUAL,
         PTLANG_AST_EXP_LESS,
@@ -214,8 +239,7 @@ struct ptlang_ast_type_integer_s
 struct ptlang_ast_type_function_s
 {
     ptlang_ast_type return_type;
-    uint64_t parameter_count;
-    ptlang_ast_type *parameters;
+    ptlang_ast_type_list parameters;
 };
 
 struct ptlang_ast_type_heap_array_s
@@ -245,7 +269,7 @@ struct ptlang_ast_type_s
         PTLANG_AST_TYPE_HEAP_ARRAY,
         PTLANG_AST_TYPE_ARRAY,
         PTLANG_AST_TYPE_REFERENCE,
-        PTLANG_AST_TYPE_STRUCT,
+        PTLANG_AST_TYPE_NAMED,
     } type;
     union
     {
@@ -255,15 +279,15 @@ struct ptlang_ast_type_s
         struct ptlang_ast_type_heap_array_s heap_array;
         struct ptlang_ast_type_array_s array;
         struct ptlang_ast_type_reference_s reference;
-        char *structure;
+        char *name;
     } content;
 };
 
 struct ptlang_ast_func_s
 {
     char *name;
-    struct ptlang_ast_type_function_s type;
-    char **parameter_names;
+    ptlang_ast_type return_type;
+    ptlang_ast_decl_list parameters;
     ptlang_ast_stmt stmt;
 };
 
