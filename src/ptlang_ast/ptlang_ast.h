@@ -65,6 +65,7 @@ ptlang_ast_exp ptlang_ast_exp_multiplication_new(ptlang_ast_exp left_value, ptla
 ptlang_ast_exp ptlang_ast_exp_division_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_modulo_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
+ptlang_ast_exp ptlang_ast_exp_not_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_greater_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_greater_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_less_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
@@ -82,7 +83,7 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
 ptlang_ast_exp ptlang_ast_exp_variable_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_integer_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_float_new(char *str_prepresentation);
-ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_type type, ptlang_ast_str_exp_list members);
+ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list members);
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_list values);
 ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length);
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);

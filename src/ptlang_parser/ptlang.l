@@ -90,6 +90,7 @@
 "continue"                                                              { return CONTINUE; }
 "typealias"                                                             { return TYPE_ALIAS; }
 "struct"                                                                { return STRUCT_DEF; }
+"alloc"                                                                 { return ALLOC; }
 "dummy"                                                                 { return DUMMY; }
 [a-zA-Z_][a-zA-Z_0-9]*                                                  { SAVE_STR; return IDENT; }
 <<EOF>>                                                                 { return PTLANG_YYEOF; }

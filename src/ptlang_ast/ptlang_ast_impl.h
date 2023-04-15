@@ -139,7 +139,7 @@ struct ptlang_ast_exp_cast_s
 
 struct ptlang_ast_exp_struct_s
 {
-    ptlang_ast_type type;
+    char *type;
     ptlang_ast_str_exp_list members;
 };
 
@@ -185,6 +185,7 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_DIVISION,
         PTLANG_AST_EXP_MODULO,
         PTLANG_AST_EXP_EQUAL,
+        PTLANG_AST_EXP_NOT_EQUAL,
         PTLANG_AST_EXP_GREATER,
         PTLANG_AST_EXP_GREATER_EQUAL,
         PTLANG_AST_EXP_LESS,

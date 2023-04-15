@@ -6,6 +6,7 @@ project(ptlang
 set(PTLANG_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(PTLANG_AST_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ast)
 set(PTLANG_PARSER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_parser)
+set(PTLANG_MAIN_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_main)
 
 
 add_library(ptlang_ast OBJECT
@@ -20,7 +21,7 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInf
     set(DEBUG_FLAG "--debug")
 endif()
 
-BISON_TARGET(PTLANG_PARSER ${PTLANG_PARSER_SRC_DIR}/ptlang.y ${PROJECT_BINARY_DIR}/parser.c DEFINES_FILE ${PROJECT_BINARY_DIR}/parser.h COMPILE_FLAGS "${DEBUG_FLAG} -Wcounterexamples")
+BISON_TARGET(PTLANG_PARSER ${PTLANG_PARSER_SRC_DIR}/ptlang.y ${PROJECT_BINARY_DIR}/parser.c DEFINES_FILE ${PROJECT_BINARY_DIR}/parser.h COMPILE_FLAGS "${DEBUG_FLAG}")
 FLEX_TARGET(PTLANG_LEXER ${PTLANG_PARSER_SRC_DIR}/ptlang.l ${PROJECT_BINARY_DIR}/lexer.c DEFINES_FILE ${PROJECT_BINARY_DIR}/lexer.h COMPILE_FLAGS "${DEBUG_FLAG}")
 ADD_FLEX_BISON_DEPENDENCY(PTLANG_LEXER PTLANG_PARSER)
 
@@ -43,3 +44,11 @@ set_property(TARGET ptlang_parser PROPERTY C_STANDARD 17)
 target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
+
+add_executable(ptlang ${PTLANG_MAIN_SRC_DIR}/main.c)
+
+target_include_directories(ptlang
+                           PRIVATE ${PTLANG_PARSER_SRC_DIR}
+                           PRIVATE ${PROJECT_BINARY_DIR})
+
+target_link_libraries(ptlang ptlang_ast ptlang_parser)

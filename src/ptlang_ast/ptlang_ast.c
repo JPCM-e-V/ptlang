@@ -257,6 +257,7 @@ BINARY_OP(multiplication, MULTIPLICATION)
 BINARY_OP(division, DIVISION)
 BINARY_OP(modulo, MODULO)
 BINARY_OP(equal, EQUAL)
+BINARY_OP(not_equal, NOT_EQUAL)
 BINARY_OP(greater, GREATER)
 BINARY_OP(greater_equal, GREATER_EQUAL)
 BINARY_OP(less, LESS)
@@ -298,7 +299,7 @@ STR_REPR(variable, VARIABLE)
 STR_REPR(integer, INTEGER)
 STR_REPR(float, FLOAT)
 
-ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_type type, ptlang_ast_str_exp_list members)
+ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list members)
 {
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -608,6 +609,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_DIVISION:
     case PTLANG_AST_EXP_MODULO:
     case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_NOT_EQUAL:
     case PTLANG_AST_EXP_GREATER:
     case PTLANG_AST_EXP_GREATER_EQUAL:
     case PTLANG_AST_EXP_LESS:
@@ -638,7 +640,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         free(exp->content.str_prepresentation);
         break;
     case PTLANG_AST_EXP_STRUCT:
-        ptlang_ast_type_destroy(exp->content.struct_.type);
+        free(exp->content.struct_.type);
         ptlang_ast_str_exp_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:

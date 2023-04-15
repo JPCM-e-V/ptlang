@@ -20,8 +20,11 @@
     enum ptlang_ast_type_float_size float_size;
 }
 
-%define api.pure full
+%define api.pure true
 %locations
+
+%glr-parser
+%expect-rr 3
 
 %token PLUS
 %token MINUS
@@ -58,6 +61,7 @@
 %token CONTINUE
 %token TYPE_ALIAS
 %token STRUCT_DEF
+%token ALLOC
 %token LEFT_SHIFT
 %token RIGHT_SHIFT
 %token AND
@@ -79,11 +83,10 @@
 %type <func> func
 %type <exp> exp
 %type <decl> decl non_const_decl
-%type <struct_def> struct_def
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
 %type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
-%type <str_exp_list> members
+%type <str_exp_list> members one_or_more_members
 
 %precedence single_if
 %precedence ELSE
@@ -185,6 +188,7 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | exp SLASH exp { $$ = ptlang_ast_exp_division_new($1, $3); }
    | exp PERCENT exp { $$ = ptlang_ast_exp_modulo_new($1, $3); }
    | exp EQEQ exp { $$ = ptlang_ast_exp_equal_new($1, $3); }
+   | exp NEQ exp { $$ = ptlang_ast_exp_not_equal_new($1, $3); }
    | exp GREATER exp { $$ = ptlang_ast_exp_greater_new($1, $3); }
    | exp GEQ exp { $$ = ptlang_ast_exp_greater_equal_new($1, $3); }
    | exp LESSER exp { $$ = ptlang_ast_exp_less_new($1, $3); }
@@ -202,9 +206,9 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | IDENT { $$ = ptlang_ast_exp_variable_new($1); }
    | INT_VAL { $$ = ptlang_ast_exp_integer_new($1); }
    | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
-   /* | exp EQ exp { $$ = ptlang_ast_exp_struct_new($1, $3); } */
-   /* | exp EQ exp { $$ = ptlang_ast_exp_array_new($1, $3); } */
-   | OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_exp_heap_array_from_length_new($4, $2); }
+   | IDENT OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3); }
+   | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5); }
+   | ALLOC OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_exp_heap_array_from_length_new($5, $3); }
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
    | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
    | exp DOT IDENT { $$ = ptlang_ast_exp_struct_member_new($1, $3); }
@@ -221,11 +225,10 @@ exps: { $$ = ptlang_ast_exp_list_new(); }
 one_or_more_exps: exp { $$ = ptlang_ast_exp_list_new(); ptlang_ast_exp_list_add($$, $1); }
                 | one_or_more_exps COMMA exp { $$ = $1; ptlang_ast_exp_list_add($$, $3); }
 
-// decls: { $$ = ptlang_ast_module_add_function(NULL, NULL) }
-//      | type IDENT COMMA parameters { $$ = $4; ptlang_ast_func_add_parameter($$, $2, $1); }
-//      | type IDENT { $$ = ptlang_ast_module_add_function(NULL, NULL); ptlang_ast_func_add_parameter($$, $2, $1); }
+members: { $$ = ptlang_ast_str_exp_list_new(); }
+       | one_or_more_members { $$ = $1; }
+       | one_or_more_members COMMA { $$ = $1; }
 
-// parameters CLOSE_BRACKET statement { $$ = ptlang_ast_func }
-
-// func: func_start
+one_or_more_members: IDENT exp { $$ = ptlang_ast_str_exp_list_new(); ptlang_ast_str_exp_list_add($$, $1, $2); }
+                   | one_or_more_members COMMA IDENT exp { $$ = $1; ptlang_ast_str_exp_list_add($$, $3, $4); }
 %%
