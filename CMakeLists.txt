@@ -51,10 +51,13 @@ add_library(ptlang_ir_builder OBJECT
             ${PTLANG_IR_BUILDER_SRC_DIR}/ptlang_ir_builder.c)
 
 target_include_directories(ptlang_ir_builder
-                           PRIVATE ${PTLANG_AST_SRC_DIR})
+                           PRIVATE ${PTLANG_AST_SRC_DIR}
+                           PUBLIC ${LLVM_INCLUDE_DIRS})
+
+llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 target_link_libraries(ptlang_ir_builder
-                      LLVM)
+                      ${llvm_libs})
 
 add_executable(ptlang ${PTLANG_MAIN_SRC_DIR}/main.c)
 
@@ -65,3 +68,17 @@ target_include_directories(ptlang
                            PRIVATE ${PROJECT_BINARY_DIR})
 
 target_link_libraries(ptlang ptlang_ast ptlang_parser ptlang_ir_builder)
+
+
+get_cmake_property(_variableNames VARIABLES)
+list (SORT _variableNames)
+foreach (_variableName ${_variableNames})
+    if (ARGV0)
+        unset(MATCHED)
+        string(REGEX MATCH ${ARGV0} MATCHED ${_variableName})
+        if (NOT MATCHED)
+            continue()
+        endif()
+    endif()
+    message(STATUS "${_variableName}=${${_variableName}}")
+endforeach()
