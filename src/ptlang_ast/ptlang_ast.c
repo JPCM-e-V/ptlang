@@ -529,7 +529,8 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
 //     }
 // }
 
-void ptlang_ast_type_destroy(ptlang_ast_type type)
+
+void ptlang_ast_type_destroy_content(ptlang_ast_type type)
 {
     if (type != NULL)
     {
@@ -554,9 +555,14 @@ void ptlang_ast_type_destroy(ptlang_ast_type type)
         default:
             break;
         }
-        free(type);
     }
 }
+
+void ptlang_ast_type_destroy(ptlang_ast_type type){
+    ptlang_ast_type_destroy_content(type);
+    free(type);
+}
+
 
 void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
 {

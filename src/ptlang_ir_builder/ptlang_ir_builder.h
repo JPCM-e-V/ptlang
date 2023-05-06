@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include "stb_ds.h"
 
 #include <llvm-c/Core.h>
 #include "ptlang_ast_impl.h"

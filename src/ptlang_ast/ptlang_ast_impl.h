@@ -291,4 +291,6 @@ struct ptlang_ast_func_s
     ptlang_ast_stmt stmt;
 };
 
+void ptlang_ast_type_destroy_content(ptlang_ast_type type);
+
 #endif
