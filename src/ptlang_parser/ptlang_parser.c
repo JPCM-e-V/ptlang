@@ -10,7 +10,7 @@ ptlang_ast_module *ptlang_parser_module_out;
 void ptlang_parser_parse(FILE *file, ptlang_ast_module *out)
 {
 #ifndef NDEBUG
-    ptlang_yydebug = 1;
+    // ptlang_yydebug = 1;
 #endif
 
     ptlang_yyset_in(file);

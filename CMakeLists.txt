@@ -7,6 +7,7 @@ set(PTLANG_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(PTLANG_AST_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ast)
 set(PTLANG_PARSER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_parser)
 set(PTLANG_MAIN_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_main)
+set(PTLANG_IR_BUILDER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ir_builder)
 
 
 add_library(ptlang_ast OBJECT
@@ -16,6 +17,7 @@ set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
 find_package(BISON 3.8.2 REQUIRED)
 find_package(FLEX 2.6.4 REQUIRED)
+find_package(LLVM REQUIRED CONFIG)
 
 if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
     set(DEBUG_FLAG "--debug")
@@ -45,10 +47,21 @@ target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
+add_library(ptlang_ir_builder OBJECT
+            ${PTLANG_IR_BUILDER_SRC_DIR}/ptlang_ir_builder.c)
+
+target_include_directories(ptlang_ir_builder
+                           PRIVATE ${PTLANG_AST_SRC_DIR})
+
+target_link_libraries(ptlang_ir_builder
+                      LLVM)
+
 add_executable(ptlang ${PTLANG_MAIN_SRC_DIR}/main.c)
 
 target_include_directories(ptlang
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
+                           PRIVATE ${PTLANG_AST_SRC_DIR}
+                           PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
-target_link_libraries(ptlang ptlang_ast ptlang_parser)
+target_link_libraries(ptlang ptlang_ast ptlang_parser ptlang_ir_builder)

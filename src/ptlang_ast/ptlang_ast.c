@@ -497,6 +497,38 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
     return stmt;
 }
 
+// ptlang_ast_func *ptlang_ast_module_get_funcs(ptlang_ast_module module, uint64_t *count)
+// {
+//     *count = module->function_count;
+//     return module->functions;
+// }
+
+// ptlang_ast_decl *ptlang_ast_module_get_decls(ptlang_ast_module module, uint64_t *count)
+// {
+//     *count = module->declaration_count;
+//     return module->declarations;
+// }
+
+// ptlang_ast_struct_def *ptlang_ast_module_get_struct_defs(ptlang_ast_module module, uint64_t *count)
+// {
+//     *count = module->struct_def_count;
+//     return module->struct_defs;
+// }
+
+// uint64_t ptlang_ast_module_get_type_alias_count(ptlang_ast_module module)
+// {
+//     return module->type_alias_count;
+// }
+
+// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *types)
+// {
+//     for (uint64_t i = 0; i < module->type_alias_count; i++)
+//     {
+//         names[i] = module->type_aliases[i].name;
+//         types[i] = module->type_aliases[i].type;
+//     }
+// }
+
 void ptlang_ast_type_destroy(ptlang_ast_type type)
 {
     if (type != NULL)

@@ -105,6 +105,12 @@ ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value);
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level);
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level);
 
+// ptlang_ast_func *ptlang_ast_module_get_funcs(ptlang_ast_module module, uint64_t *count);
+// ptlang_ast_decl *ptlang_ast_module_get_decls(ptlang_ast_module module, uint64_t *count);
+// ptlang_ast_struct_def *ptlang_ast_module_get_struct_defs(ptlang_ast_module module, uint64_t *count);
+// uint64_t ptlang_ast_module_get_type_alias_count(ptlang_ast_module module);
+// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *types);
+
 void ptlang_ast_type_destroy(ptlang_ast_type type);
 void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt);
 void ptlang_ast_module_destroy(ptlang_ast_module module);
