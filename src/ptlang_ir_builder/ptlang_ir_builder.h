@@ -1,9 +1,5 @@
-#include <stdlib.h>
-#include <string.h>
-#include <stdio.h>
-#include "stb_ds.h"
-
+#pragma once
 #include <llvm-c/Core.h>
-#include "ptlang_ast_impl.h"
+#include "ptlang_ast.h"
 
 LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module module);

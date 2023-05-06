@@ -1,5 +1,4 @@
-#define STB_DS_IMPLEMENTATION
-#include "ptlang_ir_builder.h"
+#include "ptlang_ir_builder_impl.h"
 
 typedef struct ptlang_ir_builder_scope_entry_s
 {
