@@ -18,10 +18,10 @@ typedef struct ptlang_ast_str_exp_list_s *ptlang_ast_str_exp_list;
 
 enum ptlang_ast_type_float_size
 {
-    PTLANG_AST_TYPE_FLOAT_16,
-    PTLANG_AST_TYPE_FLOAT_32,
-    PTLANG_AST_TYPE_FLOAT_64,
-    PTLANG_AST_TYPE_FLOAT_128,
+    PTLANG_AST_TYPE_FLOAT_16 = 16,
+    PTLANG_AST_TYPE_FLOAT_32 = 32,
+    PTLANG_AST_TYPE_FLOAT_64 = 64,
+    PTLANG_AST_TYPE_FLOAT_128 = 128,
 };
 
 ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl_list members);
