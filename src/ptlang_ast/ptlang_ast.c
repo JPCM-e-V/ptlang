@@ -497,6 +497,49 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
     return stmt;
 }
 
+ptlang_ast_type_list ptlang_ast_type_list_copy(ptlang_ast_type_list type_list)
+{
+    ptlang_ast_type_list copy = malloc(sizeof(struct ptlang_ast_type_list_s));
+    *copy = (struct ptlang_ast_type_list_s){
+        .count = type_list->count,
+    };
+    copy->types = realloc(copy->types, sizeof(ptlang_ast_type) * copy->count);
+    for (uint64_t i = 0; i < type_list->count; i++)
+    {
+        copy->types[i] = ptlang_ast_type_copy(type_list->types[i]);
+    }
+}
+
+ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
+{
+    if (type == NULL)
+    {
+        return NULL;
+    }
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_INTEGER:
+        return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size);
+    case PTLANG_AST_TYPE_FLOAT:
+        return ptlang_ast_type_float(type->content.float_size);
+    case PTLANG_AST_TYPE_FUNCTION:
+        return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type), ptlang_ast_type_list_copy(type->content.function.parameters));
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type));
+    case PTLANG_AST_TYPE_ARRAY:
+        return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len);
+    case PTLANG_AST_TYPE_REFERENCE:
+        return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type), type->content.reference.writable);
+    case PTLANG_AST_TYPE_NAMED:
+    {
+        size_t name_len = strlen(type->content.name) + 1;
+        char *name = malloc(name_len);
+        memcpy(name, type->content.name, name_len);
+        return ptlang_ast_type_named(name);
+    }
+    }
+}
+
 // ptlang_ast_func *ptlang_ast_module_get_funcs(ptlang_ast_module module, uint64_t *count)
 // {
 //     *count = module->function_count;
@@ -529,7 +572,6 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
 //     }
 // }
 
-
 void ptlang_ast_type_destroy_content(ptlang_ast_type type)
 {
     if (type != NULL)
@@ -558,11 +600,11 @@ void ptlang_ast_type_destroy_content(ptlang_ast_type type)
     }
 }
 
-void ptlang_ast_type_destroy(ptlang_ast_type type){
+void ptlang_ast_type_destroy(ptlang_ast_type type)
+{
     ptlang_ast_type_destroy_content(type);
     free(type);
 }
-
 
 void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
 {
@@ -739,7 +781,6 @@ void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list)
     free(decl_list->decls);
     free(decl_list);
 }
-
 void ptlang_ast_type_list_destroy(ptlang_ast_type_list type_list)
 {
     for (uint64_t i = 0; i < type_list->count; i++)
