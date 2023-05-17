@@ -479,6 +479,21 @@ static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_
     }
 }
 
+static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx);
+
+static void ptlang_ir_builder_prepare_binary_op(ptlang_ast_exp exp, LLVMValueRef *left_value, LLVMValueRef *right_value, ptlang_ast_type *ret_type, ptlang_ir_builder_build_context *ctx)
+{
+    ptlang_ast_type left_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
+    ptlang_ast_type right_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
+    *ret_type = ptlang_ir_builder_combine_types(left_type, right_type, ctx->type_scope);
+    LLVMValueRef left_value_uncasted = ptlang_ir_builder_exp(exp->content.binary_operator.left_value, ctx);
+    *left_value = ptlang_ir_builder_build_cast(left_value_uncasted, left_type, *ret_type, ctx);
+    LLVMValueRef right_value_uncasted = ptlang_ir_builder_exp(exp->content.binary_operator.right_value, ctx);
+    *right_value = ptlang_ir_builder_build_cast(right_value_uncasted, right_type, *ret_type, ctx);
+    ptlang_ast_type_destroy(left_type);
+    ptlang_ast_type_destroy(right_type);
+}
+
 static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
 {
     switch (exp->type)
@@ -492,30 +507,336 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     }
     case PTLANG_AST_EXP_ADDITION:
     {
-        return NULL;
+        // ptlang_ast_type left_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
+        // ptlang_ast_type right_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
+        ptlang_ast_type ret_type; // = ptlang_ir_builder_combine_types(left_type, right_type, ctx->type_scope);
+        LLVMValueRef left_value;  // = ptlang_ir_builder_exp(exp->content.binary_operator.left_value, ctx);
+        // left_value = ptlang_ir_builder_build_cast(left_value, left_type, ret_type, ctx);
+        LLVMValueRef right_value; // = ptlang_ir_builder_exp(exp->content.binary_operator.right_value, ctx);
+        // right_value = ptlang_ir_builder_build_cast(right_value, right_type, ret_type, ctx);
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildNSWAdd(ctx->builder, left_value, right_value, "add");
+            }
+            else
+            {
+                ret_val = LLVMBuildNUWAdd(ctx->builder, left_value, right_value, "add");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFAdd(ctx->builder, left_value, right_value, "add");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
     }
     case PTLANG_AST_EXP_SUBTRACTION:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildNSWSub(ctx->builder, left_value, right_value, "sub");
+            }
+            else
+            {
+                ret_val = LLVMBuildNUWSub(ctx->builder, left_value, right_value, "sub");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFSub(ctx->builder, left_value, right_value, "sub");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_NEGATION:
+    {
+        // LLVMBuildSub()
+        // ptlang_ast_type ret_type;
+        // LLVMValueRef left_value;
+        // LLVMValueRef right_value;
+
+        // ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        // LLVMValueRef ret_val;
+
+        // if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        // {
+        //     if (ret_type->content.integer.is_signed)
+        //     {
+        //         ret_val = LLVMBuildNSWSub(ctx->builder, left_value, right_value, "sub");
+        //     }
+        //     else
+        //     {
+        //         ret_val = LLVMBuildNUWSub(ctx->builder, left_value, right_value, "sub");
+        //     }
+        // }
+        // else
+        // {
+        //     ret_val = LLVMBuildFSub(ctx->builder, left_value, right_value, "sub");
+        // }
+        // ptlang_ast_type_destroy(ret_type);
+        // return ret_val;
         return NULL;
+    }
     case PTLANG_AST_EXP_MULTIPLICATION:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildNSWMul(ctx->builder, left_value, right_value, "mul");
+            }
+            else
+            {
+                ret_val = LLVMBuildNUWMul(ctx->builder, left_value, right_value, "mul");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFMul(ctx->builder, left_value, right_value, "mul");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_DIVISION:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildSDiv(ctx->builder, left_value, right_value, "div");
+            }
+            else
+            {
+                ret_val = LLVMBuildUDiv(ctx->builder, left_value, right_value, "div");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFDiv(ctx->builder, left_value, right_value, "div");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_MODULO:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildSRem(ctx->builder, left_value, right_value, "mod");
+            }
+            else
+            {
+                ret_val = LLVMBuildURem(ctx->builder, left_value, right_value, "mod");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFRem(ctx->builder, left_value, right_value, "mod");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_EQUAL:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            ret_val = LLVMBuildICmp(ctx->builder, LLVMIntEQ, left_value, right_value, "eq");
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealOEQ, left_value, right_value, "eq");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_NOT_EQUAL:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            ret_val = LLVMBuildICmp(ctx->builder, LLVMIntNE, left_value, right_value, "neq");
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealONE, left_value, right_value, "neq");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_GREATER:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntSGT, left_value, right_value, "gt");
+            }
+            else
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntUGT, left_value, right_value, "gt");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealOGT, left_value, right_value, "gt");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_GREATER_EQUAL:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntSGE, left_value, right_value, "gte");
+            }
+            else
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntUGE, left_value, right_value, "gte");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealOGE, left_value, right_value, "gte");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_LESS:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntSLT, left_value, right_value, "lt");
+            }
+            else
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntULT, left_value, right_value, "lt");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealOLT, left_value, right_value, "lt");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_LESS_EQUAL:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntSLE, left_value, right_value, "lte");
+            }
+            else
+            {
+                ret_val = LLVMBuildICmp(ctx->builder, LLVMIntULE, left_value, right_value, "lte");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFCmp(ctx->builder, LLVMRealOLE, left_value, right_value, "lte");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_LEFT_SHIFT:
         return NULL;
     case PTLANG_AST_EXP_RIGHT_SHIFT:
