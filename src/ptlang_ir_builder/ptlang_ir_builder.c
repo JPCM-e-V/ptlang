@@ -309,14 +309,31 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     case PTLANG_AST_EXP_STRUCT_MEMBER:
         return NULL;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
-        return NULL;
+    {
+        ptlang_ast_type arr_type = ptlang_ir_builder_exp_type(exp->content.array_element.array, ctx);
+        ptlang_ast_type type;
+        if (arr_type->type == PTLANG_AST_TYPE_HEAP_ARRAY)
+        {
+            type = ptlang_ast_type_copy(arr_type->content.heap_array.type);
+        }
+        else
+        {
+            type = ptlang_ast_type_copy(arr_type->content.array.type);
+        }
+        ptlang_ast_type_destroy(arr_type);
+        return type;
+    }
     case PTLANG_AST_EXP_REFERENCE:
-        return NULL;
+        return ptlang_ast_type_reference(exp->content.reference.value, exp->content.reference.writable);
     case PTLANG_AST_EXP_DEREFERENCE:
-        return NULL;
+        return ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
     }
 
-    // LLVMSizeOf
+    // LLVMSizeOf():
+}
+
+static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_type from, ptlang_ast_type to, ptlang_ir_builder_build_context *ctx)
+{
 }
 
 static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
@@ -331,7 +348,9 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         return value;
     }
     case PTLANG_AST_EXP_ADDITION:
+    {
         return NULL;
+    }
     case PTLANG_AST_EXP_SUBTRACTION:
         return NULL;
     case PTLANG_AST_EXP_NEGATION:
