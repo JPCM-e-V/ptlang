@@ -182,6 +182,52 @@ static ptlang_ast_type ptlang_ir_builder_combine_types(ptlang_ast_type a, ptlang
     }
 }
 
+static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_type_scope *type_scope)
+{
+    if (type == NULL)
+    {
+        return LLVMVoidType();
+    }
+
+    LLVMTypeRef *param_types;
+    LLVMTypeRef function_type;
+
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_INTEGER:
+        return LLVMIntType(type->content.integer.size);
+    case PTLANG_AST_TYPE_FLOAT:
+        switch (type->content.float_size)
+        {
+        case PTLANG_AST_TYPE_FLOAT_16:
+            return LLVMHalfType();
+        case PTLANG_AST_TYPE_FLOAT_32:
+            return LLVMFloatType();
+        case PTLANG_AST_TYPE_FLOAT_64:
+            return LLVMDoubleType();
+        case PTLANG_AST_TYPE_FLOAT_128:
+            return LLVMFP128Type();
+        }
+    case PTLANG_AST_TYPE_FUNCTION:
+        param_types = malloc(sizeof(LLVMTypeRef) * type->content.function.parameters->count);
+        for (uint64_t i = 0; i < type->content.function.parameters->count; i++)
+        {
+            param_types[i] = ptlang_ir_builder_type(type->content.function.parameters->types[i], type_scope);
+        }
+        function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, type_scope), param_types, type->content.function.parameters->count, false);
+        free(param_types);
+        return function_type;
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        return LLVMPointerType(ptlang_ir_builder_type(type->content.heap_array.type, type_scope), 0);
+    case PTLANG_AST_TYPE_ARRAY:
+        return LLVMArrayType(ptlang_ir_builder_type(type->content.array.type, type_scope), type->content.array.len);
+    case PTLANG_AST_TYPE_REFERENCE:
+        return LLVMPointerType(ptlang_ir_builder_type(type->content.reference.type, type_scope), 0);
+    case PTLANG_AST_TYPE_NAMED:
+        return ptlang_ir_builder_type_scope_get(type_scope, type->content.name);
+    }
+}
+
 // static ptlang_ast_type ptlang_ir_builder_type_for_bitwise(ptlang_ast_type type)
 // {
 //     switch (type->type)
@@ -355,7 +401,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         return type;
     }
     case PTLANG_AST_EXP_REFERENCE:
-        return ptlang_ast_type_reference(exp->content.reference.value, exp->content.reference.writable);
+        return ptlang_ast_type_reference(ptlang_ir_builder_exp_type(exp->content.reference.value, ctx), exp->content.reference.writable);
     case PTLANG_AST_EXP_DEREFERENCE:
         return ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
     }
@@ -365,6 +411,72 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
 
 static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_type from, ptlang_ast_type to, ptlang_ir_builder_build_context *ctx)
 {
+    from = ptlang_ir_builder_unname_type(from, ctx->type_scope);
+    to = ptlang_ir_builder_unname_type(to, ctx->type_scope);
+
+    if (from->type == PTLANG_AST_TYPE_INTEGER && to->type == PTLANG_AST_TYPE_INTEGER)
+    {
+        if (from->content.integer.size < to->content.integer.size)
+        {
+            if (from->content.integer.is_signed)
+            {
+                return LLVMBuildSExt(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+            }
+            else
+            {
+                return LLVMBuildZExt(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+            }
+        }
+        else if (from->content.integer.size > to->content.integer.size)
+        {
+            return LLVMBuildTrunc(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+        else
+        {
+            return input;
+        }
+    }
+    else if (from->type == PTLANG_AST_TYPE_FLOAT && to->type == PTLANG_AST_TYPE_FLOAT)
+    {
+        if (from->content.float_size < to->content.float_size)
+        {
+            return LLVMBuildFPExt(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+        else if (from->content.float_size > to->content.float_size)
+        {
+            return LLVMBuildFPTrunc(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+        else
+        {
+            return input;
+        }
+    }
+    else if (from->type == PTLANG_AST_TYPE_INTEGER && to->type == PTLANG_AST_TYPE_FLOAT)
+    {
+        if (from->content.integer.is_signed)
+        {
+            return LLVMBuildSIToFP(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+        else
+        {
+            return LLVMBuildUIToFP(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+    }
+    else if (from->type == PTLANG_AST_TYPE_FLOAT && to->type == PTLANG_AST_TYPE_INTEGER)
+    {
+        if (to->content.integer.is_signed)
+        {
+            return LLVMBuildFPToSI(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+        else
+        {
+            return LLVMBuildFPToUI(ctx->builder, input, ptlang_ir_builder_type(to, ctx->type_scope), "cast");
+        }
+    }
+    else
+    {
+        return NULL;
+    }
 }
 
 static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
@@ -448,52 +560,6 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         return NULL;
     case PTLANG_AST_EXP_DEREFERENCE:
         return NULL;
-    }
-}
-
-static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_type_scope *type_scope)
-{
-    if (type == NULL)
-    {
-        return LLVMVoidType();
-    }
-
-    LLVMTypeRef *param_types;
-    LLVMTypeRef function_type;
-
-    switch (type->type)
-    {
-    case PTLANG_AST_TYPE_INTEGER:
-        return LLVMIntType(type->content.integer.size);
-    case PTLANG_AST_TYPE_FLOAT:
-        switch (type->content.float_size)
-        {
-        case PTLANG_AST_TYPE_FLOAT_16:
-            return LLVMHalfType();
-        case PTLANG_AST_TYPE_FLOAT_32:
-            return LLVMFloatType();
-        case PTLANG_AST_TYPE_FLOAT_64:
-            return LLVMDoubleType();
-        case PTLANG_AST_TYPE_FLOAT_128:
-            return LLVMFP128Type();
-        }
-    case PTLANG_AST_TYPE_FUNCTION:
-        param_types = malloc(sizeof(LLVMTypeRef) * type->content.function.parameters->count);
-        for (uint64_t i = 0; i < type->content.function.parameters->count; i++)
-        {
-            param_types[i] = ptlang_ir_builder_type(type->content.function.parameters->types[i], type_scope);
-        }
-        function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, type_scope), param_types, type->content.function.parameters->count, false);
-        free(param_types);
-        return function_type;
-    case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return LLVMPointerType(ptlang_ir_builder_type(type->content.heap_array.type, type_scope), 0);
-    case PTLANG_AST_TYPE_ARRAY:
-        return LLVMArrayType(ptlang_ir_builder_type(type->content.array.type, type_scope), type->content.array.len);
-    case PTLANG_AST_TYPE_REFERENCE:
-        return LLVMPointerType(ptlang_ir_builder_type(type->content.reference.type, type_scope), 0);
-    case PTLANG_AST_TYPE_NAMED:
-        return ptlang_ir_builder_type_scope_get(type_scope, type->content.name);
     }
 }
 
