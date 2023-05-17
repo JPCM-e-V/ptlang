@@ -64,6 +64,7 @@ typedef struct ptlang_ir_builder_type_scope_entry_s
 {
     char *name;
     LLVMTypeRef type;
+    ptlang_ast_type ptlang_type;
 } ptlang_ir_builder_type_scope_entry;
 
 typedef struct ptlang_ir_builder_type_scope_s
@@ -77,14 +78,14 @@ static inline void ptlang_ir_builder_type_scope_destroy(ptlang_ir_builder_type_s
     free(type_scope->entries);
 }
 
-static inline void ptlang_ir_builder_type_scope_add(ptlang_ir_builder_type_scope *type_scope, char *name, LLVMTypeRef type)
+static inline void ptlang_ir_builder_type_scope_add(ptlang_ir_builder_type_scope *type_scope, char *name, LLVMTypeRef type, ptlang_ast_type ptlang_type)
 {
     type_scope->entry_count++;
     type_scope->entries = realloc(type_scope->entries, sizeof(ptlang_ir_builder_type_scope_entry) * type_scope->entry_count);
     type_scope->entries[type_scope->entry_count - 1] = (ptlang_ir_builder_type_scope_entry){
         .name = name,
         .type = type,
-    };
+        .ptlang_type = ptlang_type};
 }
 
 static inline LLVMTypeRef ptlang_ir_builder_type_scope_get(ptlang_ir_builder_type_scope *type_scope, char *name)
@@ -97,6 +98,33 @@ static inline LLVMTypeRef ptlang_ir_builder_type_scope_get(ptlang_ir_builder_typ
         }
     }
     return NULL;
+}
+
+static inline ptlang_ast_type ptlang_ir_builder_type_scope_get_ptlang(ptlang_ir_builder_type_scope *type_scope, char *name)
+{
+    for (uint64_t i = 0; i < type_scope->entry_count; i++)
+    {
+        if (strcmp(type_scope->entries[i].name, name) == 0)
+        {
+            return type_scope->entries[i].ptlang_type;
+        }
+    }
+    return NULL;
+}
+
+static inline ptlang_ast_type ptlang_ir_builder_unname_type(ptlang_ast_type type, ptlang_ir_builder_type_scope *type_scope)
+{
+    ptlang_ast_type new_type;
+    while (type->type == PTLANG_AST_TYPE_NAMED)
+    {
+        new_type = ptlang_ir_builder_type_scope_get_ptlang(type_scope, type->content.name);
+        if (new_type == NULL)
+        {
+            break;
+        }
+        type = new_type;
+    }
+    return type;
 }
 
 typedef struct ptlang_ir_builder_build_context_s
@@ -128,8 +156,10 @@ static LLVMValueRef ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_buil
     }
 }
 
-static ptlang_ast_type ptlang_ir_builder_combine_types(ptlang_ast_type a, ptlang_ast_type b)
+static ptlang_ast_type ptlang_ir_builder_combine_types(ptlang_ast_type a, ptlang_ast_type b, ptlang_ir_builder_type_scope *type_scope)
 {
+    a = ptlang_ir_builder_unname_type(a, type_scope);
+    b = ptlang_ir_builder_unname_type(b, type_scope);
     if ((a->type != PTLANG_AST_TYPE_INTEGER && a->type != PTLANG_AST_TYPE_FLOAT) || (b->type != PTLANG_AST_TYPE_INTEGER && b->type != PTLANG_AST_TYPE_FLOAT))
     {
         return NULL;
@@ -178,7 +208,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     {
         ptlang_ast_type left = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
         ptlang_ast_type right = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
-        ptlang_ast_type type = ptlang_ir_builder_combine_types(left, right);
+        ptlang_ast_type type = ptlang_ir_builder_combine_types(left, right, ctx->type_scope);
         ptlang_ast_type_destroy(left);
         ptlang_ast_type_destroy(right);
         return type;
@@ -211,7 +241,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         // ptlang_ast_type left_bitwise = ptlang_ir_builder_type_for_bitwise(left);
         ptlang_ast_type right = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
         // ptlang_ast_type right_bitwise = ptlang_ir_builder_type_for_bitwise(right);
-        ptlang_ast_type both_bitwise = ptlang_ir_builder_combine_types(left, right);
+        ptlang_ast_type both_bitwise = ptlang_ir_builder_combine_types(left, right, ctx->type_scope);
         ptlang_ast_type_destroy(left);
         ptlang_ast_type_destroy(right);
         // ptlang_ast_type_destroy(left_bitwise);
@@ -299,7 +329,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     {
         ptlang_ast_type if_value = ptlang_ir_builder_exp_type(exp->content.ternary_operator.if_value, ctx);
         ptlang_ast_type else_value = ptlang_ir_builder_exp_type(exp->content.ternary_operator.else_value, ctx);
-        ptlang_ast_type type = ptlang_ir_builder_combine_types(if_value, else_value);
+        ptlang_ast_type type = ptlang_ir_builder_combine_types(if_value, else_value, ctx->type_scope);
         ptlang_ast_type_destroy(if_value);
         ptlang_ast_type_destroy(else_value);
         return type;
@@ -311,6 +341,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
         ptlang_ast_type arr_type = ptlang_ir_builder_exp_type(exp->content.array_element.array, ctx);
+        arr_type = ptlang_ir_builder_unname_type(arr_type, ctx->type_scope);
         ptlang_ast_type type;
         if (arr_type->type == PTLANG_AST_TYPE_HEAP_ARRAY)
         {
@@ -700,7 +731,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
     for (uint64_t i = 0; i < ast_module->struct_def_count; i++)
     {
         structs[i] = LLVMStructCreateNamed(LLVMGetGlobalContext(), ast_module->struct_defs[i]->name);
-        ptlang_ir_builder_type_scope_add(&type_scope, ast_module->struct_defs[i]->name, structs[i]);
+        ptlang_ir_builder_type_scope_add(&type_scope, ast_module->struct_defs[i]->name, structs[i], NULL);
     }
 
     // Type aliases
@@ -754,7 +785,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
             continue;
 
         // add type to type scope
-        ptlang_ir_builder_type_scope_add(&type_scope, type_alias->name, ptlang_ir_builder_type(type_alias->type, &type_scope));
+        ptlang_ir_builder_type_scope_add(&type_scope, type_alias->name, ptlang_ir_builder_type(type_alias->type, &type_scope), type_alias->type);
 
         // add referencing types to candidates
         for (size_t i = 0; i < arrlenu(type_alias->referencing_types); i++)
