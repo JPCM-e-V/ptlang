@@ -10,13 +10,11 @@ int main()
     ptlang_parser_parse(stdin, &mod);
     LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod);
 
-    char *error =NULL;
+    char *error = NULL;
     LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
 
     // LLVMDumpModule(llvmmod);
-
-
 
     printf("\n ============= unopt =============\n\n");
 
@@ -51,6 +49,19 @@ int main()
     LLVMDumpModule(llvmmod);
 
     printf("\n ============== end ==============\n\n");
+
+#ifdef WIN32
+#define ASM_FILE "t.asm"
+#define OBJ_FILE "t.obj"
+#else
+#define ASM_FILE "t.S"
+#define OBJ_FILE "t.o"
+#endif
+
+    LLVMInitializeNativeAsmPrinter();
+
+    LLVMTargetMachineEmitToFile(machine, llvmmod, ASM_FILE, LLVMAssemblyFile, &error);
+    LLVMTargetMachineEmitToFile(machine, llvmmod, OBJ_FILE, LLVMObjectFile, &error);
 
     ptlang_ast_module_destroy(mod);
 }
