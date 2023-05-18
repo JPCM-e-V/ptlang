@@ -508,6 +508,7 @@ ptlang_ast_type_list ptlang_ast_type_list_copy(ptlang_ast_type_list type_list)
     {
         copy->types[i] = ptlang_ast_type_copy(type_list->types[i]);
     }
+    return copy;
 }
 
 ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)

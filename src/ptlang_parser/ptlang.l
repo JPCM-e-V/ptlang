@@ -46,6 +46,11 @@
 %option yylineno
 
 %%
+"+"                                                                     { return PLUS; }
+"-"                                                                     { return MINUS; }
+"*"                                                                     { return STAR; }
+"/"                                                                     { return SLASH; }
+"%"                                                                     { return PERCENT; }
 ">="                                                                    { return LEQ; }
 "<="                                                                    { return GEQ; }
 "="                                                                     { return EQ; }
@@ -83,6 +88,7 @@
 ","                                                                     { return COMMA; }
 "if"                                                                    { return IF; }
 "else"                                                                  { return ELSE; }
+"while"                                                                 { return WHILE; }
 "const"                                                                 { return CONST; }
 "return"                                                                { return RETURN; }
 "retval"                                                                { return RET_VAL; }

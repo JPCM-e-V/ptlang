@@ -137,6 +137,7 @@ typedef struct ptlang_ir_builder_build_context_s
     ptlang_ir_builder_scope *scopes;
     LLVMValueRef return_ptr;
     LLVMBasicBlockRef return_block;
+    ptlang_ast_type return_type;
 } ptlang_ir_builder_build_context;
 
 static LLVMValueRef ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
@@ -260,7 +261,16 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         return type;
     }
     case PTLANG_AST_EXP_NEGATION:
-        return ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
+    {
+        ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
+        if (type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            uint32_t size = type->content.integer.size;
+            ptlang_ast_type_destroy(type);
+            return ptlang_ast_type_integer(true, size);
+        }
+        return type;
+    }
     case PTLANG_AST_EXP_EQUAL:
     case PTLANG_AST_EXP_NOT_EQUAL:
     case PTLANG_AST_EXP_GREATER:
@@ -475,7 +485,7 @@ static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_
     }
     else
     {
-        return NULL;
+        return input;
     }
 }
 
@@ -492,6 +502,27 @@ static void ptlang_ir_builder_prepare_binary_op(ptlang_ast_exp exp, LLVMValueRef
     *right_value = ptlang_ir_builder_build_cast(right_value_uncasted, right_type, *ret_type, ctx);
     ptlang_ast_type_destroy(left_type);
     ptlang_ast_type_destroy(right_type);
+}
+
+static LLVMValueRef ptlang_ir_builder_exp_as_bool(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
+{
+    ptlang_ast_type type = ptlang_ir_builder_exp_type(exp, ctx);
+    ptlang_ast_type unnamed_type = ptlang_ir_builder_unname_type(type, ctx->type_scope);
+
+    LLVMValueRef value = ptlang_ir_builder_exp(exp, ctx);
+
+    LLVMTypeRef llvm_type = ptlang_ir_builder_type(type, ctx->type_scope);
+
+    if (unnamed_type->type == PTLANG_AST_TYPE_INTEGER && unnamed_type->content.integer.size != 1)
+    {
+        value = LLVMBuildICmp(ctx->builder, LLVMIntNE, value, LLVMConstInt(llvm_type, 0, false), "tobool");
+    }
+    else
+    {
+        value = LLVMBuildFCmp(ctx->builder, LLVMRealONE, value, LLVMConstReal(llvm_type, 0.0), "tobool");
+    }
+    ptlang_ast_type_destroy(type);
+    return value;
 }
 
 static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
@@ -567,33 +598,30 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     }
     case PTLANG_AST_EXP_NEGATION:
     {
-        // LLVMBuildSub()
-        // ptlang_ast_type ret_type;
-        // LLVMValueRef left_value;
-        // LLVMValueRef right_value;
+        ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
+        LLVMValueRef input = ptlang_ir_builder_exp(exp->content.unary_operator, ctx);
 
-        // ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+        LLVMValueRef ret_val;
 
-        // LLVMValueRef ret_val;
+        ptlang_ast_type unnamed_type = ptlang_ir_builder_unname_type(type, ctx->type_scope);
 
-        // if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
-        // {
-        //     if (ret_type->content.integer.is_signed)
-        //     {
-        //         ret_val = LLVMBuildNSWSub(ctx->builder, left_value, right_value, "sub");
-        //     }
-        //     else
-        //     {
-        //         ret_val = LLVMBuildNUWSub(ctx->builder, left_value, right_value, "sub");
-        //     }
-        // }
-        // else
-        // {
-        //     ret_val = LLVMBuildFSub(ctx->builder, left_value, right_value, "sub");
-        // }
-        // ptlang_ast_type_destroy(ret_type);
-        // return ret_val;
-        return NULL;
+        if (unnamed_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (unnamed_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildNSWSub(ctx->builder, LLVMConstInt(LLVMIntType(unnamed_type->content.integer.size), 0, false), input, "neg");
+            }
+            else
+            {
+                ret_val = LLVMBuildSub(ctx->builder, LLVMConstInt(LLVMIntType(unnamed_type->content.integer.size), 0, false), input, "neg");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFNeg(ctx->builder, input, "neg");
+        }
+        ptlang_ast_type_destroy(type);
+        return ret_val;
     }
     case PTLANG_AST_EXP_MULTIPLICATION:
     {
@@ -858,9 +886,39 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_FUNCTION_CALL:
         return NULL;
     case PTLANG_AST_EXP_VARIABLE:
+    {
         // return LLVMBuildLoad2(builder, );
+        ptlang_ast_type type;
+        LLVMValueRef ptr = ptlang_ir_builder_scope_get(ctx->scope, exp->content.str_prepresentation, &type);
+        return LLVMBuildLoad2(ctx->builder, ptlang_ir_builder_type(type, ctx->type_scope), ptr, "loadvar");
+    }
     case PTLANG_AST_EXP_INTEGER:
-        return NULL;
+    {
+        size_t str_len;
+
+        char *suffix_begin = strchr(exp->content.str_prepresentation, 'u');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 'U');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 's');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 'S');
+
+        if (suffix_begin == NULL)
+        {
+            str_len = strlen(exp->content.str_prepresentation);
+        }
+        else
+        {
+            str_len = suffix_begin - exp->content.str_prepresentation;
+        }
+
+        ptlang_ast_type type = ptlang_ir_builder_exp_type(exp, ctx);
+
+        LLVMValueRef value = LLVMConstIntOfStringAndSize(ptlang_ir_builder_type(type, ctx->type_scope), exp->content.str_prepresentation, str_len, 10);
+        ptlang_ast_type_destroy(type);
+        return value;
+    }
     case PTLANG_AST_EXP_FLOAT:
         return NULL;
     case PTLANG_AST_EXP_STRUCT:
@@ -946,7 +1004,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         LLVMBasicBlockRef if_block = LLVMAppendBasicBlock(ctx->function, "if");
         LLVMBasicBlockRef endif_block = LLVMAppendBasicBlock(ctx->function, "endif");
 
-        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp(stmt->content.control_flow.condition, ctx), if_block, endif_block);
+        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp_as_bool(stmt->content.control_flow.condition, ctx), if_block, endif_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, if_block);
         ptlang_ir_builder_stmt(stmt->content.control_flow.stmt, ctx);
@@ -961,7 +1019,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         LLVMBasicBlockRef else_block = LLVMAppendBasicBlock(ctx->function, "else");
         LLVMBasicBlockRef endif_block = LLVMAppendBasicBlock(ctx->function, "endif");
 
-        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp(stmt->content.control_flow2.condition, ctx), if_block, else_block);
+        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp_as_bool(stmt->content.control_flow2.condition, ctx), if_block, else_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, if_block);
         ptlang_ir_builder_stmt(stmt->content.control_flow2.stmt[0], ctx);
@@ -983,7 +1041,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         LLVMBuildBr(ctx->builder, condition_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, condition_block);
-        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp(stmt->content.control_flow.condition, ctx), stmt_block, endwhile_block);
+        LLVMBuildCondBr(ctx->builder, ptlang_ir_builder_exp_as_bool(stmt->content.control_flow.condition, ctx), stmt_block, endwhile_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, stmt_block);
         ptlang_ir_builder_stmt(stmt->content.control_flow.stmt, ctx);
@@ -995,9 +1053,14 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
     case PTLANG_AST_STMT_RETURN:
         if (stmt->content.exp != NULL)
         {
-            LLVMBuildStore(ctx->builder, ptlang_ir_builder_exp(stmt->content.exp, ctx), ctx->return_ptr);
+            ptlang_ast_type type = ptlang_ir_builder_exp_type(stmt->content.exp, ctx);
+            LLVMValueRef uncasted = ptlang_ir_builder_exp(stmt->content.exp, ctx);
+            LLVMValueRef casted = ptlang_ir_builder_build_cast(uncasted, type, ctx->return_type, ctx);
+            ptlang_ast_type_destroy(type);
+            LLVMBuildStore(ctx->builder, casted, ctx->return_ptr);
         }
         LLVMBuildBr(ctx->builder, ctx->return_block);
+        LLVMPositionBuilderAtEnd(ctx->builder, LLVMAppendBasicBlock(ctx->function, "impossible"));
         break;
     case PTLANG_AST_STMT_RET_VAL:
         LLVMBuildStore(ctx->builder, ptlang_ir_builder_exp(stmt->content.exp, ctx), ctx->return_ptr);
@@ -1252,6 +1315,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
             .scopes = NULL,
             .return_ptr = return_ptr,
             .return_block = return_block,
+            .return_type = ast_module->functions[i]->return_type,
         };
 
         ptlang_ir_builder_stmt_allocas(ast_module->functions[i]->stmt, &ctx);
@@ -1263,6 +1327,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
             LLVMBuildStore(builder, LLVMGetParam(functions[i], j), param_ptrs[j]);
         }
         free(param_ptrs);
+
+        ptlang_ir_builder_stmt(ast_module->functions[i]->stmt, &ctx);
 
         LLVMBuildBr(builder, return_block);
 
