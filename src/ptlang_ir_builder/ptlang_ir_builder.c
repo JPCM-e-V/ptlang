@@ -526,7 +526,7 @@ static LLVMValueRef ptlang_ir_builder_exp_as_bool(ptlang_ast_exp exp, ptlang_ir_
     {
         value = LLVMBuildICmp(ctx->builder, LLVMIntNE, value, LLVMConstInt(llvm_type, 0, false), "tobool");
     }
-    else
+    else if (unnamed_type->type == PTLANG_AST_TYPE_FLOAT)
     {
         value = LLVMBuildFCmp(ctx->builder, LLVMRealONE, value, LLVMConstReal(llvm_type, 0.0), "tobool");
     }
@@ -881,11 +881,47 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_RIGHT_SHIFT:
         return NULL;
     case PTLANG_AST_EXP_AND:
-        return NULL;
+    {
+        LLVMValueRef left = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.left_value, ctx);
+        LLVMBasicBlockRef first_block = LLVMGetInstructionParent(left);
+
+        LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "andright");
+        LLVMBasicBlockRef and_end = LLVMAppendBasicBlock(ctx->function, "andend");
+
+        LLVMBuildCondBr(ctx->builder, left, second_block, and_end);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, second_block);
+        LLVMValueRef right = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.right_value, ctx);
+        LLVMBuildBr(ctx->builder, and_end);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, and_end);
+        LLVMValueRef phi = LLVMBuildPhi(ctx->builder, LLVMInt1Type(), "and");
+        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 0, false), right}, (LLVMBasicBlockRef[]){first_block, second_block}, 2);
+
+        return phi;
+    }
     case PTLANG_AST_EXP_OR:
-        return NULL;
+    {
+        LLVMValueRef left = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.left_value, ctx);
+        LLVMBasicBlockRef first_block = LLVMGetInstructionParent(left);
+
+        LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "orright");
+        LLVMBasicBlockRef or_end = LLVMAppendBasicBlock(ctx->function, "orend");
+
+        LLVMBuildCondBr(ctx->builder, left, or_end, second_block);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, second_block);
+        LLVMValueRef right = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.right_value, ctx);
+        LLVMBuildBr(ctx->builder, or_end);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, or_end);
+        LLVMValueRef phi = LLVMBuildPhi(ctx->builder, LLVMInt1Type(), "or");
+        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 1, false), right}, (LLVMBasicBlockRef[]){first_block, second_block}, 2);
+
+        return phi;
+    }
     case PTLANG_AST_EXP_NOT:
-        return NULL;
+        return LLVMBuildSelect(ctx->builder, ptlang_ir_builder_exp_as_bool(exp->content.unary_operator, ctx), LLVMConstInt(LLVMInt1Type(), 0, false), LLVMConstInt(LLVMInt1Type(), 1, false), "not");
     case PTLANG_AST_EXP_BITWISE_AND:
         return NULL;
     case PTLANG_AST_EXP_BITWISE_OR:
