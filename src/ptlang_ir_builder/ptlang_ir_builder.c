@@ -923,13 +923,57 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_NOT:
         return LLVMBuildSelect(ctx->builder, ptlang_ir_builder_exp_as_bool(exp->content.unary_operator, ctx), LLVMConstInt(LLVMInt1Type(), 0, false), LLVMConstInt(LLVMInt1Type(), 1, false), "not");
     case PTLANG_AST_EXP_BITWISE_AND:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val = LLVMBuildAnd(ctx->builder, left_value, right_value, "bitwiseand");
+
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_BITWISE_OR:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val = LLVMBuildOr(ctx->builder, left_value, right_value, "bitwiseor");
+
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_BITWISE_XOR:
-        return NULL;
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val = LLVMBuildXor(ctx->builder, left_value, right_value, "bitwisexor");
+
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_BITWISE_INVERSE:
-        return NULL;
+    {
+
+        ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
+        LLVMValueRef input = ptlang_ir_builder_exp(exp->content.unary_operator, ctx);
+
+        ptlang_ast_type unnamed_type = ptlang_ir_builder_unname_type(type, ctx->type_scope);
+
+        LLVMValueRef ret_val = LLVMBuildXor(ctx->builder, input, LLVMConstInt(LLVMIntType(unnamed_type->content.integer.size), -1, true), "bitwiseinverse");
+
+        ptlang_ast_type_destroy(type);
+        return ret_val;
+    }
     case PTLANG_AST_EXP_FUNCTION_CALL:
     {
         ptlang_ast_type function_type = ptlang_ir_builder_exp_type(exp->content.function_call.function, ctx);
