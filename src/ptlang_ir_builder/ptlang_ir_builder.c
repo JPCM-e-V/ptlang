@@ -888,15 +888,15 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "andright");
         LLVMBasicBlockRef and_end = LLVMAppendBasicBlock(ctx->function, "andend");
 
-        LLVMBuildCondBr(ctx->builder, left, second_block, and_end);
+        LLVMValueRef first_br = LLVMBuildCondBr(ctx->builder, left, second_block, and_end);
 
         LLVMPositionBuilderAtEnd(ctx->builder, second_block);
         LLVMValueRef right = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.right_value, ctx);
-        LLVMBuildBr(ctx->builder, and_end);
+        LLVMValueRef second_br = LLVMBuildBr(ctx->builder, and_end);
 
         LLVMPositionBuilderAtEnd(ctx->builder, and_end);
         LLVMValueRef phi = LLVMBuildPhi(ctx->builder, LLVMInt1Type(), "and");
-        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 0, false), right}, (LLVMBasicBlockRef[]){first_block, second_block}, 2);
+        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 0, false), right}, (LLVMBasicBlockRef[]){LLVMGetInstructionParent(first_br), LLVMGetInstructionParent(second_br)}, 2);
 
         return phi;
     }
@@ -908,15 +908,15 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "orright");
         LLVMBasicBlockRef or_end = LLVMAppendBasicBlock(ctx->function, "orend");
 
-        LLVMBuildCondBr(ctx->builder, left, or_end, second_block);
+        LLVMValueRef first_br = LLVMBuildCondBr(ctx->builder, left, or_end, second_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, second_block);
         LLVMValueRef right = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.right_value, ctx);
-        LLVMBuildBr(ctx->builder, or_end);
+        LLVMValueRef second_br = LLVMBuildBr(ctx->builder, or_end);
 
         LLVMPositionBuilderAtEnd(ctx->builder, or_end);
         LLVMValueRef phi = LLVMBuildPhi(ctx->builder, LLVMInt1Type(), "or");
-        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 1, false), right}, (LLVMBasicBlockRef[]){first_block, second_block}, 2);
+        LLVMAddIncoming(phi, (LLVMValueRef[]){LLVMConstInt(LLVMInt1Type(), 1, false), right}, (LLVMBasicBlockRef[]){LLVMGetInstructionParent(first_br), LLVMGetInstructionParent(second_br)}, 2);
 
         return phi;
     }
@@ -1012,9 +1012,36 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH:
         return NULL;
     case PTLANG_AST_EXP_TERNARY:
-        return NULL;
+    {
+        ptlang_ast_type type = ptlang_ir_builder_exp_type(exp, ctx);
+        LLVMValueRef condition = ptlang_ir_builder_exp_as_bool(exp->content.ternary_operator.condition, ctx);
+
+        LLVMBasicBlockRef if_block = LLVMAppendBasicBlock(ctx->function, "ternaryif");
+        LLVMBasicBlockRef else_block = LLVMAppendBasicBlock(ctx->function, "ternaryelse");
+        LLVMBasicBlockRef end_block = LLVMAppendBasicBlock(ctx->function, "ternaryend");
+
+        LLVMBuildCondBr(ctx->builder, condition, if_block, else_block);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, if_block);
+        LLVMValueRef if_value = ptlang_ir_builder_exp_and_cast(exp->content.ternary_operator.if_value, type, ctx);
+        LLVMValueRef if_br = LLVMBuildBr(ctx->builder, end_block);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, else_block);
+        LLVMValueRef else_value = ptlang_ir_builder_exp_and_cast(exp->content.ternary_operator.else_value, type, ctx);
+        LLVMValueRef else_br = LLVMBuildBr(ctx->builder, end_block);
+
+        LLVMPositionBuilderAtEnd(ctx->builder, end_block);
+
+        LLVMValueRef phi = LLVMBuildPhi(ctx->builder, ptlang_ir_builder_type(type, ctx->type_scope), "ternary");
+
+        ptlang_ast_type_destroy(type);
+
+        LLVMAddIncoming(phi, (LLVMValueRef[]){if_value, else_value}, (LLVMBasicBlockRef[]){LLVMGetInstructionParent(if_br), LLVMGetInstructionParent(else_br)}, 2);
+
+        return phi;
+    }
     case PTLANG_AST_EXP_CAST:
-        return NULL;
+        return ptlang_ir_builder_exp_and_cast(exp->content.cast.value, exp->content.cast.type, ctx);
     case PTLANG_AST_EXP_STRUCT_MEMBER:
         return NULL;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:

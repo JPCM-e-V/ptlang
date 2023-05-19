@@ -10,11 +10,11 @@ int main()
     ptlang_parser_parse(stdin, &mod);
     LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod);
 
+    // LLVMDumpModule(llvmmod);
+
     char *error = NULL;
     LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
-
-    // LLVMDumpModule(llvmmod);
 
     printf("\n ============= unopt =============\n\n");
 
