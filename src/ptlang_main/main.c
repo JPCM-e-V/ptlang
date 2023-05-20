@@ -33,6 +33,7 @@ int main()
     LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
     LLVMErrorRef err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
+    // err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
 
     if (err != LLVMErrorSuccess)
     {
