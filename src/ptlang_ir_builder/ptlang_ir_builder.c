@@ -139,8 +139,8 @@ typedef struct ptlang_ir_builder_build_context_s
     LLVMValueRef function;
     ptlang_ir_builder_type_scope *type_scope;
     ptlang_ir_builder_scope *scope;
-    uint64_t scope_index;
-    ptlang_ir_builder_scope *scopes;
+    uint64_t scope_number;
+    ptlang_ir_builder_scope **scopes;
     LLVMValueRef return_ptr;
     LLVMBasicBlockRef return_block;
     ptlang_ast_type return_type;
@@ -892,7 +892,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
 
         ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
-        ptlang_ast_type type_unnamed = ptlang_ir_builder_unname_type(type, ctx->type_scope);
+        // ptlang_ast_type type_unnamed = ptlang_ir_builder_unname_type(type, ctx->type_scope);
 
         LLVMValueRef ret_val = LLVMBuildShl(ctx->builder, left_value, right_value, "leftshift");
 
@@ -914,7 +914,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         ptlang_ast_type type_unnamed = ptlang_ir_builder_unname_type(type, ctx->type_scope);
 
         LLVMValueRef ret_val;
-        if (type->content.integer.is_signed)
+        if (type_unnamed->content.integer.is_signed)
         {
             ret_val = LLVMBuildAShr(ctx->builder, left_value, right_value, "rightshift");
         }
@@ -931,7 +931,6 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_AND:
     {
         LLVMValueRef left = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.left_value, ctx);
-        LLVMBasicBlockRef first_block = LLVMGetInstructionParent(left);
 
         LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "andright");
         LLVMBasicBlockRef and_end = LLVMAppendBasicBlock(ctx->function, "andend");
@@ -951,7 +950,6 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_OR:
     {
         LLVMValueRef left = ptlang_ir_builder_exp_as_bool(exp->content.binary_operator.left_value, ctx);
-        LLVMBasicBlockRef first_block = LLVMGetInstructionParent(left);
 
         LLVMBasicBlockRef second_block = LLVMAppendBasicBlock(ctx->function, "orright");
         LLVMBasicBlockRef or_end = LLVMAppendBasicBlock(ctx->function, "orend");
@@ -1166,9 +1164,10 @@ static void ptlang_ir_builder_stmt_allocas(ptlang_ast_stmt stmt, ptlang_ir_build
     case PTLANG_AST_STMT_BLOCK:
     {
         ptlang_ir_builder_scope *old_scope = ctx->scope;
-        ctx->scope_index++;
-        ctx->scopes = realloc(ctx->scopes, sizeof(ptlang_ir_builder_scope) * ctx->scope_index);
-        ctx->scope = &ctx->scopes[ctx->scope_index - 1];
+        ctx->scope_number++;
+        ctx->scopes = realloc(ctx->scopes, sizeof(ptlang_ir_builder_scope *) * ctx->scope_number);
+        ctx->scope = malloc(sizeof(ptlang_ir_builder_scope));
+        ctx->scopes[ctx->scope_number - 1] = ctx->scope;
         ptlang_ir_builder_new_scope(old_scope, ctx->scope);
         for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
         {
@@ -1195,7 +1194,7 @@ static void ptlang_ir_builder_stmt_allocas(ptlang_ast_stmt stmt, ptlang_ir_build
 
 #if 1
 static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build_context *ctx)
-// static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, LLVMBuilderRef builder, LLVMValueRef function, ptlang_ir_builder_type_scope *type_scope, ptlang_ir_builder_scope *scope, uint64_t *scope_index, ptlang_ir_builder_scope *scopes, LLVMValueRef return_ptr, LLVMBasicBlockRef return_block)
+// static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, LLVMBuilderRef builder, LLVMValueRef function, ptlang_ir_builder_type_scope *type_scope, ptlang_ir_builder_scope *scope, uint64_t *scope_number, ptlang_ir_builder_scope *scopes, LLVMValueRef return_ptr, LLVMBasicBlockRef return_block)
 {
 
     switch (stmt->type)
@@ -1203,8 +1202,8 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
     case PTLANG_AST_STMT_BLOCK:
     {
         ptlang_ir_builder_scope *old_scope = ctx->scope;
-        ctx->scope = &ctx->scopes[ctx->scope_index];
-        ctx->scope_index++;
+        ctx->scope = ctx->scopes[ctx->scope_number];
+        ctx->scope_number++;
         for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
         {
             ptlang_ir_builder_stmt(stmt->content.block.stmts[i], ctx);
@@ -1294,13 +1293,13 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
 }
 #endif
 
-typedef struct ptlang_ir_builder_type_alias_s *ptlang_ir_builder_type_alias;
+typedef struct ptlang_ir_builder_type_alias_s ptlang_ir_builder_type_alias;
 struct ptlang_ir_builder_type_alias_s
 {
     ptlang_ast_type type;
     char *name;
     char **referenced_types;
-    ptlang_ir_builder_type_alias *referencing_types;
+    ptlang_ir_builder_type_alias **referencing_types;
     bool resolved;
 };
 
@@ -1348,16 +1347,16 @@ static char **ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(pt
 }
 static ptlang_ir_builder_type_alias ptlang_ir_builder_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias, ptlang_ir_builder_type_scope *type_scope)
 {
-    ptlang_ir_builder_type_alias type_alias = malloc(sizeof(struct ptlang_ir_builder_type_alias_s));
+    // ptlang_ir_builder_type_alias type_alias = malloc(sizeof(struct ptlang_ir_builder_type_alias_s));
 
-    *type_alias = (struct ptlang_ir_builder_type_alias_s){
+    return (struct ptlang_ir_builder_type_alias_s){
         .name = ast_type_alias.name,
         .type = ast_type_alias.type,
         .referenced_types = ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ast_type_alias.type, type_scope),
         .referencing_types = NULL,
         .resolved = false,
     };
-    return type_alias;
+    // return type_alias;
 }
 
 // static void ptlang_ir_builder_resolve_type(ptlang_ast_type ast_type, ptlang_ir_type_alias_table alias_table)
@@ -1408,14 +1407,15 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
     ptlang_ir_type_alias_table alias_table = NULL;
 
-    ptlang_ir_builder_type_alias primitive_alias = malloc(sizeof(struct ptlang_ir_builder_type_alias_s));
-    *primitive_alias = (struct ptlang_ir_builder_type_alias_s){
-        .name = "",
-        .type = NULL,
-        .referenced_types = NULL,
-        .referencing_types = NULL,
-        .resolved = false};
-    shput(alias_table, "", primitive_alias);
+    // ptlang_ir_builder_type_alias primitive_alias = ;
+
+    shput(alias_table, "", ((ptlang_ir_builder_type_alias){
+                               .name = "",
+                               .type = NULL,
+                               .referenced_types = NULL,
+                               .referencing_types = NULL,
+                               .resolved = false,
+                           }));
 
     for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
     {
@@ -1425,19 +1425,19 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
     for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
     {
-        ptlang_ir_builder_type_alias type_alias = shget(alias_table, ast_module->type_aliases[i].name);
+        ptlang_ir_builder_type_alias *type_alias = &shget(alias_table, ast_module->type_aliases[i].name);
         for (size_t j = 0; j < arrlenu(type_alias->referenced_types); j++)
         {
-            ptlang_ir_builder_type_alias **referencing_types = &(shget(alias_table, type_alias->referenced_types[j])->referencing_types);
-            arrput(*referencing_types, type_alias);
+            size_t index = shgeti(alias_table, type_alias->referenced_types[j]);
+            arrput(alias_table[index].value.referencing_types, type_alias);
         }
     }
 
-    ptlang_ir_builder_type_alias *alias_candidates = NULL;
-    arrput(alias_candidates, primitive_alias);
+    ptlang_ir_builder_type_alias **alias_candidates = NULL;
+    arrput(alias_candidates, &alias_table[0].value);
     while (arrlenu(alias_candidates) != 0)
     {
-        ptlang_ir_builder_type_alias type_alias = arrpop(alias_candidates);
+        ptlang_ir_builder_type_alias *type_alias = arrpop(alias_candidates);
 
         // check if resolved
         if (type_alias->resolved)
@@ -1445,7 +1445,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         type_alias->resolved = true;
         for (size_t i = 0; i < arrlenu(type_alias->referenced_types); i++)
         {
-            if (!shget(alias_table, type_alias->referenced_types[i])->resolved)
+            if (!shget(alias_table, type_alias->referenced_types[i]).resolved)
             {
                 type_alias->resolved = false;
                 break;
@@ -1455,7 +1455,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
             continue;
 
         // add type to type scope
-        if (type_alias != primitive_alias)
+        if (*type_alias->name != '\0')
         {
             ptlang_ir_builder_type_scope_add(&type_scope, type_alias->name, ptlang_ir_builder_type(type_alias->type, &type_scope), ptlang_ir_builder_unname_type(type_alias->type, &type_scope));
         }
@@ -1467,11 +1467,13 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         }
     }
 
-    for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
+    arrfree(alias_candidates);
+
+    for (uint64_t i = 0; i < ast_module->type_alias_count + 1; i++)
     {
-        ptlang_ir_builder_type_alias type_alias = shget(alias_table, ast_module->type_aliases[i].name);
-        arrfree(type_alias->referenced_types);
-        arrfree(type_alias->referencing_types);
+        ptlang_ir_builder_type_alias type_alias = alias_table[i].value;
+        arrfree(type_alias.referenced_types);
+        arrfree(type_alias.referencing_types);
     }
 
     shfree(alias_table);
@@ -1490,7 +1492,9 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
     for (uint64_t i = 0; i < ast_module->declaration_count; i++)
     {
-        ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, LLVMAddGlobal(llvm_module, ptlang_ir_builder_type(ast_module->declarations[i]->type, &type_scope), ast_module->declarations[i]->name), ast_module->declarations[i]->type, false);
+        LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, &type_scope);
+        LLVMValueRef val = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
+        ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, val, ast_module->declarations[i]->type, false);
     }
 
     LLVMValueRef *functions = malloc(sizeof(LLVMValueRef) * ast_module->function_count);
@@ -1543,7 +1547,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
             .function = functions[i],
             .type_scope = &type_scope,
             .scope = &function_scope,
-            .scope_index = 0,
+            .scope_number = 0,
             .scopes = NULL,
             .return_ptr = return_ptr,
             .return_block = return_block,
@@ -1552,7 +1556,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
         ptlang_ir_builder_stmt_allocas(ast_module->functions[i]->stmt, &ctx);
 
-        ctx.scope_index = 0;
+        ctx.scope_number = 0;
 
         for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
         {
@@ -1561,6 +1565,14 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         free(param_ptrs);
 
         ptlang_ir_builder_stmt(ast_module->functions[i]->stmt, &ctx);
+
+        for (uint64_t j = 0; j < ctx.scope_number; j++)
+        {
+            ptlang_ir_builder_scope_destroy(ctx.scopes[j]);
+            free(ctx.scopes[j]);
+        }
+
+        free(ctx.scopes);
 
         LLVMBuildBr(builder, return_block);
 
@@ -1582,6 +1594,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         ptlang_ir_builder_scope_destroy(&function_scope);
     }
     free(functions);
+
+    LLVMDisposeBuilder(builder);
 
     for (uint64_t i = 0; i < ast_module->function_count; i++)
     {

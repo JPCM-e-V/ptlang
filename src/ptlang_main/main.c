@@ -25,6 +25,8 @@ int main()
 
     char *triple = LLVMGetDefaultTargetTriple();
 
+    printf("\n\ntarget: %s\n\n", triple);
+
     LLVMInitializeNativeTarget();
 
     LLVMTargetRef target;
@@ -32,8 +34,12 @@ int main()
 
     LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
+    LLVMDisposeMessage(triple);
+
     LLVMErrorRef err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
     // err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
+
+    LLVMDisposePassBuilderOptions(pbo);
 
     if (err != LLVMErrorSuccess)
     {
@@ -64,5 +70,9 @@ int main()
     LLVMTargetMachineEmitToFile(machine, llvmmod, ASM_FILE, LLVMAssemblyFile, &error);
     LLVMTargetMachineEmitToFile(machine, llvmmod, OBJ_FILE, LLVMObjectFile, &error);
 
+    LLVMDisposeTargetMachine(machine);
+
     ptlang_ast_module_destroy(mod);
+
+    LLVMDisposeModule(llvmmod);
 }
