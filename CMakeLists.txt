@@ -9,6 +9,9 @@ set(PTLANG_PARSER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_parser)
 set(PTLANG_MAIN_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_main)
 set(PTLANG_IR_BUILDER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ir_builder)
 
+set(PTLANG_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/third-party)
+set(PTLANG_STB_DIR ${PTLANG_THIRD_PARTY_DIR}/stb)
+
 
 add_library(ptlang_ast OBJECT
             ${PTLANG_AST_SRC_DIR}/ptlang_ast.c)
@@ -65,7 +68,7 @@ add_library(ptlang_ir_builder OBJECT
 target_include_directories(ptlang_ir_builder
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PUBLIC ${PTLANG_LLVM_INCLUDEDIR}
-                           PUBLIC ${PROJECT_SOURCE_DIR}/include)
+                           PUBLIC ${PTLANG_STB_DIR})
 
 # llvm_map_components_to_libnames(llvm_libs support core irreader)
 
