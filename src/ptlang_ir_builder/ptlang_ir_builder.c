@@ -68,62 +68,22 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
 
 typedef struct ptlang_ir_builder_type_scope_entry_s
 {
-    char *name;
     LLVMTypeRef type;
     ptlang_ast_type ptlang_type;
 } ptlang_ir_builder_type_scope_entry;
 
 typedef struct ptlang_ir_builder_type_scope_s
 {
-    uint64_t entry_count;
-    ptlang_ir_builder_type_scope_entry *entries;
+    char *key;
+    ptlang_ir_builder_type_scope_entry value;
 } ptlang_ir_builder_type_scope;
-
-static inline void ptlang_ir_builder_type_scope_destroy(ptlang_ir_builder_type_scope *type_scope)
-{
-    free(type_scope->entries);
-}
-
-static inline void ptlang_ir_builder_type_scope_add(ptlang_ir_builder_type_scope *type_scope, char *name, LLVMTypeRef type, ptlang_ast_type ptlang_type)
-{
-    type_scope->entry_count++;
-    type_scope->entries = realloc(type_scope->entries, sizeof(ptlang_ir_builder_type_scope_entry) * type_scope->entry_count);
-    type_scope->entries[type_scope->entry_count - 1] = (ptlang_ir_builder_type_scope_entry){
-        .name = name,
-        .type = type,
-        .ptlang_type = ptlang_type};
-}
-
-static inline LLVMTypeRef ptlang_ir_builder_type_scope_get(ptlang_ir_builder_type_scope *type_scope, char *name)
-{
-    for (uint64_t i = 0; i < type_scope->entry_count; i++)
-    {
-        if (strcmp(type_scope->entries[i].name, name) == 0)
-        {
-            return type_scope->entries[i].type;
-        }
-    }
-    return NULL;
-}
-
-static inline ptlang_ast_type ptlang_ir_builder_type_scope_get_ptlang(ptlang_ir_builder_type_scope *type_scope, char *name)
-{
-    for (uint64_t i = 0; i < type_scope->entry_count; i++)
-    {
-        if (strcmp(type_scope->entries[i].name, name) == 0)
-        {
-            return type_scope->entries[i].ptlang_type;
-        }
-    }
-    return NULL;
-}
 
 static inline ptlang_ast_type ptlang_ir_builder_unname_type(ptlang_ast_type type, ptlang_ir_builder_type_scope *type_scope)
 {
     ptlang_ast_type new_type;
     while (type->type == PTLANG_AST_TYPE_NAMED)
     {
-        new_type = ptlang_ir_builder_type_scope_get_ptlang(type_scope, type->content.name);
+        new_type = shget(type_scope, type->content.name).ptlang_type;
         if (new_type == NULL)
         {
             break;
@@ -232,7 +192,7 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
     case PTLANG_AST_TYPE_REFERENCE:
         return LLVMPointerType(ptlang_ir_builder_type(type->content.reference.type, type_scope), 0);
     case PTLANG_AST_TYPE_NAMED:
-        return ptlang_ir_builder_type_scope_get(type_scope, type->content.name);
+        return shget(type_scope, type->content.name).type;
     }
 }
 
@@ -1325,7 +1285,7 @@ static char **ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(pt
     case PTLANG_AST_TYPE_REFERENCE:
         return ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ast_type->content.reference.type, type_scope);
     case PTLANG_AST_TYPE_NAMED:
-        if (ptlang_ir_builder_type_scope_get(type_scope, ast_type->content.name) == NULL)
+        if (shgeti(type_scope, ast_type->content.name) == -1)
             arrput(referenced_types, ast_type->content.name);
         else
             arrput(referenced_types, "");
@@ -1394,13 +1354,15 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
     LLVMBuilderRef builder = LLVMCreateBuilder();
 
     ptlang_ir_builder_scope global_scope = {};
-    ptlang_ir_builder_type_scope type_scope = {};
+    ptlang_ir_builder_type_scope *type_scope = NULL;
 
     LLVMTypeRef *structs = malloc(sizeof(LLVMTypeRef) * ast_module->struct_def_count);
     for (uint64_t i = 0; i < ast_module->struct_def_count; i++)
     {
         structs[i] = LLVMStructCreateNamed(LLVMGetGlobalContext(), ast_module->struct_defs[i]->name);
-        ptlang_ir_builder_type_scope_add(&type_scope, ast_module->struct_defs[i]->name, structs[i], NULL);
+        stbds_shput(type_scope, ast_module->struct_defs[i]->name, ((ptlang_ir_builder_type_scope_entry){
+                                                                      .type = structs[i],
+                                                                  }));
     }
 
     // Type aliases
@@ -1419,7 +1381,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
     for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
     {
-        ptlang_ir_builder_type_alias type_alias = ptlang_ir_builder_type_alias_create(ast_module->type_aliases[i], &type_scope);
+        ptlang_ir_builder_type_alias type_alias = ptlang_ir_builder_type_alias_create(ast_module->type_aliases[i], type_scope);
         shput(alias_table, ast_module->type_aliases[i].name, type_alias);
     }
 
@@ -1457,7 +1419,10 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         // add type to type scope
         if (*type_alias->name != '\0')
         {
-            ptlang_ir_builder_type_scope_add(&type_scope, type_alias->name, ptlang_ir_builder_type(type_alias->type, &type_scope), ptlang_ir_builder_unname_type(type_alias->type, &type_scope));
+            stbds_shput(type_scope, type_alias->name, ((ptlang_ir_builder_type_scope_entry){
+                                                          .type = ptlang_ir_builder_type(type_alias->type, type_scope),
+                                                          .ptlang_type = ptlang_ir_builder_unname_type(type_alias->type, type_scope),
+                                                      }));
         }
 
         // add referencing types to candidates
@@ -1483,7 +1448,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         LLVMTypeRef *elements = malloc(sizeof(LLVMTypeRef) * ast_module->struct_defs[i]->members->count);
         for (uint64_t j = 0; j < ast_module->struct_defs[i]->members->count; j++)
         {
-            elements[j] = ptlang_ir_builder_type(ast_module->struct_defs[i]->members->decls[j]->type, &type_scope);
+            elements[j] = ptlang_ir_builder_type(ast_module->struct_defs[i]->members->decls[j]->type, type_scope);
         }
         LLVMStructSetBody(structs[i], elements, ast_module->struct_defs[i]->members->count, false);
         free(elements);
@@ -1492,7 +1457,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
     for (uint64_t i = 0; i < ast_module->declaration_count; i++)
     {
-        LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, &type_scope);
+        LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, type_scope);
         LLVMValueRef val = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
         ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, val, ast_module->declarations[i]->type, false);
     }
@@ -1508,9 +1473,9 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         {
             ptlang_ast_type_list_add(param_type_list, ptlang_ast_type_copy(ast_module->functions[i]->parameters->decls[j]->type));
 
-            param_types[j] = ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, &type_scope);
+            param_types[j] = ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, type_scope);
         }
-        LLVMTypeRef function_type = LLVMFunctionType(ptlang_ir_builder_type(ast_module->functions[i]->return_type, &type_scope), param_types, ast_module->functions[i]->parameters->count, false);
+        LLVMTypeRef function_type = LLVMFunctionType(ptlang_ir_builder_type(ast_module->functions[i]->return_type, type_scope), param_types, ast_module->functions[i]->parameters->count, false);
         free(param_types);
         functions[i] = LLVMAddFunction(llvm_module, ast_module->functions[i]->name, function_type);
 
@@ -1532,20 +1497,20 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         LLVMValueRef return_ptr;
         if (ast_module->functions[i]->return_type != NULL)
         {
-            return_ptr = LLVMBuildAlloca(builder, ptlang_ir_builder_type(ast_module->functions[i]->return_type, &type_scope), "return");
+            return_ptr = LLVMBuildAlloca(builder, ptlang_ir_builder_type(ast_module->functions[i]->return_type, type_scope), "return");
         }
 
         LLVMValueRef *param_ptrs = malloc(sizeof(LLVMValueRef) * ast_module->functions[i]->parameters->count);
         for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
         {
-            param_ptrs[j] = LLVMBuildAlloca(builder, ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, &type_scope), ast_module->functions[i]->parameters->decls[j]->name);
+            param_ptrs[j] = LLVMBuildAlloca(builder, ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, type_scope), ast_module->functions[i]->parameters->decls[j]->name);
             ptlang_ir_builder_scope_add(&function_scope, ast_module->functions[i]->parameters->decls[j]->name, param_ptrs[j], ast_module->functions[i]->parameters->decls[j]->type, false);
         }
 
         ptlang_ir_builder_build_context ctx = {
             .builder = builder,
             .function = functions[i],
-            .type_scope = &type_scope,
+            .type_scope = type_scope,
             .scope = &function_scope,
             .scope_number = 0,
             .scopes = NULL,
@@ -1580,7 +1545,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
 
         if (ast_module->functions[i]->return_type != NULL)
         {
-            LLVMTypeRef t = ptlang_ir_builder_type(ast_module->functions[i]->return_type, &type_scope);
+            LLVMTypeRef t = ptlang_ir_builder_type(ast_module->functions[i]->return_type, type_scope);
             LLVMValueRef return_value = LLVMBuildLoad2(builder, t, return_ptr, "");
 
             LLVMBuildRet(builder, return_value);
@@ -1604,7 +1569,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
     free(function_types);
 
     ptlang_ir_builder_scope_destroy(&global_scope);
-    ptlang_ir_builder_type_scope_destroy(&type_scope);
+    shfree(type_scope);
 
     // LLVMValueRef glob = LLVMAddGlobal(llvm_module, LLVMInt1Type(), "glob");
     // LLVMSetInitializer(glob, LLVMConstInt(LLVMInt1Type(), 0, false));
