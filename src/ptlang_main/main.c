@@ -12,20 +12,7 @@ int main()
 
     // LLVMDumpModule(llvmmod);
 
-    char *error = NULL;
-    LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
-    LLVMDisposeMessage(error);
-
-    printf("\n ============= unopt =============\n\n");
-
-    LLVMDumpModule(llvmmod);
-
-    // #ifndef NOPT
-    LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
-
     char *triple = LLVMGetDefaultTargetTriple();
-
-    printf("\n\ntarget: %s\n\n", triple);
 
     LLVMInitializeNativeTarget();
 
@@ -34,7 +21,25 @@ int main()
 
     LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
+    char *error = NULL;
+    LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
+    LLVMDisposeMessage(error);
+
+    LLVMSetTarget(llvmmod, triple);
+
     LLVMDisposeMessage(triple);
+
+    // LLVMCreateTargetDataLayout
+    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
+    LLVMSetModuleDataLayout(llvmmod, target_data_layout);
+    LLVMDisposeTargetData(target_data_layout);
+
+    printf("\n ============= unopt =============\n\n");
+
+    LLVMDumpModule(llvmmod);
+
+    // #ifndef NOPT
+    LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
 
     LLVMErrorRef err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
     // err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
