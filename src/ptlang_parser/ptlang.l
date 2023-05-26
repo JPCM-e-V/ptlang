@@ -41,6 +41,8 @@
 
 %option nounistd
 %option nodefault
+%option noinput
+%option nounput
 %option warn
 %option always-interactive
 %option yylineno
