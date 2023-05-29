@@ -1179,7 +1179,16 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         return struct_;
     }
     case PTLANG_AST_EXP_ARRAY:
-        return NULL;
+    {
+        ptlang_ast_type unnamed_type = ptlang_ir_builder_unname_type(exp->content.array.type, ctx->type_scope);
+        LLVMValueRef array = LLVMGetUndef(ptlang_ir_builder_type(unnamed_type, ctx->type_scope));
+
+        for (uint64_t i = 0; i < exp->content.array.values->count; i++)
+        {
+            array = LLVMBuildInsertValue(ctx->builder, array, ptlang_ir_builder_exp_and_cast(exp->content.array.values->exps[i], unnamed_type->content.array.type, ctx), i, "initarrayelement");
+        }
+        return array;
+    }
     case PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH:
         return NULL;
     case PTLANG_AST_EXP_TERNARY:
