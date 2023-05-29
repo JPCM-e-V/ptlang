@@ -1163,7 +1163,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
             {
                 if (strcmp(members->decls[i]->name, exp->content.struct_.members->str_exps[j].str) == 0)
                 {
-                    member_val = ptlang_ir_builder_exp(exp->content.struct_.members->str_exps[j].exp, ctx);
+                    member_val = ptlang_ir_builder_exp_and_cast(exp->content.struct_.members->str_exps[j].exp, members->decls[i]->type, ctx);
                     break;
                 }
             }
