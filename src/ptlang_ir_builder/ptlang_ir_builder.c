@@ -1197,8 +1197,8 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         ptlang_ast_decl_list members = shget(ctx->struct_defs, unnamed_type->content.name);
         LLVMTypeRef struct_type = ptlang_ir_builder_type(unnamed_type, ctx->type_scope);
         ptlang_ast_type_destroy(type);
-        LLVMValueRef struct_ = LLVMGetUndef(struct_type);
 
+        LLVMValueRef *struct_members = malloc(sizeof(LLVMValueRef) * members->count);
         for (uint64_t i = 0; i < members->count; i++)
         {
             LLVMValueRef member_val = NULL;
@@ -1217,20 +1217,32 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
                 // member_val = LLVMGetUndef(ptlang_ir_builder_type(members->decls[i]->type, ctx->type_scope));
             }
 
-            struct_ = LLVMBuildInsertValue(ctx->builder, struct_, member_val, i, "initstructmember");
+            struct_members[i] = member_val;
         }
 
+        LLVMValueRef struct_ = LLVMConstNamedStruct(struct_type, struct_members, members->count);
+        free(struct_members);
         return struct_;
     }
     case PTLANG_AST_EXP_ARRAY:
     {
         ptlang_ast_type unnamed_type = ptlang_ir_builder_unname_type(exp->content.array.type, ctx->type_scope);
-        LLVMValueRef array = LLVMGetUndef(ptlang_ir_builder_type(unnamed_type, ctx->type_scope));
 
-        for (uint64_t i = 0; i < exp->content.array.values->count; i++)
+        LLVMTypeRef element_type = ptlang_ir_builder_type(unnamed_type->content.array.type, ctx->type_scope);
+        LLVMValueRef *array_elements = malloc(sizeof(LLVMValueRef) * unnamed_type->content.array.len);
+
+        uint64_t i = 0;
+        for (; i < exp->content.array.values->count; i++)
         {
-            array = LLVMBuildInsertValue(ctx->builder, array, ptlang_ir_builder_exp_and_cast(exp->content.array.values->exps[i], unnamed_type->content.array.type, ctx), i, "initarrayelement");
+            array_elements[i] = ptlang_ir_builder_exp_and_cast(exp->content.array.values->exps[i], unnamed_type->content.array.type, ctx);
         }
+        LLVMValueRef default_element_value = ptlang_ir_builder_type_default_value(unnamed_type->content.array.type, ctx);
+        for (; i < unnamed_type->content.array.len; i++)
+        {
+            array_elements[i] = default_element_value;
+        }
+
+        LLVMValueRef array = LLVMConstArray(element_type, array_elements, unnamed_type->content.array.len);
         return array;
     }
     case PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH:
