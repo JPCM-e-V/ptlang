@@ -463,6 +463,49 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     // LLVMSizeOf():
 }
 
+static LLVMValueRef ptlang_ir_builder_type_default_value(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx)
+{
+    type = ptlang_ir_builder_unname_type(type, ctx->type_scope);
+    LLVMTypeRef llvm_type = ptlang_ir_builder_type(type, ctx->type_scope);
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_INTEGER:
+        return LLVMConstInt(llvm_type, 0, false);
+    case PTLANG_AST_TYPE_FLOAT:
+        return LLVMConstReal(llvm_type, 0.0);
+    case PTLANG_AST_TYPE_FUNCTION:
+        return NULL;
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        return NULL;
+    case PTLANG_AST_TYPE_ARRAY:
+    {
+        LLVMValueRef element_value = ptlang_ir_builder_type_default_value(type->content.array.type, ctx);
+        LLVMValueRef *element_values = malloc(sizeof(LLVMValueRef) * type->content.array.len);
+        for (uint64_t i = 0; i < type->content.array.len; i++)
+        {
+            element_values[i] = element_value;
+        }
+        LLVMValueRef array = LLVMConstArray(ptlang_ir_builder_type(type->content.array.type, ctx->type_scope), element_values, type->content.array.len);
+        free(element_values);
+        return array;
+    }
+    case PTLANG_AST_TYPE_REFERENCE:
+        return NULL;
+    case PTLANG_AST_TYPE_NAMED:
+    {
+        ptlang_ast_decl_list members = shget(ctx->struct_defs, type->content.name);
+        LLVMValueRef *member_values = malloc(sizeof(LLVMValueRef) * members->count);
+        for (uint64_t i = 0; i < members->count; i++)
+        {
+            member_values[i] = ptlang_ir_builder_type_default_value(members->decls[i]->type, ctx);
+        }
+        LLVMValueRef struct_ = LLVMConstNamedStruct(llvm_type, member_values, members->count);
+        free(member_values);
+        return struct_;
+    }
+    }
+}
+
 static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_type from, ptlang_ast_type to, ptlang_ir_builder_build_context *ctx)
 {
     from = ptlang_ir_builder_unname_type(from, ctx->type_scope);
@@ -1170,7 +1213,8 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
 
             if (member_val == NULL)
             {
-                member_val = LLVMGetUndef(ptlang_ir_builder_type(members->decls[i]->type, ctx->type_scope));
+                member_val = ptlang_ir_builder_type_default_value(members->decls[i]->type, ctx);
+                // member_val = LLVMGetUndef(ptlang_ir_builder_type(members->decls[i]->type, ctx->type_scope));
             }
 
             struct_ = LLVMBuildInsertValue(ctx->builder, struct_, member_val, i, "initstructmember");
@@ -1332,6 +1376,13 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
     case PTLANG_AST_STMT_EXP:
         ptlang_ir_builder_exp(stmt->content.exp, ctx);
         break;
+    case PTLANG_AST_STMT_DECL:
+    {
+        ptlang_ast_type type;
+        LLVMValueRef ptr = ptlang_ir_builder_scope_get(ctx->scope, stmt->content.decl->name, &type, NULL);
+        LLVMBuildStore(ctx->builder, ptlang_ir_builder_type_default_value(type, ctx), ptr);
+        break;
+    }
     case PTLANG_AST_STMT_IF:
     {
         LLVMBasicBlockRef if_block = LLVMAppendBasicBlock(ctx->function, "if");
@@ -1685,6 +1736,11 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module)
         ptlang_ir_builder_stmt_allocas(ast_module->functions[i]->stmt, &ctx);
 
         ctx.scope_number = 0;
+
+        if (ast_module->functions[i]->return_type != NULL)
+        {
+            LLVMBuildStore(ctx.builder, ptlang_ir_builder_type_default_value(ast_module->functions[i]->return_type, &ctx), ctx.return_ptr);
+        }
 
         for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
         {
