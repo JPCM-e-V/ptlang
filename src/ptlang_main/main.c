@@ -8,7 +8,6 @@ int main()
 {
     ptlang_ast_module mod;
     ptlang_parser_parse(stdin, &mod);
-    LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod);
 
     // LLVMDumpModule(llvmmod);
 
@@ -21,6 +20,11 @@ int main()
 
     LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
+    // LLVMCreateTargetDataLayout
+    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
+
+    LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
+    LLVMDisposeTargetData(target_data_layout);
     char *error = NULL;
     LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
     LLVMDisposeMessage(error);
@@ -28,11 +32,6 @@ int main()
     LLVMSetTarget(llvmmod, triple);
 
     LLVMDisposeMessage(triple);
-
-    // LLVMCreateTargetDataLayout
-    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
-    LLVMSetModuleDataLayout(llvmmod, target_data_layout);
-    LLVMDisposeTargetData(target_data_layout);
 
     printf("\n ============= unopt =============\n\n");
 
