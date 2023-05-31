@@ -1595,7 +1595,6 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     ptlang_ir_builder_build_context ctx = {
         .builder = LLVMCreateBuilder(),
-        .type_scope = NULL,
         .target_info = target_info,
     };
 
@@ -1705,11 +1704,13 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
     }
     free(structs);
 
+    LLVMValueRef *glob_decl_values = malloc(sizeof(LLVMValueRef) * ast_module->declaration_count);
     for (uint64_t i = 0; i < ast_module->declaration_count; i++)
     {
         LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, &ctx);
-        LLVMValueRef val = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
-        ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, val, ast_module->declarations[i]->type, false);
+        glob_decl_values[i] = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
+        LLVMSetGlobalConstant(glob_decl_values[i], !ast_module->declarations[i]->writable);
+        ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, glob_decl_values[i], ast_module->declarations[i]->type, false);
     }
 
     LLVMValueRef *functions = malloc(sizeof(LLVMValueRef) * ast_module->function_count);
@@ -1733,6 +1734,12 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
         ptlang_ir_builder_scope_add(&global_scope, ast_module->functions[i]->name, functions[i], function_types[i], true);
     }
+
+    for (uint64_t i = 0; i < ast_module->declaration_count; i++)
+    {
+        LLVMSetInitializer(glob_decl_values[i], ptlang_ir_builder_type_default_value(ast_module->declarations[i]->type, &ctx));
+    }
+    free(glob_decl_values);
 
     for (uint64_t i = 0; i < ast_module->function_count; i++)
     {
