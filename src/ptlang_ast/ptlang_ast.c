@@ -256,6 +256,7 @@ UNARY_OP(negation, NEGATION)
 BINARY_OP(multiplication, MULTIPLICATION)
 BINARY_OP(division, DIVISION)
 BINARY_OP(modulo, MODULO)
+BINARY_OP(remainder, REMAINDER)
 BINARY_OP(equal, EQUAL)
 BINARY_OP(not_equal, NOT_EQUAL)
 BINARY_OP(greater, GREATER)
@@ -689,6 +690,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_MULTIPLICATION:
     case PTLANG_AST_EXP_DIVISION:
     case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
     case PTLANG_AST_EXP_EQUAL:
     case PTLANG_AST_EXP_NOT_EQUAL:
     case PTLANG_AST_EXP_GREATER:

@@ -88,6 +88,7 @@
 "{"                                                                     { return OPEN_CURLY_BRACE; }
 "}"                                                                     { return CLOSE_CURLY_BRACE; }
 ","                                                                     { return COMMA; }
+"mod"                                                                   { return MOD; }
 "if"                                                                    { return IF; }
 "else"                                                                  { return ELSE; }
 "while"                                                                 { return WHILE; }

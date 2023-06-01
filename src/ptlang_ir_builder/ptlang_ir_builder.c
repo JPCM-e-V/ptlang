@@ -291,6 +291,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     case PTLANG_AST_EXP_MULTIPLICATION:
     case PTLANG_AST_EXP_DIVISION:
     case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
     {
         ptlang_ast_type left = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
         ptlang_ast_type right = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
@@ -811,7 +812,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
             {
                 ret_val = LLVMBuildSRem(ctx->builder, left_value, right_value, "mod");
                 ret_val = LLVMBuildAdd(ctx->builder, ret_val, right_value, "mod");
-                ret_val = LLVMBuildURem(ctx->builder, ret_val, right_value, "mod");
+                ret_val = LLVMBuildSRem(ctx->builder, ret_val, right_value, "mod");
             }
             else
             {
@@ -823,6 +824,34 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
             ret_val = LLVMBuildFRem(ctx->builder, left_value, right_value, "mod");
             ret_val = LLVMBuildFAdd(ctx->builder, ret_val, right_value, "mod");
             ret_val = LLVMBuildFRem(ctx->builder, ret_val, right_value, "mod");
+        }
+        ptlang_ast_type_destroy(ret_type);
+        return ret_val;
+    }
+    case PTLANG_AST_EXP_REMAINDER:
+    {
+        ptlang_ast_type ret_type;
+        LLVMValueRef left_value;
+        LLVMValueRef right_value;
+
+        ptlang_ir_builder_prepare_binary_op(exp, &left_value, &right_value, &ret_type, ctx);
+
+        LLVMValueRef ret_val;
+
+        if (ret_type->type == PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ret_type->content.integer.is_signed)
+            {
+                ret_val = LLVMBuildSRem(ctx->builder, left_value, right_value, "remainder");
+            }
+            else
+            {
+                ret_val = LLVMBuildURem(ctx->builder, left_value, right_value, "remainder");
+            }
+        }
+        else
+        {
+            ret_val = LLVMBuildFRem(ctx->builder, left_value, right_value, "remainder");
         }
         ptlang_ast_type_destroy(ret_type);
         return ret_val;

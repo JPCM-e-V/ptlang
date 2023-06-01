@@ -51,6 +51,7 @@
 %token OPEN_CURLY_BRACE
 %token CLOSE_CURLY_BRACE
 %token COMMA
+%token MOD
 %token IF
 %token ELSE
 %token WHILE
@@ -102,7 +103,7 @@
 %left LESSER LEQ GREATER GEQ
 %left LEFT_SHIFT RIGHT_SHIFT
 %left PLUS MINUS
-%left STAR SLASH PERCENT
+%left STAR SLASH PERCENT MOD
 %right negation NOT TILDE reference dereference cast
 %left DOT OPEN_SQUARE_BRACKET OPEN_BRACKET
 
@@ -186,7 +187,8 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | MINUS exp %prec negation { $$ = ptlang_ast_exp_negation_new($2); }
    | exp STAR exp { $$ = ptlang_ast_exp_multiplication_new($1, $3); }
    | exp SLASH exp { $$ = ptlang_ast_exp_division_new($1, $3); }
-   | exp PERCENT exp { $$ = ptlang_ast_exp_modulo_new($1, $3); }
+   | exp MOD exp { $$ = ptlang_ast_exp_modulo_new($1, $3); }
+   | exp PERCENT exp { $$ = ptlang_ast_exp_remainder_new($1, $3); }
    | exp EQEQ exp { $$ = ptlang_ast_exp_equal_new($1, $3); }
    | exp NEQ exp { $$ = ptlang_ast_exp_not_equal_new($1, $3); }
    | exp GREATER exp { $$ = ptlang_ast_exp_greater_new($1, $3); }

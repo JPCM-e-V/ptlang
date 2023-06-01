@@ -64,6 +64,7 @@ ptlang_ast_exp ptlang_ast_exp_negation_new(ptlang_ast_exp value);
 ptlang_ast_exp ptlang_ast_exp_multiplication_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_division_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_modulo_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
+ptlang_ast_exp ptlang_ast_exp_remainder_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_not_equal_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_greater_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
