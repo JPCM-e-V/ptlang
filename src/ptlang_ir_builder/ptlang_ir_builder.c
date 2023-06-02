@@ -1617,6 +1617,26 @@ static ptlang_ir_builder_type_alias ptlang_ir_builder_type_alias_create(struct p
 //     }
 // }
 
+static void ptlang_ir_builder_type_add_attributes(ptlang_ast_type type, LLVMValueRef function, LLVMAttributeIndex index, ptlang_ir_builder_build_context *ctx)
+{
+    type = ptlang_ir_builder_unname_type(type, ctx->type_scope);
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_INTEGER:
+        if (type->content.integer.is_signed)
+        {
+            LLVMAddAttributeAtIndex(function, index, LLVMCreateEnumAttribute(LLVMGetGlobalContext(), LLVMGetEnumAttributeKindForName("signext", sizeof("signext") - 1), 0));
+        }
+        else
+        {
+            LLVMAddAttributeAtIndex(function, index, LLVMCreateEnumAttribute(LLVMGetGlobalContext(), LLVMGetEnumAttributeKindForName("zeroext", sizeof("zeroext") - 1), 0));
+        }
+        break;
+    default:
+        break;
+    }
+}
+
 LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetDataRef target_info)
 {
     LLVMModuleRef llvm_module = LLVMModuleCreateWithName("t");
@@ -1758,6 +1778,12 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         LLVMTypeRef function_type = LLVMFunctionType(ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx), param_types, ast_module->functions[i]->parameters->count, false);
         free(param_types);
         functions[i] = LLVMAddFunction(llvm_module, ast_module->functions[i]->name, function_type);
+
+        ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->return_type, functions[i], LLVMAttributeReturnIndex, &ctx);
+        for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
+        {
+            ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->parameters->decls[j]->type, functions[i], j + 1, &ctx);
+        }
 
         function_types[i] = ptlang_ast_type_function(ptlang_ast_type_copy(ast_module->functions[i]->return_type), param_type_list);
 
