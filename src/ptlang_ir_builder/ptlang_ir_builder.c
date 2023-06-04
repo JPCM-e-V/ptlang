@@ -1,5 +1,11 @@
 #include "ptlang_ir_builder_impl.h"
 
+#define HEAP_ARRAY_TYPE(element_type, ctx) LLVMStructType((LLVMTypeRef[]){                        \
+                                                              LLVMPointerType((element_type), 0), \
+                                                              LLVMIntPtrType((ctx)->target_info), \
+                                                          },                                      \
+                                                          2, false);
+
 typedef struct ptlang_ir_builder_scope_entry_s
 {
     char *name;
@@ -112,6 +118,7 @@ typedef struct ptlang_ir_builder_build_context_s
     ptlang_ast_type return_type;
     ptlang_ir_builder_struct_def *struct_defs;
     LLVMTargetDataRef target_info;
+    LLVMValueRef free_fn;
 } ptlang_ir_builder_build_context;
 
 static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx);
@@ -254,11 +261,7 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
         function_type = LLVMPointerType(function_type, 0);
         return function_type;
     case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return LLVMStructType((LLVMTypeRef[]){
-                                  LLVMPointerType(ptlang_ir_builder_type(type->content.heap_array.type, ctx), 0),
-                                  LLVMIntPtrType(ctx->target_info),
-                              },
-                              2, false);
+        return HEAP_ARRAY_TYPE(ptlang_ir_builder_type(type->content.heap_array.type, ctx), ctx);
     case PTLANG_AST_TYPE_ARRAY:
         return LLVMArrayType(ptlang_ir_builder_type(type->content.array.type, ctx), type->content.array.len);
     case PTLANG_AST_TYPE_REFERENCE:
@@ -280,6 +283,49 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
 //         return NULL;
 //     }
 // }
+
+static void ptlang_ir_builder_free(LLVMValueRef heap_arr, LLVMTypeRef element_type, bool isptr, ptlang_ir_builder_build_context *ctx)
+{
+    LLVMTypeRef array_type = HEAP_ARRAY_TYPE(element_type, ctx);
+
+    LLVMValueRef len;
+    if (isptr)
+    {
+        LLVMValueRef len_ptr = LLVMBuildStructGEP2(ctx->builder, array_type, heap_arr, 1, "freegetlenptr");
+        len = LLVMBuildLoad2(ctx->builder, LLVMIntPtrType(ctx->target_info), len_ptr, "freeloadlen");
+    }
+    else
+    {
+        len = LLVMBuildExtractValue(ctx->builder, heap_arr, 1, "freeextractlen");
+    }
+
+    LLVMValueRef len_cmp = LLVMBuildICmp(ctx->builder, LLVMIntNE, len, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "freelencmp");
+
+    LLVMBasicBlockRef free_block = LLVMAppendBasicBlock(ctx->function, "freefree");
+    LLVMBasicBlockRef end_block = LLVMAppendBasicBlock(ctx->function, "freeend");
+
+    LLVMBuildCondBr(ctx->builder, len_cmp, free_block, end_block);
+
+    LLVMPositionBuilderAtEnd(ctx->builder, free_block);
+
+    LLVMValueRef heap_ptr;
+    if (isptr)
+    {
+        LLVMValueRef heap_ptr_ptr = LLVMBuildStructGEP2(ctx->builder, array_type, heap_arr, 0, "freegetheapptrptr");
+        heap_ptr = LLVMBuildLoad2(ctx->builder, LLVMPointerType(element_type, 0), heap_ptr_ptr, "freeloadheapptr");
+    }
+    else
+    {
+        heap_ptr = LLVMBuildExtractValue(ctx->builder, heap_arr, 0, "freeextractheapptr");
+    }
+
+    heap_ptr = LLVMBuildPointerCast(ctx->builder, heap_ptr, LLVMPointerType(LLVMVoidType(), 0), "freechangeptrtype");
+    LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMVoidType(), 0)}, 1, false), ctx->free_fn, (LLVMValueRef[]){heap_ptr}, 1, "");
+
+    LLVMBuildBr(ctx->builder, end_block);
+    LLVMPositionBuilderAtEnd(ctx->builder, end_block);
+}
+
 static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
 {
     switch (exp->type)
@@ -1639,12 +1685,15 @@ static void ptlang_ir_builder_type_add_attributes(ptlang_ast_type type, LLVMValu
 
 LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetDataRef target_info)
 {
+
+    LLVMContextSetOpaquePointers(LLVMGetGlobalContext(), false);
     LLVMModuleRef llvm_module = LLVMModuleCreateWithName("t");
     LLVMSetModuleDataLayout(llvm_module, target_info);
 
     ptlang_ir_builder_build_context ctx = {
         .builder = LLVMCreateBuilder(),
         .target_info = target_info,
+        .free_fn = LLVMAddFunction(llvm_module, "free", LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMVoidType(), 0)}, 1, false)),
     };
 
     ptlang_ir_builder_scope global_scope = {};
