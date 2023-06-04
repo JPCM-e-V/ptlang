@@ -1828,7 +1828,11 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         free(param_types);
         functions[i] = LLVMAddFunction(llvm_module, ast_module->functions[i]->name, function_type);
 
-        ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->return_type, functions[i], LLVMAttributeReturnIndex, &ctx);
+        if (ast_module->functions[i]->return_type != NULL)
+        {
+            ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->return_type, functions[i], LLVMAttributeReturnIndex, &ctx);
+        }
+
         for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
         {
             ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->parameters->decls[j]->type, functions[i], j + 1, &ctx);
