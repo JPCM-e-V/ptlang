@@ -6,6 +6,15 @@
                                                           },                                      \
                                                           2, false);
 
+#define INIT_FUNCTION(name, return_type, param_types)                                                                                                                                           \
+    static inline void ptlang_ir_builder_init_##name##_func(ptlang_ir_builder_build_context *ctx)                                                                                               \
+    {                                                                                                                                                                                           \
+        if (ctx->name##_func == NULL)                                                                                                                                                           \
+        {                                                                                                                                                                                       \
+            ctx->name##_func = LLVMAddFunction(ctx->module, #name, LLVMFunctionType(return_type, (LLVMTypeRef[])param_types, sizeof((LLVMTypeRef[])param_types) / sizeof(LLVMTypeRef), false)); \
+        }                                                                                                                                                                                       \
+    }
+
 typedef struct ptlang_ir_builder_scope_entry_s
 {
     char *name;
@@ -108,6 +117,7 @@ static inline ptlang_ast_type ptlang_ir_builder_unname_type(ptlang_ast_type type
 typedef struct ptlang_ir_builder_build_context_s
 {
     LLVMBuilderRef builder;
+    LLVMModuleRef module;
     LLVMValueRef function;
     ptlang_ir_builder_type_scope *type_scope;
     ptlang_ir_builder_scope *scope;
@@ -118,8 +128,10 @@ typedef struct ptlang_ir_builder_build_context_s
     ptlang_ast_type return_type;
     ptlang_ir_builder_struct_def *struct_defs;
     LLVMTargetDataRef target_info;
-    LLVMValueRef free_fn;
+    LLVMValueRef free_func;
 } ptlang_ir_builder_build_context;
+
+INIT_FUNCTION(free, LLVMVoidType(), {LLVMPointerType(LLVMInt8Type(), 0)})
 
 static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx);
 
@@ -286,6 +298,8 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
 
 static void ptlang_ir_builder_free(LLVMValueRef heap_arr, LLVMTypeRef element_type, bool isptr, ptlang_ir_builder_build_context *ctx)
 {
+    ptlang_ir_builder_init_free_func(ctx);
+
     LLVMTypeRef array_type = HEAP_ARRAY_TYPE(element_type, ctx);
 
     LLVMValueRef len;
@@ -319,8 +333,8 @@ static void ptlang_ir_builder_free(LLVMValueRef heap_arr, LLVMTypeRef element_ty
         heap_ptr = LLVMBuildExtractValue(ctx->builder, heap_arr, 0, "freeextractheapptr");
     }
 
-    heap_ptr = LLVMBuildPointerCast(ctx->builder, heap_ptr, LLVMPointerType(LLVMVoidType(), 0), "freechangeptrtype");
-    LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMVoidType(), 0)}, 1, false), ctx->free_fn, (LLVMValueRef[]){heap_ptr}, 1, "");
+    heap_ptr = LLVMBuildPointerCast(ctx->builder, heap_ptr, LLVMPointerType(LLVMInt8Type(), 0), "freechangeptrtype");
+    LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0)}, 1, false), ctx->free_func, (LLVMValueRef[]){heap_ptr}, 1, "");
 
     LLVMBuildBr(ctx->builder, end_block);
     LLVMPositionBuilderAtEnd(ctx->builder, end_block);
@@ -1692,8 +1706,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     ptlang_ir_builder_build_context ctx = {
         .builder = LLVMCreateBuilder(),
+        .module = llvm_module,
         .target_info = target_info,
-        .free_fn = LLVMAddFunction(llvm_module, "free", LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMVoidType(), 0)}, 1, false)),
     };
 
     ptlang_ir_builder_scope global_scope = {};
