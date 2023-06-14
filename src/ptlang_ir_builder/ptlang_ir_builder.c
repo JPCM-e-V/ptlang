@@ -1853,6 +1853,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
     {
         ctx.function = functions[i];
         ctx.return_type = ast_module->functions[i]->return_type;
+        ctx.scope_number = 0;
+        ctx.scopes = NULL;
 
         LLVMBasicBlockRef entry_block = LLVMAppendBasicBlock(functions[i], "entry");
         ctx.return_block = LLVMAppendBasicBlock(functions[i], "return");
@@ -1888,8 +1890,6 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         //     .struct_defs = struct_defs,
         //     .target_info = target_info,
         // };
-
-        ctx.scope_number = 0;
 
         ptlang_ir_builder_stmt_allocas(ast_module->functions[i]->stmt, &ctx);
 
