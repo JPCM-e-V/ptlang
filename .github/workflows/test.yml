@@ -4,10 +4,6 @@ on:
   push:
   pull_request:
 
-env:
-  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
-  BUILD_TYPE: Release
-
 jobs:
   build:
     strategy:
@@ -43,7 +39,7 @@ jobs:
           elif [[ "${{matrix.os}}" == "macos"* ]]; then
             cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           else
-            cmake -B '${{github.workspace}}/build' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           fi
 
     - name: Build
