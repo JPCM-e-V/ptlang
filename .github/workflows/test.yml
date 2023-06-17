@@ -1,0 +1,32 @@
+name: CMake
+
+on:
+  push:
+  pull_request:
+
+env:
+  # Customize the CMake build type here (Release, Debug, RelWithDebInfo, etc.)
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        build-type: [Debug, RelWithDebInfo]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        asan-args: ["", "-fsanitize=address"]
+    runs-on: ${{matrix.os}}
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Configure CMake
+      run: cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{matrix.build-type}}
+
+    - name: Run
+      shell: bash
+      run: cat ${{github.workspace}}/tests/test.ptl | ${{github.workspace}}/build/ptlang
+

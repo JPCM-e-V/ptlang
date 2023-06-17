@@ -1949,7 +1949,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         // llvmpara
         ptlang_ir_builder_scope_destroy(&function_scope);
     }
-    free(functions);
+    // free(functions);
 
     shfree(ctx.struct_defs);
 
