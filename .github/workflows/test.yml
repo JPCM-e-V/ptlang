@@ -19,6 +19,9 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+    - name: Install Deps
+      run: vcpkg install llvm
+
     - uses: actions/checkout@v3
       with:
         submodules: 'recursive'
