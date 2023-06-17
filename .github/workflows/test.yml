@@ -13,7 +13,7 @@ jobs:
     strategy:
       matrix:
         build-type: [Debug, RelWithDebInfo]
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest]
         asan-args: ["", "-fsanitize=address"]
       fail-fast: false
     runs-on: ${{matrix.os}}
@@ -29,7 +29,9 @@ jobs:
           llvm-config --cmakedir
     - name: Install Deps using Homebrew
       if: contains(matrix.os, 'macos')
-      run: brew install bison llvm
+      run: |
+          brew install bison llvm
+          /usr/local/opt/llvm/bin/llvm-config --cmakedir
 
     - uses: actions/checkout@v3
       with:
