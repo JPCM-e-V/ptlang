@@ -26,7 +26,7 @@ enum ptlang_ast_type_float_size
 
 ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl_list members);
 
-ptlang_ast_module ptlang_ast_module_new();
+ptlang_ast_module ptlang_ast_module_new(void);
 
 void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function);
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration);
@@ -37,16 +37,16 @@ ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptl
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable);
 
-ptlang_ast_decl_list ptlang_ast_decl_list_new();
+ptlang_ast_decl_list ptlang_ast_decl_list_new(void);
 void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
 
-ptlang_ast_type_list ptlang_ast_type_list_new();
+ptlang_ast_type_list ptlang_ast_type_list_new(void);
 void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type);
 
-ptlang_ast_exp_list ptlang_ast_exp_list_new();
+ptlang_ast_exp_list ptlang_ast_exp_list_new(void);
 void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp);
 
-ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new();
+ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new(void);
 void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang_ast_exp exp);
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size);
@@ -94,7 +94,7 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
 ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value);
 ptlang_ast_exp ptlang_ast_exp_dereference_new(ptlang_ast_exp value);
 
-ptlang_ast_stmt ptlang_ast_stmt_block_new();
+ptlang_ast_stmt ptlang_ast_stmt_block_new(void);
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt);
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp);
 ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl);

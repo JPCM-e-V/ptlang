@@ -10,7 +10,7 @@ ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl_list
     return struct_def;
 }
 
-ptlang_ast_module ptlang_ast_module_new()
+ptlang_ast_module ptlang_ast_module_new(void)
 {
     ptlang_ast_module module = malloc(sizeof(struct ptlang_ast_module_s));
     *module = (struct ptlang_ast_module_s){
@@ -77,7 +77,7 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
     return declaration;
 }
 
-ptlang_ast_decl_list ptlang_ast_decl_list_new()
+ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 {
     ptlang_ast_decl_list decl_list = malloc(sizeof(struct ptlang_ast_decl_list_s));
     *decl_list = (struct ptlang_ast_decl_list_s){
@@ -93,7 +93,7 @@ void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
     list->decls[list->count - 1] = decl;
 }
 
-ptlang_ast_type_list ptlang_ast_type_list_new()
+ptlang_ast_type_list ptlang_ast_type_list_new(void)
 {
     ptlang_ast_type_list type_list = malloc(sizeof(struct ptlang_ast_type_list_s));
     *type_list = (struct ptlang_ast_type_list_s){
@@ -109,7 +109,7 @@ void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
     list->types[list->count - 1] = type;
 }
 
-ptlang_ast_exp_list ptlang_ast_exp_list_new()
+ptlang_ast_exp_list ptlang_ast_exp_list_new(void)
 {
     ptlang_ast_exp_list exp_list = malloc(sizeof(struct ptlang_ast_exp_list_s));
     *exp_list = (struct ptlang_ast_exp_list_s){
@@ -125,7 +125,7 @@ void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
     list->exps[list->count - 1] = exp;
 }
 
-ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new()
+ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new(void)
 {
     ptlang_ast_str_exp_list str_exp_list = malloc(sizeof(struct ptlang_ast_str_exp_list_s));
     *str_exp_list = (struct ptlang_ast_str_exp_list_s){
@@ -399,7 +399,7 @@ ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
 
 UNARY_OP(dereference, DEREFERENCE)
 
-ptlang_ast_stmt ptlang_ast_stmt_block_new()
+ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
 {
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){

@@ -18,7 +18,7 @@ add_library(ptlang_ast OBJECT
 
 set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
-find_package(BISON 3.8.2 REQUIRED)
+find_package(BISON 3.7.4 REQUIRED)
 find_package(FLEX 2.6.4 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
 
@@ -34,7 +34,7 @@ execute_process(COMMAND ${PTLANG_LLVM_CONFIG} --libfiles ${PTLANG_LLVM_COMPONENT
 separate_arguments(PTLANG_LLVM_LIBFILE_LIST NATIVE_COMMAND ${PTLANG_LLVM_LIBFILES})
 
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug" OR CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(DEBUG_FLAG "--debug")
 endif()
 

@@ -131,7 +131,9 @@ typedef struct ptlang_ir_builder_build_context_s
     LLVMValueRef free_func;
 } ptlang_ir_builder_build_context;
 
+#if 0
 INIT_FUNCTION(free, LLVMVoidType(), {LLVMPointerType(LLVMInt8Type(), 0)})
+#endif
 
 static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx);
 
@@ -296,6 +298,7 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
 //     }
 // }
 
+#if 0
 static void ptlang_ir_builder_free(LLVMValueRef heap_arr, LLVMTypeRef element_type, bool isptr, ptlang_ir_builder_build_context *ctx)
 {
     ptlang_ir_builder_init_free_func(ctx);
@@ -339,6 +342,7 @@ static void ptlang_ir_builder_free(LLVMValueRef heap_arr, LLVMTypeRef element_ty
     LLVMBuildBr(ctx->builder, end_block);
     LLVMPositionBuilderAtEnd(ctx->builder, end_block);
 }
+#endif
 
 static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
 {
@@ -1700,7 +1704,7 @@ static void ptlang_ir_builder_type_add_attributes(ptlang_ast_type type, LLVMValu
 LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetDataRef target_info)
 {
 
-    LLVMContextSetOpaquePointers(LLVMGetGlobalContext(), false);
+    // LLVMContextSetOpaquePointers(LLVMGetGlobalContext(), false);
     LLVMModuleRef llvm_module = LLVMModuleCreateWithName("t");
     LLVMSetModuleDataLayout(llvm_module, target_info);
 
@@ -1710,7 +1714,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         .target_info = target_info,
     };
 
-    ptlang_ir_builder_scope global_scope = {};
+    ptlang_ir_builder_scope global_scope = {.entry_count = 0};
     // ptlang_ir_builder_type_scope *type_scope = NULL;
 
     // ptlang_ir_builder_struct_def *struct_defs = NULL;
