@@ -26,7 +26,7 @@ jobs:
       if: contains(matrix.os, 'windows')
       run: |
           choco install winflexbison3 llvm
-          cat C:\ProgramData\chocolatey\logs\choco.summary.log
+          llvm-config --cmakedir
     - name: Install Deps using Homebrew
       if: contains(matrix.os, 'macos')
       run: brew install bison llvm
