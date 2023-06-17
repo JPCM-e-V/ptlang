@@ -22,6 +22,9 @@ jobs:
     - name: Install Deps using Apt
       if: contains(matrix.os, 'ubuntu')
       run: sudo apt-get install -y llvm-15-dev
+    - name: Install Deps using Chocolatey
+      if: contains(matrix.os, 'windows')
+      run: choco install winflexbison3
 
     - uses: actions/checkout@v3
       with:
