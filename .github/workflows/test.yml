@@ -31,7 +31,7 @@ jobs:
       shell: bash
       run: |
           if [[ "${{matrix.os}}" == "windows"* ]]; then
-            cmake -B ${{github.workspace}}/build -G "Visual Studio 17 2022" -T ClangCl -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B ${{github.workspace}}/build -G "Visual Studio 17 2022" -T ClangCL -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           else
             cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           fi
