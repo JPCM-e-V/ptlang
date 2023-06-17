@@ -44,7 +44,7 @@ jobs:
           if [[ "${{matrix.os}}" == "windows"* ]]; then
             cmake -B '${{github.workspace}}\build' -G "Visual Studio 17 2022" -T ClangCL -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           elif [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR=/usr/local/Cellar/llvm/16.0.3/lib/cmake/llvm -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           else
             cmake -B '${{github.workspace}}/build' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           fi
