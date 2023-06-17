@@ -27,7 +27,7 @@ jobs:
       run: choco install winflexbison3 llvm
     - name: Install Deps using Homebrew
       if: contains(matrix.os, 'macos')
-      run: brew install bison
+      run: brew install bison llvm
 
     - uses: actions/checkout@v3
       with:
