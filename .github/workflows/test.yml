@@ -24,7 +24,9 @@ jobs:
       run: sudo apt-get install -y llvm-15-dev
     - name: Install Deps using Chocolatey
       if: contains(matrix.os, 'windows')
-      run: choco install winflexbison3 llvm
+      run: |
+          choco install winflexbison3 llvm
+          cat C:\ProgramData\chocolatey\logs\choco.summary.log
     - name: Install Deps using Homebrew
       if: contains(matrix.os, 'macos')
       run: brew install bison llvm
