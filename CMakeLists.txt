@@ -20,7 +20,7 @@ set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
 find_package(BISON 3.7.4 REQUIRED)
 find_package(FLEX 2.6.4 REQUIRED)
-find_package(LLVM REQUIRED CONFIG)
+find_package(LLVM 15...<16 REQUIRED CONFIG)
 
 set(PTLANG_LLVM_CONFIG "${LLVM_TOOLS_BINARY_DIR}/llvm-config")
 set(PTLANG_LLVM_COMPONENTS "core;analysis;native;passes")
