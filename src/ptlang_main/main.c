@@ -4,7 +4,7 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 
-int main()
+int main(void)
 {
     ptlang_ast_module mod;
     ptlang_parser_parse(stdin, &mod);
