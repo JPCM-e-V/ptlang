@@ -35,11 +35,11 @@ jobs:
       shell: bash
       run: |
           if [[ "${{matrix.os}}" == "windows"* ]]; then
-            cmake -B '${{github.workspace}}\build' -G "Visual Studio 17 2022" -T ClangCL -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}\build' -G "Visual Studio 17 2022" -T ClangCL -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Wextra -Werror ${{matrix.asan-args}}"
           elif [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Wextra -Werror ${{matrix.asan-args}}"
           else
-            cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Wextra -Werror ${{matrix.asan-args}}"
           fi
 
     - name: Build
