@@ -1,4 +1,4 @@
-name: CMake
+name: Test
 
 on:
   push:
@@ -15,6 +15,7 @@ jobs:
         build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, windows-latest, macos-latest]
         asan-args: ["", "-fsanitize=address"]
+      fail-fast: false
     runs-on: ${{matrix.os}}
 
     steps:
