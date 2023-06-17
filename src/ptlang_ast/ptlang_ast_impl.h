@@ -149,12 +149,6 @@ struct ptlang_ast_exp_array_s
     ptlang_ast_exp_list values;
 };
 
-struct ptlang_ast_exp_heap_array_from_length_s
-{
-    ptlang_ast_type type;
-    ptlang_ast_exp length;
-};
-
 struct ptlang_ast_exp_struct_member_s
 {
     ptlang_ast_exp struct_;
@@ -200,13 +194,13 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_BITWISE_OR,
         PTLANG_AST_EXP_BITWISE_XOR,
         PTLANG_AST_EXP_BITWISE_INVERSE, // xor -1
+        PTLANG_AST_EXP_LENGTH,
         PTLANG_AST_EXP_FUNCTION_CALL,
         PTLANG_AST_EXP_VARIABLE,
         PTLANG_AST_EXP_INTEGER,
         PTLANG_AST_EXP_FLOAT,
         PTLANG_AST_EXP_STRUCT,
         PTLANG_AST_EXP_ARRAY,
-        PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH,
         PTLANG_AST_EXP_TERNARY,
         PTLANG_AST_EXP_CAST,
         PTLANG_AST_EXP_STRUCT_MEMBER,
@@ -221,7 +215,6 @@ struct ptlang_ast_exp_s
         struct ptlang_ast_exp_function_call_s function_call;
         struct ptlang_ast_exp_ternary_operator_s ternary_operator;
         char *str_prepresentation;
-        struct ptlang_ast_exp_heap_array_from_length_s heap_array;
         struct ptlang_ast_exp_struct_s struct_;
         struct ptlang_ast_exp_array_s array;
         struct ptlang_ast_exp_cast_s cast;

@@ -73,6 +73,7 @@
 "."                                                                     { return DOT; }
 "?"                                                                     { return QUESTION_MARK; }
 ":"                                                                     { return COLON; }
+"#"                                                                     { return HASHTAG; }
 [ \t\n]                                                                 {}
 [0-9]+([sSuU][1-9][0-9]{0,6})?                                          { SAVE_STR; return INT_VAL; }
 ([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?([fF](16|32|64|128))?  { SAVE_STR; return FLOAT_VAL; }
@@ -99,8 +100,6 @@
 "continue"                                                              { return CONTINUE; }
 "typealias"                                                             { return TYPE_ALIAS; }
 "struct"                                                                { return STRUCT_DEF; }
-"alloc"                                                                 { return ALLOC; }
-"dummy"                                                                 { return DUMMY; }
 [a-zA-Z_][a-zA-Z_0-9]*                                                  { SAVE_STR; return IDENT; }
 <<EOF>>                                                                 { return PTLANG_YYEOF; }
 .                                                                       { ptlang_yyerror(yylloc, "Unknown token\n"); yyterminate(); };

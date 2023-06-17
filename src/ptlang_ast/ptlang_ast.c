@@ -272,6 +272,7 @@ BINARY_OP(bitwise_and, BITWISE_AND)
 BINARY_OP(bitwise_or, BITWISE_OR)
 BINARY_OP(bitwise_xor, BITWISE_XOR)
 UNARY_OP(bitwise_inverse, BITWISE_INVERSE)
+UNARY_OP(length, LENGTH)
 
 ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp_list parameters)
 {
@@ -323,17 +324,6 @@ ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_lis
             .values = values,
         },
     };
-    return exp;
-}
-
-ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length)
-{
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
-        .type = PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH,
-        .content.heap_array = {
-            .type = type,
-            .length = length}};
     return exp;
 }
 
@@ -710,6 +700,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_LENGTH:
     case PTLANG_AST_EXP_DEREFERENCE:
         ptlang_ast_exp_destroy(exp->content.unary_operator);
         break;
@@ -729,10 +720,6 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_ARRAY:
         ptlang_ast_type_destroy(exp->content.array.type);
         ptlang_ast_exp_list_destroy(exp->content.array.values);
-        break;
-    case PTLANG_AST_EXP_HEAP_ARRAY_FROM_LENGTH:
-        ptlang_ast_type_destroy(exp->content.heap_array.type);
-        ptlang_ast_exp_destroy(exp->content.heap_array.length);
         break;
     case PTLANG_AST_EXP_TERNARY:
         ptlang_ast_exp_destroy(exp->content.ternary_operator.condition);

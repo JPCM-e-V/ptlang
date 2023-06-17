@@ -62,7 +62,6 @@
 %token CONTINUE
 %token TYPE_ALIAS
 %token STRUCT_DEF
-%token ALLOC
 %token LEFT_SHIFT
 %token RIGHT_SHIFT
 %token AND
@@ -75,8 +74,7 @@
 %token DOT
 %token QUESTION_MARK
 %token COLON
-
-%token DUMMY
+%token HASHTAG
 
 %type <type> type
 %type <stmt> stmt block
@@ -104,7 +102,7 @@
 %left LEFT_SHIFT RIGHT_SHIFT
 %left PLUS MINUS
 %left STAR SLASH PERCENT MOD
-%right negation NOT TILDE reference dereference cast
+%right negation NOT TILDE reference dereference cast HASHTAG
 %left DOT OPEN_SQUARE_BRACKET OPEN_BRACKET
 
 /* %precedence array_type */
@@ -204,13 +202,13 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | exp VERTICAL_BAR exp { $$ = ptlang_ast_exp_bitwise_or_new($1, $3); }
    | exp CIRCUMFLEX exp { $$ = ptlang_ast_exp_bitwise_xor_new($1, $3); }
    | TILDE exp { $$ = ptlang_ast_exp_bitwise_inverse_new($2); }
+   | HASHTAG exp { $$ = ptlang_ast_exp_length_new($2); }
    | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3); }
    | IDENT { $$ = ptlang_ast_exp_variable_new($1); }
    | INT_VAL { $$ = ptlang_ast_exp_integer_new($1); }
    | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
    | IDENT OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3); }
    | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5); }
-   | ALLOC OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_exp_heap_array_from_length_new($5, $3); }
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
    | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
    | exp DOT IDENT { $$ = ptlang_ast_exp_struct_member_new($1, $3); }

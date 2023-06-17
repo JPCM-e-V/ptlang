@@ -80,13 +80,13 @@ ptlang_ast_exp ptlang_ast_exp_bitwise_and_new(ptlang_ast_exp left_value, ptlang_
 ptlang_ast_exp ptlang_ast_exp_bitwise_or_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_bitwise_xor_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value);
 ptlang_ast_exp ptlang_ast_exp_bitwise_inverse_new(ptlang_ast_exp value);
+ptlang_ast_exp ptlang_ast_exp_length_new(ptlang_ast_exp value);
 ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp_list parameters);
 ptlang_ast_exp ptlang_ast_exp_variable_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_integer_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_float_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list members);
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_list values);
-ptlang_ast_exp ptlang_ast_exp_heap_array_from_length_new(ptlang_ast_type type, ptlang_ast_exp length);
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value);
 ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name);
