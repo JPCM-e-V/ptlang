@@ -12,3 +12,12 @@ u8 c(){
 
 [9]u1 e(){
 }
+
+u64 len([]u8 a){
+    return #a;
+}
+
+[]u8 setlen([]u8 arr, u64 len){
+    #arr = len;
+    return arr;
+}
