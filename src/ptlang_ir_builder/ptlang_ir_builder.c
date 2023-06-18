@@ -214,7 +214,9 @@ static LLVMValueRef ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_buil
         if (heap_arr_ptr != NULL)
         {
             ptlang_ast_type array_type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
-            return LLVMBuildStructGEP2(ctx->builder, ptlang_ir_builder_type(array_type, ctx), heap_arr_ptr, 1, "heaparraylengthptr");
+            LLVMTypeRef array_llvm_type = ptlang_ir_builder_type(array_type, ctx);
+            ptlang_ast_type_destroy(array_type);
+            return LLVMBuildStructGEP2(ctx->builder, array_llvm_type, heap_arr_ptr, 1, "heaparraylengthptr");
         }
         return NULL;
     }
