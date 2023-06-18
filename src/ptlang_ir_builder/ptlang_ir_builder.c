@@ -720,55 +720,91 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
     {
-        LLVMValueRef ptr = ptlang_ir_builder_exp_ptr(exp->content.binary_operator.left_value, ctx);
         ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value, ctx);
         LLVMValueRef value = ptlang_ir_builder_exp_and_cast(exp->content.binary_operator.right_value, type, ctx);
         ptlang_ast_type_destroy(type);
 
-        if (exp->content.binary_operator.left_value->type == PTLANG_AST_EXP_LENGTH)
+        if (exp->content.binary_operator.left_value->type != PTLANG_AST_EXP_LENGTH)
+        {
+            LLVMValueRef ptr = ptlang_ir_builder_exp_ptr(exp->content.binary_operator.left_value, ctx);
+            LLVMBuildStore(ctx->builder, value, ptr);
+        }
+        else
         {
             ptlang_ir_builder_init_malloc_func(ctx);
             ptlang_ir_builder_init_realloc_func(ctx);
             ptlang_ir_builder_init_free_func(ctx);
 
-            LLVMValueRef orig_len = LLVMBuildLoad2(ctx->builder, LLVMIntPtrType(ctx->target_info), ptr, "loadlen");
-            LLVMValueRef cmplens = LLVMBuildICmp(ctx->builder, LLVMIntEQ, value, orig_len, "cmplens");
-
             LLVMBasicBlockRef reallocstart_block = LLVMAppendBasicBlock(ctx->function, "reallocstart");
+            LLVMBasicBlockRef reallocnewalloc_block = LLVMAppendBasicBlock(ctx->function, "reallocnewalloc");
+            LLVMBasicBlockRef reallocorignotzero_block = LLVMAppendBasicBlock(ctx->function, "reallocorignotzero");
+            LLVMBasicBlockRef reallocrealloc_block = LLVMAppendBasicBlock(ctx->function, "reallocrealloc");
+            LLVMBasicBlockRef reallocstorenew_block = LLVMAppendBasicBlock(ctx->function, "reallocstorenew");
+            LLVMBasicBlockRef reallocfree_block = LLVMAppendBasicBlock(ctx->function, "reallocfree");
             LLVMBasicBlockRef reallocend_block = LLVMAppendBasicBlock(ctx->function, "reallocend");
-            LLVMBuildCondBr(ctx->builder, cmplens, reallocend_block, reallocstart_block);
-
-            LLVMPositionBuilderAtEnd(ctx->builder, reallocstart_block);
 
             LLVMValueRef heap_arr_ptr = ptlang_ir_builder_exp_ptr(exp->content.binary_operator.left_value->content.unary_operator, ctx);
             ptlang_ast_type heap_arr_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.left_value->content.unary_operator, ctx);
-            LLVMValueRef heap_ptr_ptr = LLVMBuildStructGEP2(ctx->builder, ptlang_ir_builder_type(heap_arr_type, ctx), heap_arr_ptr, 0, "reallocheapptrptr");
+            LLVMTypeRef heap_arr_llvm_type = ptlang_ir_builder_type(heap_arr_type, ctx);
+            LLVMTypeRef heap_arr_element_type = ptlang_ir_builder_type(heap_arr_type->content.heap_array.type, ctx);
+            ptlang_ast_type_destroy(heap_arr_type);
+            LLVMValueRef heap_len_ptr = LLVMBuildStructGEP2(ctx->builder, heap_arr_llvm_type, heap_arr_ptr, 1, "reallocheaplenptr");
 
-            LLVMValueRef cmporiglenzero = LLVMBuildICmp(ctx->builder, LLVMIntEQ, orig_len, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "cmporiglenzero");
+            LLVMValueRef orig_len = LLVMBuildLoad2(ctx->builder, LLVMIntPtrType(ctx->target_info), heap_len_ptr, "loadlen");
 
-            LLVMBasicBlockRef reallocorignotzero_block = LLVMAppendBasicBlock(ctx->function, "reallocorignotzero");
-            LLVMBasicBlockRef reallocnewalloc_block = LLVMAppendBasicBlock(ctx->function, "reallocnewalloc");
+            LLVMValueRef cmplens = LLVMBuildICmp(ctx->builder, LLVMIntEQ, value, orig_len, "realloccmplens");
+            LLVMBuildCondBr(ctx->builder, cmplens, reallocend_block, reallocstart_block);
+
+            LLVMPositionBuilderAtEnd(ctx->builder, reallocstart_block);
+            LLVMValueRef heap_ptr_ptr = LLVMBuildStructGEP2(ctx->builder, heap_arr_llvm_type, heap_arr_ptr, 0, "reallocheapptrptr");
+
+            LLVMValueRef cmporiglenzero = LLVMBuildICmp(ctx->builder, LLVMIntEQ, orig_len, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "realloccmporiglenzero");
             LLVMBuildCondBr(ctx->builder, cmporiglenzero, reallocnewalloc_block, reallocorignotzero_block);
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocnewalloc_block);
 
             LLVMValueRef mallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMIntPtrType(ctx->target_info)}, 1, false), ctx->malloc_func, (LLVMValueRef[]){value}, 1, "malloc");
-            LLVMBuildStore(ctx->builder, mallocated, heap_ptr_ptr);
+            // LLVMBuildStore(ctx->builder, mallocated, heap_ptr_ptr);
+            LLVMBuildBr(ctx->builder, reallocstorenew_block);
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocorignotzero_block);
 
-            LLVMValueRef cmpnewlenzero = LLVMBuildICmp(ctx->builder, LLVMIntEQ, value, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "cmpnewlenzero");
+            LLVMValueRef heap_ptr = LLVMBuildLoad2(ctx->builder, LLVMPointerType(heap_arr_element_type, 0), heap_ptr_ptr, "reallocoldmemory");
+            LLVMValueRef heap_byte_ptr = LLVMBuildPointerCast(ctx->builder, heap_ptr, LLVMPointerType(LLVMInt8Type(), 0), "realloctobyteptr");
 
-            LLVMBasicBlockRef reallocrealloc_block = LLVMAppendBasicBlock(ctx->function, "reallocrealloc");
-            LLVMBasicBlockRef reallocfree_block = LLVMAppendBasicBlock(ctx->function, "reallocfree");
+            LLVMValueRef cmpnewlenzero = LLVMBuildICmp(ctx->builder, LLVMIntEQ, value, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "realloccmpnewlenzero");
             LLVMBuildCondBr(ctx->builder, cmpnewlenzero, reallocfree_block, reallocrealloc_block);
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocrealloc_block);
 
-            LLVMValueRef reallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0), LLVMIntPtrType(ctx->target_info)}, 2, false), ctx->realloc_func, (LLVMValueRef[]){}, 2, "realloc");
-        }
+            LLVMValueRef reallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0), LLVMIntPtrType(ctx->target_info)}, 2, false), ctx->realloc_func, (LLVMValueRef[]){heap_byte_ptr, value}, 2, "realloc");
+            LLVMBuildBr(ctx->builder, reallocstorenew_block);
 
-        LLVMBuildStore(ctx->builder, value, ptr);
+            LLVMPositionBuilderAtEnd(ctx->builder, reallocstorenew_block);
+            LLVMValueRef phi = LLVMBuildPhi(ctx->builder, LLVMPointerType(LLVMInt8Type(), 0), "reallocnewmemory");
+            LLVMAddIncoming(phi, (LLVMValueRef[]){mallocated, reallocated}, (LLVMBasicBlockRef[]){reallocnewalloc_block, reallocrealloc_block}, 2);
+
+            LLVMValueRef new_heap_ptr = LLVMBuildPointerCast(ctx->builder, phi, LLVMPointerType(heap_arr_element_type, 0), "reallocfrombyteptr");
+
+            LLVMBuildStore(ctx->builder, new_heap_ptr, heap_ptr_ptr);
+            LLVMBuildStore(ctx->builder, value, heap_len_ptr);
+            LLVMBuildBr(ctx->builder, reallocend_block);
+
+            LLVMPositionBuilderAtEnd(ctx->builder, reallocfree_block);
+
+            LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMVoidType(), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0)}, 1, false), ctx->free_func, (LLVMValueRef[]){heap_byte_ptr}, 1, "");
+
+            LLVMBuildStore(ctx->builder, LLVMConstStruct((LLVMValueRef[]){
+                                                             LLVMGetPoison(LLVMPointerType(heap_arr_element_type, 0)),
+                                                             LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false),
+                                                         },
+                                                         2, false),
+                           heap_arr_ptr);
+
+            LLVMBuildBr(ctx->builder, reallocend_block);
+
+            LLVMPositionBuilderAtEnd(ctx->builder, reallocend_block);
+        }
 
         return value;
     }
