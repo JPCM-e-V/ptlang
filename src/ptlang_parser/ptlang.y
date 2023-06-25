@@ -62,6 +62,7 @@
 %token CONTINUE
 %token TYPE_ALIAS
 %token STRUCT_DEF
+%token EXPORT
 %token LEFT_SHIFT
 %token RIGHT_SHIFT
 %token AND
@@ -128,8 +129,10 @@ struct_members: { $$ = ptlang_ast_decl_list_new(); }
 one_or_more_struct_members: non_const_decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
 
-func: type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6); }
-    | IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5); }
+func: type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
+    | IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5, false); }
+    | EXPORT type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
+    | EXPORT IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, NULL, $4, $6, true); }
 
 params: { $$ = ptlang_ast_decl_list_new(); }
       | one_or_more_params { $$ = $1; }

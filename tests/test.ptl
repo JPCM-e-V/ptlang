@@ -1,32 +1,35 @@
-a() {
+export a() {
+    c();
 }
 
-b() {
+export b() {
 }
 
 u8 c(){
 }
 
-[]u8 d(){
+export []u8 d(){
 }
 
-[9]u1 e(){
+export [9]u1 e(){
 }
 
-u64 len([]u8 a){
+export u64 len([]u8 a){
     return #a;
 }
 
-[]u8 setlen([]u8 arr, u64 len){
+export []u8 setlen([]u8 arr, u64 len){
     #arr = len;
     return arr;
 }
 
-u64 len20([]u20 a){
+export u64 len20([]u20 a){
     return #a;
 }
 
-[]u20 setlen20([]u20 arr, u64 len){
+export []u20 setlen20([]u20 arr, u64 len){
     #arr = len;
     return arr;
 }
+
+

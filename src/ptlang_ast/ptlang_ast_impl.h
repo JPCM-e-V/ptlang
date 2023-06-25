@@ -283,6 +283,7 @@ struct ptlang_ast_func_s
     ptlang_ast_type return_type;
     ptlang_ast_decl_list parameters;
     ptlang_ast_stmt stmt;
+    bool export;
 };
 
 void ptlang_ast_type_destroy_content(ptlang_ast_type type);

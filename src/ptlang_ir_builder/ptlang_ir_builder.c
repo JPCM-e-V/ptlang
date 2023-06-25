@@ -1940,6 +1940,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         LLVMTypeRef function_type = LLVMFunctionType(ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx), param_types, ast_module->functions[i]->parameters->count, false);
         free(param_types);
         functions[i] = LLVMAddFunction(llvm_module, ast_module->functions[i]->name, function_type);
+        LLVMSetLinkage(functions[i], ast_module->functions[i]->export ? LLVMExternalLinkage : LLVMInternalLinkage);
 
         if (ast_module->functions[i]->return_type != NULL)
         {
