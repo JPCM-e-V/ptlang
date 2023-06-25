@@ -21,3 +21,12 @@ u64 len([]u8 a){
     #arr = len;
     return arr;
 }
+
+u64 len20([]u20 a){
+    return #a;
+}
+
+[]u20 setlen20([]u20 arr, u64 len){
+    #arr = len;
+    return arr;
+}

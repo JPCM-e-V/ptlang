@@ -759,13 +759,14 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocstart_block);
             LLVMValueRef heap_ptr_ptr = LLVMBuildStructGEP2(ctx->builder, heap_arr_llvm_type, heap_arr_ptr, 0, "reallocheapptrptr");
+            LLVMValueRef size = LLVMBuildNUWMul(ctx->builder, value, LLVMSizeOf(heap_arr_element_type), "realloccalcsize");
 
             LLVMValueRef cmporiglenzero = LLVMBuildICmp(ctx->builder, LLVMIntEQ, orig_len, LLVMConstInt(LLVMIntPtrType(ctx->target_info), 0, false), "realloccmporiglenzero");
             LLVMBuildCondBr(ctx->builder, cmporiglenzero, reallocnewalloc_block, reallocorignotzero_block);
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocnewalloc_block);
 
-            LLVMValueRef mallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMIntPtrType(ctx->target_info)}, 1, false), ctx->malloc_func, (LLVMValueRef[]){value}, 1, "malloc");
+            LLVMValueRef mallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMIntPtrType(ctx->target_info)}, 1, false), ctx->malloc_func, (LLVMValueRef[]){size}, 1, "malloc");
             // LLVMBuildStore(ctx->builder, mallocated, heap_ptr_ptr);
             LLVMBuildBr(ctx->builder, reallocstorenew_block);
 
@@ -779,7 +780,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocrealloc_block);
 
-            LLVMValueRef reallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0), LLVMIntPtrType(ctx->target_info)}, 2, false), ctx->realloc_func, (LLVMValueRef[]){heap_byte_ptr, value}, 2, "realloc");
+            LLVMValueRef reallocated = LLVMBuildCall2(ctx->builder, LLVMFunctionType(LLVMPointerType(LLVMInt8Type(), 0), (LLVMTypeRef[]){LLVMPointerType(LLVMInt8Type(), 0), LLVMIntPtrType(ctx->target_info)}, 2, false), ctx->realloc_func, (LLVMValueRef[]){heap_byte_ptr, size}, 2, "realloc");
             LLVMBuildBr(ctx->builder, reallocstorenew_block);
 
             LLVMPositionBuilderAtEnd(ctx->builder, reallocstorenew_block);
