@@ -54,7 +54,7 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt)
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt, bool export)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
     *function = (struct ptlang_ast_func_s){
@@ -62,17 +62,19 @@ ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptl
         .return_type = return_type,
         .parameters = parameters,
         .stmt = stmt,
+        .export = export,
     };
     return function;
 }
 
-ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
+ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable, bool export)
 {
     ptlang_ast_decl declaration = malloc(sizeof(struct ptlang_ast_decl_s));
     *declaration = (struct ptlang_ast_decl_s){
         .type = type,
         .name = name,
         .writable = writable,
+        .export = export,
     };
     return declaration;
 }

@@ -33,9 +33,9 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def);
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type);
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt);
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt, bool export);
 
-ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable);
+ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable, bool export);
 
 ptlang_ast_decl_list ptlang_ast_decl_list_new(void);
 void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
