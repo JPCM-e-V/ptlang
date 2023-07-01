@@ -1600,7 +1600,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
     {
         ptlang_ast_type type;
         LLVMValueRef ptr = ptlang_ir_builder_scope_get(ctx->scope, stmt->content.decl->name, &type, NULL);
-        LLVMBuildStore(ctx->builder, ptlang_ir_builder_type_default_value(type, ctx), ptr);
+        LLVMBuildStore(ctx->builder, stmt->content.decl->init != NULL ? ptlang_ir_builder_exp(stmt->content.decl->init, ctx) : ptlang_ir_builder_type_default_value(type, ctx), ptr);
         break;
     }
     case PTLANG_AST_STMT_IF:
@@ -1961,7 +1961,9 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     for (uint64_t i = 0; i < ast_module->declaration_count; i++)
     {
-        LLVMSetInitializer(glob_decl_values[i], ptlang_ir_builder_type_default_value(ast_module->declarations[i]->type, &ctx));
+        LLVMSetInitializer(glob_decl_values[i], ast_module->declarations[i]->init != NULL
+                                                    ? ptlang_ir_builder_exp(ast_module->declarations[i]->init, &ctx)
+                                                    : ptlang_ir_builder_type_default_value(ast_module->declarations[i]->type, &ctx));
     }
     free(glob_decl_values);
 

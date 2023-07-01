@@ -67,17 +67,27 @@ ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptl
     return function;
 }
 
-ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable, bool export)
+ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
 {
     ptlang_ast_decl declaration = malloc(sizeof(struct ptlang_ast_decl_s));
     *declaration = (struct ptlang_ast_decl_s){
         .type = type,
         .name = name,
         .writable = writable,
-        .export = export,
+        .export = false,
+        .init = 0,
     };
     return declaration;
 }
+
+void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init){
+    decl->init = init;
+}
+
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export){
+    decl->export = export;
+}
+
 
 ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 {
@@ -751,6 +761,9 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
 void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
 {
     ptlang_ast_type_destroy(decl->type);
+    if(decl->init != NULL){
+        ptlang_ast_exp_destroy(decl->init);
+    }
     free(decl->name);
 
     free(decl);

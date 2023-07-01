@@ -34,9 +34,11 @@ struct ptlang_ast_module_s
 struct ptlang_ast_decl_s
 {
     ptlang_ast_type type;
+    ptlang_ast_exp init;
     char *name;
     bool writable;
     bool export;
+
 };
 
 struct ptlang_ast_decl_list_s

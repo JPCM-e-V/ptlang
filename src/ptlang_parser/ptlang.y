@@ -81,8 +81,8 @@
 %type <stmt> stmt block
 %type <module> module
 %type <func> func
-%type <exp> exp
-%type <decl> decl non_const_decl module_decl
+%type <exp> exp const_exp
+%type <decl> non_const_decl const_decl decl decl_statement module_decl_without_export module_decl
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
 %type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
@@ -138,17 +138,24 @@ params: { $$ = ptlang_ast_decl_list_new(); }
       | one_or_more_params { $$ = $1; }
       | one_or_more_params COMMA { $$ = $1; }
 
-one_or_more_params: decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
-                  | one_or_more_params COMMA decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
+one_or_more_params: non_const_decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
+                  | one_or_more_params COMMA non_const_decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
 
-non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true, false); }
+non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
 
-decl: non_const_decl {$$ = $1;}
-    | CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false, false); }
+const_decl: CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false);}
 
-module_decl: decl { $$ = $1; }
-           | EXPORT type IDENT { $$ = ptlang_ast_decl_new($2, $3, true, true); }
-           | EXPORT CONST type IDENT { $$ = ptlang_ast_decl_new($3, $4, false, true); }
+decl: non_const_decl { $$=$1; } 
+    | const_decl { $$=$1; }
+
+decl_statement: decl EQ exp { $$ = $1; ptlang_ast_decl_set_init($1, $3); }
+    | non_const_decl { $$ = $1; }
+
+module_decl_without_export: decl EQ const_exp { $$ = $1; ptlang_ast_decl_set_init($1, $3); }
+           | non_const_decl { $$ = $1; }
+
+module_decl: module_decl_without_export { $$ = $1; }
+           | EXPORT module_decl_without_export {$$ = $2; ptlang_ast_decl_set_export($$, true);}
 
 type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
     | FLOAT_TYPE { $$ = ptlang_ast_type_float($1); }
@@ -172,7 +179,7 @@ one_or_more_types: type { $$ = ptlang_ast_type_list_new(); ptlang_ast_type_list_
 
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }
-    | decl SEMICOLON { $$ = ptlang_ast_stmt_decl_new($1); }
+    | decl_statement SEMICOLON { $$ = ptlang_ast_stmt_decl_new($1); }
     | IF OPEN_BRACKET exp CLOSE_BRACKET stmt %prec single_if { $$ = ptlang_ast_stmt_if_new($3, $5); }
     | IF OPEN_BRACKET exp CLOSE_BRACKET stmt ELSE stmt { $$ = ptlang_ast_stmt_if_else_new($3, $5, $7); }
     | WHILE OPEN_BRACKET exp CLOSE_BRACKET stmt { $$ = ptlang_ast_stmt_while_new($3, $5); }
@@ -184,6 +191,11 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
 
 block: { $$ = ptlang_ast_stmt_block_new(); }
      | block stmt { $$ = $1; ptlang_ast_stmt_block_add_stmt($$, $2); }
+
+
+const_exp: INT_VAL { $$ = ptlang_ast_exp_integer_new($1); }
+         | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
+
 
 exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3); }
@@ -212,8 +224,6 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | HASHTAG exp { $$ = ptlang_ast_exp_length_new($2); }
    | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3); }
    | IDENT { $$ = ptlang_ast_exp_variable_new($1); }
-   | INT_VAL { $$ = ptlang_ast_exp_integer_new($1); }
-   | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
    | IDENT OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3); }
    | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5); }
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
@@ -223,6 +233,7 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | AMPERSAND exp %prec reference { $$ = ptlang_ast_exp_reference_new(true, $2); }
    | AMPERSAND CONST exp %prec reference { $$ = ptlang_ast_exp_reference_new(false, $3); }
    | STAR exp %prec dereference { $$ = ptlang_ast_exp_dereference_new($2); }
+   | const_exp { $$ = $1; }
    /* | DUMMY { $$ = NULL; } */
 
 exps: { $$ = ptlang_ast_exp_list_new(); }
