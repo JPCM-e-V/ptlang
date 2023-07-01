@@ -28,7 +28,7 @@ ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYL
 
     if (size > 1 << 23)
     {
-        const size_t max_msg_len = sizeof("Size of Integer must be below 8388608, but is XXXXXXX.");
+#define max_msg_len sizeof("Size of Integer must be below 8388608, but is XXXXXXX.")
         char msg[max_msg_len];
         snprintf(msg, max_msg_len, "Size of integer must be below 8388608, but is %u.", size);
         ptlang_yyerror(yylloc, msg);
