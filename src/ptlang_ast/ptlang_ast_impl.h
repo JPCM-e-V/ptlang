@@ -36,6 +36,7 @@ struct ptlang_ast_decl_s
     ptlang_ast_type type;
     char *name;
     bool writable;
+    bool export;
 };
 
 struct ptlang_ast_decl_list_s

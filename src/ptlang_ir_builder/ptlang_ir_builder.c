@@ -1921,6 +1921,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, &ctx);
         glob_decl_values[i] = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
         LLVMSetGlobalConstant(glob_decl_values[i], !ast_module->declarations[i]->writable);
+        LLVMSetLinkage(glob_decl_values[i], ast_module->declarations[i]->export ? LLVMExternalLinkage : LLVMInternalLinkage);
         ptlang_ir_builder_scope_add(&global_scope, ast_module->declarations[i]->name, glob_decl_values[i], ast_module->declarations[i]->type, false);
     }
 
