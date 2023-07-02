@@ -1,2 +1,2 @@
 Checks:          '-*,clang-analyzer-*,portability-*,performance-*'
-FormatStyle:     none
+FormatStyle:     file
