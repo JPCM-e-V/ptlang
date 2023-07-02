@@ -1,5 +1,5 @@
-#include "ptlang_parser.h"
 #include "ptlang_ir_builder.h"
+#include "ptlang_parser.h"
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
@@ -18,7 +18,8 @@ int main(void)
     LLVMTargetRef target;
     LLVMGetTargetFromTriple(triple, &target, NULL);
 
-    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
+        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
     // LLVMCreateTargetDataLayout
     LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
@@ -62,11 +63,11 @@ int main(void)
     printf("\n ============== end ==============\n\n");
 
 #ifdef WIN32
-#define ASM_FILE "t.asm"
-#define OBJ_FILE "t.obj"
+#    define ASM_FILE "t.asm"
+#    define OBJ_FILE "t.obj"
 #else
-#define ASM_FILE "t.S"
-#define OBJ_FILE "t.o"
+#    define ASM_FILE "t.S"
+#    define OBJ_FILE "t.o"
 #endif
 
     LLVMInitializeNativeAsmPrinter();
