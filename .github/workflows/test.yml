@@ -42,6 +42,10 @@ jobs:
             cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           fi
 
+    - name: clang-tidy
+      shell: bash
+      run: clang-tidy -p build $(find ./src -type f -name "*.c" ) --warnings-as-errors='*'
+
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{matrix.build-type}}
 
