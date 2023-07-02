@@ -39,14 +39,16 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def)
 {
     module->struct_def_count++;
-    module->struct_defs = realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
+    module->struct_defs =
+        realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
     module->struct_defs[module->struct_def_count - 1] = struct_def;
 }
 
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
 {
     module->type_alias_count++;
-    module->type_aliases = realloc(module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
+    module->type_aliases = realloc(module->type_aliases,
+                                   sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
     module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
         .name = name,
@@ -54,7 +56,8 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt, bool export)
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters,
+                                    ptlang_ast_stmt stmt, bool export)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
     *function = (struct ptlang_ast_func_s){
@@ -80,14 +83,9 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
     return declaration;
 }
 
-void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init){
-    decl->init = init;
-}
+void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init) { decl->init = init; }
 
-void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export){
-    decl->export = export;
-}
-
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->export = export; }
 
 ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 {
@@ -161,10 +159,11 @@ ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_INTEGER,
-        .content.integer = {
-            .is_signed = is_signed,
-            .size = size,
-        },
+        .content.integer =
+            {
+                .is_signed = is_signed,
+                .size = size,
+            },
     };
     return type;
 }
@@ -184,10 +183,11 @@ ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FUNCTION,
-        .content.function = {
-            .return_type = return_type,
-            .parameters = parameters,
-        },
+        .content.function =
+            {
+                .return_type = return_type,
+                .parameters = parameters,
+            },
     };
     return type;
 }
@@ -206,10 +206,11 @@ ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_ARRAY,
-        .content.array = {
-            .type = element_type,
-            .len = len,
-        },
+        .content.array =
+            {
+                .type = element_type,
+                .len = len,
+            },
     };
     return type;
 }
@@ -218,10 +219,11 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_REFERENCE,
-        .content.reference = {
-            .type = element_type,
-            .writable = writable,
-        },
+        .content.reference =
+            {
+                .type = element_type,
+                .writable = writable,
+            },
     };
     return type;
 }
@@ -236,29 +238,30 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
     return type;
 }
 
-#define BINARY_OP(lower, upper)                                                                        \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value) \
-    {                                                                                                  \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                  \
-        *exp = (struct ptlang_ast_exp_s){                                                              \
-            .type = PTLANG_AST_EXP_##upper,                                                            \
-            .content.binary_operator = {                                                               \
-                .left_value = left_value,                                                              \
-                .right_value = right_value,                                                            \
-            },                                                                                         \
-        };                                                                                             \
-        return exp;                                                                                    \
+#define BINARY_OP(lower, upper)                                                                              \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value)       \
+    {                                                                                                        \
+        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        *exp = (struct ptlang_ast_exp_s){                                                                    \
+            .type = PTLANG_AST_EXP_##upper,                                                                  \
+            .content.binary_operator =                                                                       \
+                {                                                                                            \
+                    .left_value = left_value,                                                                \
+                    .right_value = right_value,                                                              \
+                },                                                                                           \
+        };                                                                                                   \
+        return exp;                                                                                          \
     }
 
-#define UNARY_OP(lower, upper)                                        \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value) \
-    {                                                                 \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s)); \
-        *exp = (struct ptlang_ast_exp_s){                             \
-            .type = PTLANG_AST_EXP_##upper,                           \
-            .content.unary_operator = value,                          \
-        };                                                            \
-        return exp;                                                   \
+#define UNARY_OP(lower, upper)                                                                               \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value)                                        \
+    {                                                                                                        \
+        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        *exp = (struct ptlang_ast_exp_s){                                                                    \
+            .type = PTLANG_AST_EXP_##upper,                                                                  \
+            .content.unary_operator = value,                                                                 \
+        };                                                                                                   \
+        return exp;                                                                                          \
     }
 
 BINARY_OP(assignment, ASSIGNMENT)
@@ -291,22 +294,22 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_FUNCTION_CALL,
-        .content.function_call = {
-            .function = function,
-            .parameters = parameters,
-        },
+        .content.function_call =
+            {
+                .function = function,
+                .parameters = parameters,
+            },
     };
     return exp;
 }
 
-#define STR_REPR(lower, upper)                                            \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation) \
-    {                                                                     \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));     \
-        *exp = (struct ptlang_ast_exp_s){                                 \
-            .type = PTLANG_AST_EXP_##upper,                               \
-            .content.str_prepresentation = str_representation};           \
-        return exp;                                                       \
+#define STR_REPR(lower, upper)                                                                               \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation)                                    \
+    {                                                                                                        \
+        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        *exp = (struct ptlang_ast_exp_s){.type = PTLANG_AST_EXP_##upper,                                     \
+                                         .content.str_prepresentation = str_representation};                 \
+        return exp;                                                                                          \
     }
 
 STR_REPR(variable, VARIABLE)
@@ -318,10 +321,11 @@ ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list mem
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT,
-        .content.struct_ = {
-            .type = type,
-            .members = members,
-        },
+        .content.struct_ =
+            {
+                .type = type,
+                .members = members,
+            },
     };
     return exp;
 }
@@ -331,23 +335,28 @@ ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_lis
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY,
-        .content.array = {
-            .type = type,
-            .values = values,
-        },
+        .content.array =
+            {
+                .type = type,
+                .values = values,
+            },
     };
     return exp;
 }
 
-ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value)
+ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value,
+                                                   ptlang_ast_exp else_value)
 {
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_TERNARY,
-        .content.ternary_operator = {
-            .condition = condition,
-            .if_value = if_value,
-            .else_value = else_value}};
+        .content.ternary_operator =
+            {
+                .condition = condition,
+                .if_value = if_value,
+                .else_value = else_value,
+            },
+    };
     return exp;
 }
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value)
@@ -355,9 +364,12 @@ ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp valu
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_CAST,
-        .content.cast = {
-            .type = type,
-            .value = value}};
+        .content.cast =
+            {
+                .type = type,
+                .value = value,
+            },
+    };
     return exp;
 }
 
@@ -366,10 +378,11 @@ ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *me
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT_MEMBER,
-        .content.struct_member = {
-            .struct_ = struct_,
-            .member_name = member_name,
-        },
+        .content.struct_member =
+            {
+                .struct_ = struct_,
+                .member_name = member_name,
+            },
     };
     return exp;
 }
@@ -378,10 +391,11 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY_ELEMENT,
-        .content.array_element = {
-            .array = array,
-            .index = index,
-        },
+        .content.array_element =
+            {
+                .array = array,
+                .index = index,
+            },
     };
     return exp;
 }
@@ -391,10 +405,11 @@ ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_REFERENCE,
-        .content.reference = {
-            .writable = writable,
-            .value = value,
-        },
+        .content.reference =
+            {
+                .writable = writable,
+                .value = value,
+            },
     };
     return exp;
 }
@@ -406,9 +421,10 @@ ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BLOCK,
-        .content.block = {
-            .stmt_count = 0,
-        },
+        .content.block =
+            {
+                .stmt_count = 0,
+            },
     };
     return stmt;
 }
@@ -418,7 +434,8 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
     assert(block_stmt->type == PTLANG_AST_STMT_BLOCK);
 
     block_stmt->content.block.stmt_count++;
-    block_stmt->content.block.stmts = realloc(block_stmt->content.block.stmts, sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
+    block_stmt->content.block.stmts = realloc(block_stmt->content.block.stmts,
+                                              sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
     block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
@@ -426,7 +443,8 @@ ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_EXP,
-        .content.exp = exp};
+        .content.exp = exp,
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl)
@@ -434,7 +452,8 @@ ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_DECL,
-        .content.decl = decl};
+        .content.decl = decl,
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt)
@@ -442,19 +461,26 @@ ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF,
-        .content.control_flow = {
-            .condition = condition,
-            .stmt = if_stmt}};
+        .content.control_flow =
+            {
+                .condition = condition,
+                .stmt = if_stmt,
+            },
+    };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt, ptlang_ast_stmt else_stmt)
+ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
+                                            ptlang_ast_stmt else_stmt)
 {
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF_ELSE,
-        .content.control_flow2 = {
-            .condition = condition,
-            .stmt = {if_stmt, else_stmt}}};
+        .content.control_flow2 =
+            {
+                .condition = condition,
+                .stmt = {if_stmt, else_stmt},
+            },
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt loop_stmt)
@@ -462,9 +488,12 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_WHILE,
-        .content.control_flow = {
-            .condition = condition,
-            .stmt = loop_stmt}};
+        .content.control_flow =
+            {
+                .condition = condition,
+                .stmt = loop_stmt,
+            },
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
@@ -472,7 +501,8 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
-        .content.exp = return_value};
+        .content.exp = return_value,
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
@@ -480,7 +510,8 @@ ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
-        .content.exp = return_value};
+        .content.exp = return_value,
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
@@ -488,7 +519,8 @@ ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BREAK,
-        .content.nesting_level = nesting_level};
+        .content.nesting_level = nesting_level,
+    };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
@@ -496,7 +528,8 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
     ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_CONTINUE,
-        .content.nesting_level = nesting_level};
+        .content.nesting_level = nesting_level,
+    };
     return stmt;
 }
 
@@ -527,13 +560,15 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     case PTLANG_AST_TYPE_FLOAT:
         return ptlang_ast_type_float(type->content.float_size);
     case PTLANG_AST_TYPE_FUNCTION:
-        return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type), ptlang_ast_type_list_copy(type->content.function.parameters));
+        return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type),
+                                        ptlang_ast_type_list_copy(type->content.function.parameters));
     case PTLANG_AST_TYPE_HEAP_ARRAY:
         return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type));
     case PTLANG_AST_TYPE_ARRAY:
         return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len);
     case PTLANG_AST_TYPE_REFERENCE:
-        return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type), type->content.reference.writable);
+        return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type),
+                                         type->content.reference.writable);
     case PTLANG_AST_TYPE_NAMED:
     {
         size_t name_len = strlen(type->content.name) + 1;
@@ -761,7 +796,8 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
 void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
 {
     ptlang_ast_type_destroy(decl->type);
-    if(decl->init != NULL){
+    if (decl->init != NULL)
+    {
         ptlang_ast_exp_destroy(decl->init);
     }
     free(decl->name);

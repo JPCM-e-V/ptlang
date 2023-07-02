@@ -1,5 +1,5 @@
-#include "ptlang_parser.h"
 #include "ptlang_ir_builder.h"
+#include "ptlang_parser.h"
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
@@ -18,7 +18,8 @@ int main(void)
     LLVMTargetRef target;
     LLVMGetTargetFromTriple(triple, &target, NULL);
 
-    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
+        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
     // LLVMCreateTargetDataLayout
     LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
