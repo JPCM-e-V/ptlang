@@ -63,11 +63,11 @@ int main(void)
     printf("\n ============== end ==============\n\n");
 
 #ifdef WIN32
-#define ASM_FILE "t.asm"
-#define OBJ_FILE "t.obj"
+#    define ASM_FILE "t.asm"
+#    define OBJ_FILE "t.obj"
 #else
-#define ASM_FILE "t.S"
-#define OBJ_FILE "t.o"
+#    define ASM_FILE "t.S"
+#    define OBJ_FILE "t.o"
 #endif
 
     LLVMInitializeNativeAsmPrinter();

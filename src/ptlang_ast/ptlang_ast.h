@@ -1,8 +1,8 @@
 #ifndef PTLANG_AST_H
 #define PTLANG_AST_H
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 typedef struct ptlang_ast_type_s *ptlang_ast_type;
 typedef struct ptlang_ast_stmt_s *ptlang_ast_stmt;
@@ -33,12 +33,12 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def);
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type);
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters, ptlang_ast_stmt stmt, bool export);
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters,
+                                    ptlang_ast_stmt stmt, bool export);
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable);
 void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init);
 void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export);
-
 
 ptlang_ast_decl_list ptlang_ast_decl_list_new(void);
 void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
@@ -90,7 +90,8 @@ ptlang_ast_exp ptlang_ast_exp_integer_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_float_new(char *str_prepresentation);
 ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list members);
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_list values);
-ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value, ptlang_ast_exp else_value);
+ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value,
+                                                   ptlang_ast_exp else_value);
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value);
 ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name);
 ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index);
@@ -102,7 +103,8 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp);
 ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl);
 ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt stmt);
-ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt, ptlang_ast_stmt else_stmt);
+ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
+                                            ptlang_ast_stmt else_stmt);
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt stmt);
 ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value);
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value);
