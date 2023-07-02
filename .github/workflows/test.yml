@@ -47,7 +47,7 @@ jobs:
 
     - name: clang-tidy
       shell: bash
-      run: clang-tidy -p build $(find ./src -type f -name '*.c' ) --warnings-as-errors='*'
+      run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy -p build $(find ./src -type f -name '*.c' ) --warnings-as-errors='*'
 
     - name: Run
       shell: bash
