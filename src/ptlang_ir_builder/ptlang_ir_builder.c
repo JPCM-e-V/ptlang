@@ -82,7 +82,9 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
         }
         scope = scope->parent;
     }
-    return NULL;
+    // TODO
+    fprintf(stderr, "var not found\n");
+    exit(EXIT_FAILURE);
 }
 
 typedef struct ptlang_ir_builder_struct_def_s
@@ -1546,6 +1548,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         }
 
         LLVMValueRef array = LLVMConstArray(element_type, array_elements, unnamed_type->content.array.len);
+        free(array_elements);
         return array;
     }
     case PTLANG_AST_EXP_TERNARY:

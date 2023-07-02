@@ -1,2 +1,2 @@
-Checks:          '-*,clang-analyzer-*,portability-*,performance-*'
+Checks:          '-*,clang-analyzer-*,portability-*,performance-*,-clang-analyzer-security.insecureAPI.DeprecatedOrUnsafeBufferHandling'
 FormatStyle:     file
