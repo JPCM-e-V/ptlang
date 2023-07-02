@@ -1816,7 +1816,7 @@ typedef struct
 {
     char *key;
     ptlang_ir_builder_type_alias value;
-} *ptlang_ir_type_alias_table;
+} ptlang_ir_type_alias_table;
 
 static char **
 ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
@@ -1970,7 +1970,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     // Type aliases
 
-    ptlang_ir_type_alias_table alias_table = NULL;
+    ptlang_ir_type_alias_table *alias_table = NULL;
 
     // ptlang_ir_builder_type_alias primitive_alias = ;
 
