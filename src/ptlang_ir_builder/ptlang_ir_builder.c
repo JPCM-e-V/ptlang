@@ -121,6 +121,12 @@ static inline ptlang_ast_type ptlang_ir_builder_unname_type(ptlang_ast_type type
     return type;
 }
 
+struct break_and_continue_block
+{
+    LLVMBasicBlockRef break_;
+    LLVMBasicBlockRef continue_;
+};
+
 typedef struct ptlang_ir_builder_build_context_s
 {
     LLVMBuilderRef builder;
@@ -132,6 +138,7 @@ typedef struct ptlang_ir_builder_build_context_s
     ptlang_ir_builder_scope **scopes;
     LLVMValueRef return_ptr;
     LLVMBasicBlockRef return_block;
+    struct break_and_continue_block *break_and_continue_blocks;
     ptlang_ast_type return_type;
     ptlang_ir_builder_struct_def *struct_defs;
     LLVMTargetDataRef target_info;
@@ -1760,6 +1767,11 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         LLVMBasicBlockRef stmt_block = LLVMAppendBasicBlock(ctx->function, "while_block");
         LLVMBasicBlockRef endwhile_block = LLVMAppendBasicBlock(ctx->function, "endwhile");
 
+        arrpush(ctx->break_and_continue_blocks, ((struct break_and_continue_block){
+                                                    .break_ = endwhile_block,
+                                                    .continue_ = condition_block,
+                                                }));
+
         LLVMBuildBr(ctx->builder, condition_block);
 
         LLVMPositionBuilderAtEnd(ctx->builder, condition_block);
@@ -1770,6 +1782,8 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         LLVMPositionBuilderAtEnd(ctx->builder, stmt_block);
         ptlang_ir_builder_stmt(stmt->content.control_flow.stmt, ctx);
         LLVMBuildBr(ctx->builder, condition_block);
+
+        arrpop(ctx->break_and_continue_blocks);
 
         LLVMPositionBuilderAtEnd(ctx->builder, endwhile_block);
         break;
@@ -1797,7 +1811,16 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
                        ctx->return_ptr);
         break;
     case PTLANG_AST_STMT_BREAK:
+        LLVMBuildBr(ctx->builder, ctx->break_and_continue_blocks[arrlenu(ctx->break_and_continue_blocks) - 1 -
+                                                                 stmt->content.nesting_level]
+                                      .break_);
+        LLVMPositionBuilderAtEnd(ctx->builder, LLVMAppendBasicBlock(ctx->function, "impossible"));
+        break;
     case PTLANG_AST_STMT_CONTINUE:
+        LLVMBuildBr(ctx->builder, ctx->break_and_continue_blocks[arrlenu(ctx->break_and_continue_blocks) - 1 -
+                                                                 stmt->content.nesting_level]
+                                      .continue_);
+        LLVMPositionBuilderAtEnd(ctx->builder, LLVMAppendBasicBlock(ctx->function, "impossible"));
         break;
     default:
         break;
@@ -2236,6 +2259,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     ptlang_ir_builder_scope_destroy(&global_scope);
     shfree(ctx.type_scope);
+    arrfree(ctx.break_and_continue_blocks);
 
     // LLVMValueRef glob = LLVMAddGlobal(llvm_module, LLVMInt1Type(), "glob");
     // LLVMSetInitializer(glob, LLVMConstInt(LLVMInt1Type(), 0, false));

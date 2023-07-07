@@ -32,7 +32,18 @@ export []u20 setlen20([]u20 arr, u64 len){
     return arr;
 }
 
-
 export [4]u8 fff(){
     retval [4]u8[]{1,2,3};
+}
+
+export breakinfloop(){
+    while(1){
+        break;
+    }
+}
+
+export continueinfloop(){
+    while(1){
+        continue;
+    }
 }
