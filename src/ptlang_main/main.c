@@ -9,7 +9,6 @@ int main(void)
     ptlang_ast_module mod;
     ptlang_parser_parse(stdin, &mod);
 
-    // LLVMDumpModule(llvmmod);
 
     char *triple = LLVMGetDefaultTargetTriple();
 
@@ -24,6 +23,7 @@ int main(void)
     LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
 
     LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
+    LLVMDumpModule(llvmmod);
     LLVMDisposeTargetData(target_data_layout);
     char *error = NULL;
     LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
