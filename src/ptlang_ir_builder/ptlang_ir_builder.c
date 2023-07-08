@@ -1652,7 +1652,8 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         ptlang_ast_type type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
         LLVMTypeRef ret_type = ptlang_ir_builder_type(type->content.reference.type, ctx);
         ptlang_ast_type_destroy(type);
-        return LLVMBuildLoad2(ctx->builder, ret_type, ptlang_ir_builder_exp(exp->content.unary_operator, ctx), "dereference");
+        return LLVMBuildLoad2(ctx->builder, ret_type, ptlang_ir_builder_exp(exp->content.unary_operator, ctx),
+                              "dereference");
     }
     }
 }
@@ -1728,8 +1729,9 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         ptlang_ast_type type;
         LLVMValueRef ptr = ptlang_ir_builder_scope_get(ctx->scope, stmt->content.decl->name, &type, NULL);
         LLVMBuildStore(ctx->builder,
-                       stmt->content.decl->init != NULL ? ptlang_ir_builder_exp_and_cast(stmt->content.decl->init, type, ctx)
-                                                        : ptlang_ir_builder_type_default_value(type, ctx),
+                       stmt->content.decl->init != NULL
+                           ? ptlang_ir_builder_exp_and_cast(stmt->content.decl->init, type, ctx)
+                           : ptlang_ir_builder_type_default_value(type, ctx),
                        ptr);
         break;
     }
@@ -2155,7 +2157,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         LLVMSetInitializer(
             glob_decl_values[i],
             ast_module->declarations[i]->init != NULL
-                ? ptlang_ir_builder_exp_and_cast(ast_module->declarations[i]->init, ast_module->declarations[i]->type, &ctx)
+                ? ptlang_ir_builder_exp_and_cast(ast_module->declarations[i]->init,
+                                                 ast_module->declarations[i]->type, &ctx)
                 : ptlang_ir_builder_type_default_value(ast_module->declarations[i]->type, &ctx));
     }
     free(glob_decl_values);
