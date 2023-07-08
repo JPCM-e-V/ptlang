@@ -32,7 +32,18 @@ ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYL
 #define max_msg_len sizeof("Size of Integer must be below 8388608, but is XXXXXXX.")
         char msg[max_msg_len];
         snprintf(msg, max_msg_len, "Size of integer must be below 8388608, but is %u.", size);
+#undef max_msg_len
         ptlang_yyerror(yylloc, msg);
     }
     return ptlang_ast_type_integer(is_signed, size);
+}
+
+uint64_t ptlang_parser_strtouint64(char *str, const PTLANG_YYLTYPE *yylloc)
+{
+    uint64_t val = strtoull(str, NULL, 0);
+    if (errno == ERANGE)
+    {
+        ptlang_yyerror(yylloc, "Integer must be below 2^64.");
+    }
+    return val;
 }

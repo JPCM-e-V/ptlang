@@ -75,7 +75,8 @@
 ":"                                                                     { return COLON; }
 "#"                                                                     { return HASHTAG; }
 [ \t\n]                                                                 {}
-[0-9]+([sSuU][1-9][0-9]{0,6})?                                          { SAVE_STR; return INT_VAL; }
+[0-9]+([sSuU][1-9][0-9]{0,6})                                           { SAVE_STR; return INT_VAL; }
+[0-9]+                                                                  { SAVE_STR; return INT; }
 ([0-9]*\.[0-9]+|[0-9]+\.[0-9]*)([eE][-+]?[0-9]+)?([fF](16|32|64|128))?  { SAVE_STR; return FLOAT_VAL; }
 [sSuU][1-9][0-9]{0,6}                                                   { SAVE_STR; return INT_TYPE; }
 [fF]16                                                                  { SAVE_FLOAT_SIZE(16); return FLOAT_TYPE; }

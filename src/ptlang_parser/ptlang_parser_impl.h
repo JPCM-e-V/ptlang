@@ -1,9 +1,9 @@
 #ifndef PTLANG_PARSER_IMPL_H
 #define PTLANG_PARSER_IMPL_H
 
-#include "ptlang_parser.h"
-
 #include "parser.h"
+#include "ptlang_parser.h"
+#include <errno.h>
 
 #ifndef YYSTYPE
 #    define YYSTYPE PTLANG_YYSTYPE
@@ -24,6 +24,7 @@ void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, char const *s);
 
 // str: [sSuU][1-9][0-9]{0,6}
 ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYLTYPE *yylloc);
+uint64_t ptlang_parser_strtouint64(char *str, const PTLANG_YYLTYPE *yylloc);
 
 extern ptlang_ast_module *ptlang_parser_module_out;
 

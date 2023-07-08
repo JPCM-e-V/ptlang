@@ -1,3 +1,7 @@
+%code requires {
+    #include "ptlang_ast.h"
+}
+
 %{
     #include "ptlang_parser_impl.h"
 %}
@@ -43,6 +47,7 @@
 %token <str> INT_TYPE
 %token <float_size> FLOAT_TYPE
 %token <str> INT_VAL
+%token <str> INT
 %token <str> FLOAT_VAL
 %token OPEN_SQUARE_BRACKET
 %token CLOSE_SQUARE_BRACKET
@@ -77,6 +82,7 @@
 %token COLON
 %token HASHTAG
 
+%type <str> int_val
 %type <type> type
 %type <stmt> stmt block
 %type <module> module
@@ -161,7 +167,7 @@ type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
     | FLOAT_TYPE { $$ = ptlang_ast_type_float($1); }
     | OPEN_BRACKET types CLOSE_BRACKET COLON type { $$ = ptlang_ast_type_function($5, $2); }
     | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3); }
-    | OPEN_SQUARE_BRACKET INT_VAL CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, strtoul($2, NULL, 0)); free($2); } // TODO Overflow
+    | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2)); free($2); } // TODO Overflow
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false); }
     | IDENT { $$ = ptlang_ast_type_named($1); }
@@ -188,12 +194,14 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL); }
     | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(0); }
     | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(0); }
+    | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2)); }
+    | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2)); }
 
 block: { $$ = ptlang_ast_stmt_block_new(); }
      | block stmt { $$ = $1; ptlang_ast_stmt_block_add_stmt($$, $2); }
 
 
-const_exp: INT_VAL { $$ = ptlang_ast_exp_integer_new($1); }
+const_exp: int_val { $$ = ptlang_ast_exp_integer_new($1); }
          | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
 
 
@@ -249,4 +257,7 @@ members: { $$ = ptlang_ast_str_exp_list_new(); }
 
 one_or_more_members: IDENT exp { $$ = ptlang_ast_str_exp_list_new(); ptlang_ast_str_exp_list_add($$, $1, $2); }
                    | one_or_more_members COMMA IDENT exp { $$ = $1; ptlang_ast_str_exp_list_add($$, $3, $4); }
+
+int_val: INT { $$ = $1; }
+       | INT_VAL { $$ = $1; }
 %%

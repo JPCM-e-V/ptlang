@@ -60,6 +60,7 @@ set_property(TARGET ptlang_parser PROPERTY C_STANDARD 17)
 
 target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
+                           PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
 add_library(ptlang_ir_builder OBJECT
