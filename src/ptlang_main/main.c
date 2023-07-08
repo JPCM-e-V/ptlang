@@ -1,5 +1,6 @@
 #include "ptlang_ir_builder.h"
 #include "ptlang_parser.h"
+#include "ptlang_verify.h"
 
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
@@ -8,6 +9,7 @@ int main(void)
 {
     ptlang_ast_module mod;
     ptlang_parser_parse(stdin, &mod);
+    ptlang_verify_module(mod);
 
     char *triple = LLVMGetDefaultTargetTriple();
 

@@ -8,6 +8,7 @@ set(PTLANG_AST_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ast)
 set(PTLANG_PARSER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_parser)
 set(PTLANG_MAIN_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_main)
 set(PTLANG_IR_BUILDER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ir_builder)
+set(PTLANG_VERIFY_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_verify)
 
 set(PTLANG_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/third-party)
 set(PTLANG_STB_DIR ${PTLANG_THIRD_PARTY_DIR}/stb)
@@ -71,6 +72,13 @@ target_include_directories(ptlang_ir_builder
                            PUBLIC ${PTLANG_LLVM_INCLUDEDIR}
                            PUBLIC ${PTLANG_STB_DIR})
 
+add_library(ptlang_verify OBJECT
+                           ${PTLANG_VERIFY_SRC_DIR}/ptlang_verify.c)
+               
+target_include_directories(ptlang_verify
+                            PRIVATE ${PTLANG_AST_SRC_DIR}
+                            PUBLIC ${PTLANG_STB_DIR})
+
 # llvm_map_components_to_libnames(llvm_libs support core irreader)
 
 
@@ -89,9 +97,10 @@ target_include_directories(ptlang
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
+                           PRIVATE ${PTLANG_VERIFY_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
-target_link_libraries(ptlang ptlang_ast ptlang_parser ptlang_ir_builder)
+target_link_libraries(ptlang ptlang_ast ptlang_parser ptlang_ir_builder ptlang_verify)
 
 
 # get_cmake_property(_variableNames VARIABLES)
