@@ -9,7 +9,6 @@ int main(void)
     ptlang_ast_module mod;
     ptlang_parser_parse(stdin, &mod);
 
-
     char *triple = LLVMGetDefaultTargetTriple();
 
     LLVMInitializeNativeTarget();
