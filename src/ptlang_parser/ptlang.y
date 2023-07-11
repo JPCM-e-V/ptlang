@@ -4,6 +4,7 @@
 
 %{
     #include "ptlang_parser_impl.h"
+    #include "stb_ds.h"
 %}
 
 %define api.prefix {ptlang_yy}
@@ -17,10 +18,10 @@
     ptlang_ast_exp exp;
     ptlang_ast_decl decl;
     ptlang_ast_struct_def struct_def;
-    ptlang_ast_decl_list decl_list;
-    ptlang_ast_type_list type_list;
-    ptlang_ast_exp_list exp_list;
-    ptlang_ast_str_exp_list str_exp_list;
+    ptlang_ast_decl *decl_list;
+    ptlang_ast_type *type_list;
+    ptlang_ast_exp *exp_list;
+    ptlang_ast_struct_member_list struct_member_list;
     enum ptlang_ast_type_float_size float_size;
 }
 
@@ -92,7 +93,7 @@
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
 %type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
-%type <str_exp_list> members one_or_more_members
+%type <struct_member_list> members one_or_more_members
 
 %precedence single_if
 %precedence ELSE
@@ -128,24 +129,24 @@ module: { $$ = ptlang_ast_module_new(); }
         { $$ = $1; ptlang_ast_module_add_struct_def($$, ptlang_ast_struct_def_new($3, $5)); }
       | module TYPE_ALIAS IDENT type { $$ = $1; ptlang_ast_module_add_type_alias($$, $3, $4); }
 
-struct_members: { $$ = ptlang_ast_decl_list_new(); }
+struct_members: { $$ = NULL; }
       | one_or_more_struct_members { $$ = $1; }
       | one_or_more_struct_members COMMA { $$ = $1; }
 
-one_or_more_struct_members: non_const_decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
-      | one_or_more_struct_members COMMA non_const_decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
+one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
+      | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
 func: type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
     | IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5, false); }
     | EXPORT type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
     | EXPORT IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, NULL, $4, $6, true); }
 
-params: { $$ = ptlang_ast_decl_list_new(); }
+params: { $$ = NULL; }
       | one_or_more_params { $$ = $1; }
       | one_or_more_params COMMA { $$ = $1; }
 
-one_or_more_params: non_const_decl { $$ = ptlang_ast_decl_list_new(); ptlang_ast_decl_list_add($$, $1); }
-                  | one_or_more_params COMMA non_const_decl { $$ = $1; ptlang_ast_decl_list_add($$, $3); }
+one_or_more_params: non_const_decl { $$ = NULL; arrput($$, $1); }
+                  | one_or_more_params COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
 non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
 
@@ -173,12 +174,12 @@ type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
     | IDENT { $$ = ptlang_ast_type_named($1); }
     /* | DUMMY { $$ = NULL; } */
 
-types: { $$ = ptlang_ast_type_list_new(); }
+types: { $$ = NULL; }
     | one_or_more_types { $$ = $1; }
     | one_or_more_types COMMA { $$ = $1; }
 
-one_or_more_types: type { $$ = ptlang_ast_type_list_new(); ptlang_ast_type_list_add($$, $1); }
-                 | one_or_more_types COMMA type { $$ = $1; ptlang_ast_type_list_add($$, $3); }
+one_or_more_types: type { $$ = NULL; arrput($$, $1); }
+                 | one_or_more_types COMMA type { $$ = $1; arrput($$, $3); }
 
 
 // []f128
@@ -244,19 +245,19 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | const_exp { $$ = $1; }
    /* | DUMMY { $$ = NULL; } */
 
-exps: { $$ = ptlang_ast_exp_list_new(); }
+exps: { $$ = NULL; }
     | one_or_more_exps { $$ = $1; }
     | one_or_more_exps COMMA { $$ = $1; }
 
-one_or_more_exps: exp { $$ = ptlang_ast_exp_list_new(); ptlang_ast_exp_list_add($$, $1); }
-                | one_or_more_exps COMMA exp { $$ = $1; ptlang_ast_exp_list_add($$, $3); }
+one_or_more_exps: exp { $$ = NULL; arrput($$, $1); }
+                | one_or_more_exps COMMA exp { $$ = $1; arrput($$, $3); }
 
-members: { $$ = ptlang_ast_str_exp_list_new(); }
+members: { $$ = NULL; }
        | one_or_more_members { $$ = $1; }
        | one_or_more_members COMMA { $$ = $1; }
 
-one_or_more_members: IDENT exp { $$ = ptlang_ast_str_exp_list_new(); ptlang_ast_str_exp_list_add($$, $1, $2); }
-                   | one_or_more_members COMMA IDENT exp { $$ = $1; ptlang_ast_str_exp_list_add($$, $3, $4); }
+one_or_more_members: IDENT exp { $$ = NULL; ptlang_ast_struct_member_list_add(&$$, $1, $2); }
+                   | one_or_more_members COMMA IDENT exp { $$ = $1; ptlang_ast_struct_member_list_add(&$$, $3, $4); }
 
 int_val: INT { $$ = $1; }
        | INT_VAL { $$ = $1; }

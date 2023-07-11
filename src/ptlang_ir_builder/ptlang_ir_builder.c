@@ -90,7 +90,7 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
 typedef struct ptlang_ir_builder_struct_def_s
 {
     char *key;
-    ptlang_ast_decl_list value;
+    ptlang_ast_decl *value;
 } ptlang_ir_builder_struct_def;
 
 typedef struct ptlang_ir_builder_type_scope_entry_s
@@ -174,12 +174,12 @@ static LLVMValueRef ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_buil
         {
             ptlang_ast_type struct_type = ptlang_ir_builder_exp_type(exp->content.struct_member.struct_, ctx);
             LLVMTypeRef struct_type_llvm = ptlang_ir_builder_type(struct_type, ctx);
-            ptlang_ast_decl_list members = shget(ctx->struct_defs, struct_type->content.name);
+            ptlang_ast_decl *members = shget(ctx->struct_defs, struct_type->content.name);
             ptlang_ast_type_destroy(struct_type);
 
-            for (uint64_t i = 0; i < members->count; i++)
+            for (size_t i = 0; i < arrlenu(members); i++)
             {
-                if (strcmp(members->decls[i]->name, exp->content.struct_member.member_name) == 0)
+                if (strcmp(members[i]->name, exp->content.struct_member.member_name) == 0)
                 {
                     return LLVMBuildStructGEP2(ctx->builder, struct_type_llvm, struct_ptr, i, "structmember");
                 }
@@ -302,13 +302,13 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
             return LLVMFP128Type();
         }
     case PTLANG_AST_TYPE_FUNCTION:
-        param_types = malloc(sizeof(LLVMTypeRef) * type->content.function.parameters->count);
-        for (uint64_t i = 0; i < type->content.function.parameters->count; i++)
+        param_types = malloc(sizeof(LLVMTypeRef) * arrlenu(type->content.function.parameters));
+        for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
         {
-            param_types[i] = ptlang_ir_builder_type(type->content.function.parameters->types[i], ctx);
+            param_types[i] = ptlang_ir_builder_type(type->content.function.parameters[i], ctx);
         }
         function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, ctx),
-                                         param_types, type->content.function.parameters->count, false);
+                                         param_types, arrlenu(type->content.function.parameters), false);
         free(param_types);
         function_type = LLVMPointerType(function_type, 0);
         return function_type;
@@ -550,14 +550,14 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
         ptlang_ast_type struct_type = ptlang_ir_builder_exp_type(exp->content.struct_member.struct_, ctx);
-        ptlang_ast_decl_list members = shget(ctx->struct_defs, struct_type->content.name);
+        ptlang_ast_decl *members = shget(ctx->struct_defs, struct_type->content.name);
         ptlang_ast_type_destroy(struct_type);
 
-        for (uint64_t i = 0; i < members->count; i++)
+        for (size_t i = 0; i < arrlenu(members); i++)
         {
-            if (strcmp(members->decls[i]->name, exp->content.struct_member.member_name) == 0)
+            if (strcmp(members[i]->name, exp->content.struct_member.member_name) == 0)
             {
-                return ptlang_ir_builder_type_copy_and_unname(members->decls[i]->type, ctx);
+                return ptlang_ir_builder_type_copy_and_unname(members[i]->type, ctx);
             }
         }
 
@@ -629,13 +629,13 @@ static LLVMValueRef ptlang_ir_builder_type_default_value(ptlang_ast_type type,
         return NULL;
     case PTLANG_AST_TYPE_NAMED:
     {
-        ptlang_ast_decl_list members = shget(ctx->struct_defs, type->content.name);
-        LLVMValueRef *member_values = malloc(sizeof(LLVMValueRef) * members->count);
-        for (uint64_t i = 0; i < members->count; i++)
+        ptlang_ast_decl *members = shget(ctx->struct_defs, type->content.name);
+        LLVMValueRef *member_values = malloc(sizeof(LLVMValueRef) * arrlenu(members));
+        for (size_t i = 0; i < arrlenu(members); i++)
         {
-            member_values[i] = ptlang_ir_builder_type_default_value(members->decls[i]->type, ctx);
+            member_values[i] = ptlang_ir_builder_type_default_value(members[i]->type, ctx);
         }
-        LLVMValueRef struct_ = LLVMConstNamedStruct(llvm_type, member_values, members->count);
+        LLVMValueRef struct_ = LLVMConstNamedStruct(llvm_type, member_values, arrlenu(members));
         free(member_values);
         return struct_;
     }
@@ -1411,28 +1411,27 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     {
         ptlang_ast_type function_type = ptlang_ir_builder_exp_type(exp->content.function_call.function, ctx);
 
-        LLVMValueRef *args = malloc(sizeof(LLVMValueRef) * exp->content.function_call.parameters->count);
-        LLVMTypeRef *param_types = malloc(sizeof(LLVMTypeRef) * exp->content.function_call.parameters->count);
-        for (uint64_t i = 0; i < exp->content.function_call.parameters->count; i++)
+        LLVMValueRef *args = malloc(sizeof(LLVMValueRef) * arrlenu(exp->content.function_call.parameters));
+        LLVMTypeRef *param_types =
+            malloc(sizeof(LLVMTypeRef) * arrlenu(exp->content.function_call.parameters));
+        for (size_t i = 0; i < arrlenu(exp->content.function_call.parameters); i++)
         {
-            args[i] =
-                ptlang_ir_builder_exp_and_cast(exp->content.function_call.parameters->exps[i],
-                                               function_type->content.function.parameters->types[i], ctx);
+            args[i] = ptlang_ir_builder_exp_and_cast(exp->content.function_call.parameters[i],
+                                                     function_type->content.function.parameters[i], ctx);
 
-            param_types[i] =
-                ptlang_ir_builder_type(function_type->content.function.parameters->types[i], ctx);
+            param_types[i] = ptlang_ir_builder_type(function_type->content.function.parameters[i], ctx);
         }
 
         LLVMTypeRef type =
             LLVMFunctionType(ptlang_ir_builder_type(function_type->content.function.return_type, ctx),
-                             param_types, exp->content.function_call.parameters->count, false);
+                             param_types, arrlenu(exp->content.function_call.parameters), false);
         free(param_types);
 
         // LLVMTypeRef type = ptlang_ir_builder_type(function_type_unnamed, ctx);
 
         LLVMValueRef function_value = ptlang_ir_builder_exp(exp->content.function_call.function, ctx);
         LLVMValueRef ret_val = LLVMBuildCall2(ctx->builder, type, function_value, args,
-                                              exp->content.function_call.parameters->count, "funccall");
+                                              arrlenu(exp->content.function_call.parameters), "funccall");
         free(args);
         ptlang_ast_type_destroy(function_type);
         return ret_val;
@@ -1506,34 +1505,34 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
     case PTLANG_AST_EXP_STRUCT:
     {
         ptlang_ast_type type = ptlang_ir_builder_exp_type(exp, ctx);
-        ptlang_ast_decl_list members = shget(ctx->struct_defs, type->content.name);
+        ptlang_ast_decl *members = shget(ctx->struct_defs, type->content.name);
         LLVMTypeRef struct_type = ptlang_ir_builder_type(type, ctx);
         ptlang_ast_type_destroy(type);
 
-        LLVMValueRef *struct_members = malloc(sizeof(LLVMValueRef) * members->count);
-        for (uint64_t i = 0; i < members->count; i++)
+        LLVMValueRef *struct_members = malloc(sizeof(LLVMValueRef) * arrlenu(members));
+        for (size_t i = 0; i < arrlenu(members); i++)
         {
             LLVMValueRef member_val = NULL;
-            for (uint64_t j = 0; j < exp->content.struct_.members->count; j++)
+            for (size_t j = 0; j < arrlenu(exp->content.struct_.members); j++)
             {
-                if (strcmp(members->decls[i]->name, exp->content.struct_.members->str_exps[j].str) == 0)
+                if (strcmp(members[i]->name, exp->content.struct_.members[j].str) == 0)
                 {
-                    member_val = ptlang_ir_builder_exp_and_cast(exp->content.struct_.members->str_exps[j].exp,
-                                                                members->decls[i]->type, ctx);
+                    member_val = ptlang_ir_builder_exp_and_cast(exp->content.struct_.members[j].exp,
+                                                                members[i]->type, ctx);
                     break;
                 }
             }
 
             if (member_val == NULL)
             {
-                member_val = ptlang_ir_builder_type_default_value(members->decls[i]->type, ctx);
+                member_val = ptlang_ir_builder_type_default_value(members[i]->type, ctx);
                 // member_val = LLVMGetUndef(ptlang_ir_builder_type(members->decls[i]->type, ctx));
             }
 
             struct_members[i] = member_val;
         }
 
-        LLVMValueRef struct_ = LLVMConstNamedStruct(struct_type, struct_members, members->count);
+        LLVMValueRef struct_ = LLVMConstNamedStruct(struct_type, struct_members, arrlenu(members));
         free(struct_members);
         return struct_;
     }
@@ -1545,10 +1544,10 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         LLVMTypeRef element_type = ptlang_ir_builder_type(unnamed_type->content.array.type, ctx);
         LLVMValueRef *array_elements = malloc(sizeof(LLVMValueRef) * unnamed_type->content.array.len);
 
-        uint64_t i = 0;
-        for (; i < exp->content.array.values->count; i++)
+        size_t i = 0;
+        for (; i < arrlenu(exp->content.array.values); i++)
         {
-            array_elements[i] = ptlang_ir_builder_exp_and_cast(exp->content.array.values->exps[i],
+            array_elements[i] = ptlang_ir_builder_exp_and_cast(exp->content.array.values[i],
                                                                unnamed_type->content.array.type, ctx);
         }
         LLVMValueRef default_element_value =
@@ -1611,12 +1610,12 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
         else
         {
             ptlang_ast_type struct_type = ptlang_ir_builder_exp_type(exp->content.struct_member.struct_, ctx);
-            ptlang_ast_decl_list members = shget(ctx->struct_defs, struct_type->content.name);
+            ptlang_ast_decl *members = shget(ctx->struct_defs, struct_type->content.name);
             ptlang_ast_type_destroy(struct_type);
 
-            for (uint64_t i = 0; i < members->count; i++)
+            for (size_t i = 0; i < arrlenu(members); i++)
             {
-                if (strcmp(members->decls[i]->name, exp->content.struct_member.member_name) == 0)
+                if (strcmp(members[i]->name, exp->content.struct_member.member_name) == 0)
                 {
                     return LLVMBuildExtractValue(
                         ctx->builder, ptlang_ir_builder_exp(exp->content.struct_member.struct_, ctx), i,
@@ -1884,10 +1883,10 @@ ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type 
     case PTLANG_AST_TYPE_FUNCTION:
         referenced_types = ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
             ast_type->content.function.return_type, type_scope);
-        for (uint64_t i = 0; i < ast_type->content.function.parameters->count; i++)
+        for (size_t i = 0; i < arrlenu(ast_type->content.function.parameters); i++)
         {
             char **param_referenced_types = ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
-                ast_type->content.function.parameters->types[i], type_scope);
+                ast_type->content.function.parameters[i], type_scope);
             for (size_t j = 0; j < arrlenu(param_referenced_types); j++)
             {
                 arrput(referenced_types, param_referenced_types[j]);
@@ -2088,12 +2087,12 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     for (uint64_t i = 0; i < ast_module->struct_def_count; i++)
     {
-        LLVMTypeRef *elements = malloc(sizeof(LLVMTypeRef) * ast_module->struct_defs[i]->members->count);
-        for (uint64_t j = 0; j < ast_module->struct_defs[i]->members->count; j++)
+        LLVMTypeRef *elements = malloc(sizeof(LLVMTypeRef) * arrlenu(ast_module->struct_defs[i]->members));
+        for (size_t j = 0; j < arrlenu(ast_module->struct_defs[i]->members); j++)
         {
-            elements[j] = ptlang_ir_builder_type(ast_module->struct_defs[i]->members->decls[j]->type, &ctx);
+            elements[j] = ptlang_ir_builder_type(ast_module->struct_defs[i]->members[j]->type, &ctx);
         }
-        LLVMStructSetBody(structs[i], elements, ast_module->struct_defs[i]->members->count, false);
+        LLVMStructSetBody(structs[i], elements, arrlenu(ast_module->struct_defs[i]->members), false);
         free(elements);
     }
     free(structs);
@@ -2114,20 +2113,19 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
     ptlang_ast_type *function_types = malloc(sizeof(ptlang_ast_type) * ast_module->function_count);
     for (uint64_t i = 0; i < ast_module->function_count; i++)
     {
-        ptlang_ast_type_list param_type_list = ptlang_ast_type_list_new();
+        ptlang_ast_type *param_type_list = NULL;
 
-        LLVMTypeRef *param_types = malloc(sizeof(LLVMTypeRef) * ast_module->functions[i]->parameters->count);
-        for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
+        LLVMTypeRef *param_types =
+            malloc(sizeof(LLVMTypeRef) * arrlenu(ast_module->functions[i]->parameters));
+        for (size_t j = 0; j < arrlenu(ast_module->functions[i]->parameters); j++)
         {
-            ptlang_ast_type_list_add(
-                param_type_list, ptlang_ast_type_copy(ast_module->functions[i]->parameters->decls[j]->type));
+            arrput(param_type_list, ptlang_ast_type_copy(ast_module->functions[i]->parameters[j]->type));
 
-            param_types[j] =
-                ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, &ctx);
+            param_types[j] = ptlang_ir_builder_type(ast_module->functions[i]->parameters[j]->type, &ctx);
         }
         LLVMTypeRef function_type =
             LLVMFunctionType(ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx), param_types,
-                             ast_module->functions[i]->parameters->count, false);
+                             arrlenu(ast_module->functions[i]->parameters), false);
         free(param_types);
         functions[i] = LLVMAddFunction(llvm_module, ast_module->functions[i]->name, function_type);
         LLVMSetLinkage(functions[i],
@@ -2139,10 +2137,10 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
                                                   LLVMAttributeReturnIndex, &ctx);
         }
 
-        for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
+        for (size_t j = 0; j < arrlenu(ast_module->functions[i]->parameters); j++)
         {
-            ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->parameters->decls[j]->type,
-                                                  functions[i], j + 1, &ctx);
+            ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->parameters[j]->type, functions[i],
+                                                  j + 1, &ctx);
         }
 
         function_types[i] = ptlang_ast_type_function(
@@ -2185,16 +2183,15 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
                 ctx.builder, ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx), "return");
         }
 
-        LLVMValueRef *param_ptrs = malloc(sizeof(LLVMValueRef) * ast_module->functions[i]->parameters->count);
-        for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
+        LLVMValueRef *param_ptrs =
+            malloc(sizeof(LLVMValueRef) * arrlenu(ast_module->functions[i]->parameters));
+        for (size_t j = 0; j < arrlenu(ast_module->functions[i]->parameters); j++)
         {
             param_ptrs[j] = LLVMBuildAlloca(
-                ctx.builder,
-                ptlang_ir_builder_type(ast_module->functions[i]->parameters->decls[j]->type, &ctx),
-                ast_module->functions[i]->parameters->decls[j]->name);
-            ptlang_ir_builder_scope_add(&function_scope, ast_module->functions[i]->parameters->decls[j]->name,
-                                        param_ptrs[j], ast_module->functions[i]->parameters->decls[j]->type,
-                                        false);
+                ctx.builder, ptlang_ir_builder_type(ast_module->functions[i]->parameters[j]->type, &ctx),
+                ast_module->functions[i]->parameters[j]->name);
+            ptlang_ir_builder_scope_add(&function_scope, ast_module->functions[i]->parameters[j]->name,
+                                        param_ptrs[j], ast_module->functions[i]->parameters[j]->type, false);
         }
 
         // ptlang_ir_builder_build_context ctx = {
@@ -2222,7 +2219,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
                            ctx.return_ptr);
         }
 
-        for (uint64_t j = 0; j < ast_module->functions[i]->parameters->count; j++)
+        for (size_t j = 0; j < arrlenu(ast_module->functions[i]->parameters); j++)
         {
             LLVMBuildStore(ctx.builder, LLVMGetParam(functions[i], j), param_ptrs[j]);
         }

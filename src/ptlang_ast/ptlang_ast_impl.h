@@ -3,6 +3,8 @@
 
 #include "ptlang_ast.h"
 
+#include "stb_ds.h"
+
 #include <assert.h>
 #include <stdlib.h>
 #include <string.h>
@@ -10,7 +12,7 @@
 struct ptlang_ast_struct_def_s
 {
     char *name;
-    ptlang_ast_decl_list members;
+    ptlang_ast_decl *members;
 };
 
 struct ptlang_ast_module_type_alias_s
@@ -40,35 +42,36 @@ struct ptlang_ast_decl_s
     bool export;
 };
 
-struct ptlang_ast_decl_list_s
-{
-    uint64_t count;
-    ptlang_ast_decl *decls;
-};
+// struct ptlang_ast_decl_list_s
+// {
+//     uint64_t count;
+//     ptlang_ast_decl *decls;
+// };
 
-struct ptlang_ast_type_list_s
-{
-    uint64_t count;
-    ptlang_ast_type *types;
-};
+// struct ptlang_ast_type_list_s
+// {
+//     uint64_t count;
+//     ptlang_ast_type *types;
+// };
 
-struct ptlang_ast_exp_list_s
-{
-    uint64_t count;
-    ptlang_ast_exp *exps;
-};
+// struct ptlang_ast_exp_list_s
+// {
+//     uint64_t count;
+//     ptlang_ast_exp *exps;
+// }
+// ;
 
-struct ptlang_ast_str_exp_s
+struct ptlang_ast_struct_member_s
 {
     char *str;
     ptlang_ast_exp exp;
 };
 
-struct ptlang_ast_str_exp_list_s
-{
-    uint64_t count;
-    struct ptlang_ast_str_exp_s *str_exps;
-};
+// struct ptlang_ast_str_exp_list_s
+// {
+//     uint64_t count;
+//     struct ptlang_ast_str_exp_s *str_exps;
+// };
 
 struct ptlang_ast_stmt_block_s
 {
@@ -123,7 +126,7 @@ struct ptlang_ast_exp_binary_operator_s
 struct ptlang_ast_exp_function_call_s
 {
     ptlang_ast_exp function;
-    ptlang_ast_exp_list parameters;
+    ptlang_ast_exp *parameters;
 };
 
 struct ptlang_ast_exp_ternary_operator_s
@@ -142,13 +145,13 @@ struct ptlang_ast_exp_cast_s
 struct ptlang_ast_exp_struct_s
 {
     char *type;
-    ptlang_ast_str_exp_list members;
+    ptlang_ast_struct_member_list members;
 };
 
 struct ptlang_ast_exp_array_s
 {
     ptlang_ast_type type;
-    ptlang_ast_exp_list values;
+    ptlang_ast_exp *values;
 };
 
 struct ptlang_ast_exp_struct_member_s
@@ -235,7 +238,7 @@ struct ptlang_ast_type_integer_s
 struct ptlang_ast_type_function_s
 {
     ptlang_ast_type return_type;
-    ptlang_ast_type_list parameters;
+    ptlang_ast_type *parameters;
 };
 
 struct ptlang_ast_type_heap_array_s
@@ -283,7 +286,7 @@ struct ptlang_ast_func_s
 {
     char *name;
     ptlang_ast_type return_type;
-    ptlang_ast_decl_list parameters;
+    ptlang_ast_decl *parameters;
     ptlang_ast_stmt stmt;
     bool export;
 };

@@ -19,6 +19,9 @@ add_library(ptlang_ast OBJECT
 
 set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
+target_include_directories(ptlang_ast
+                           PUBLIC ${PTLANG_STB_DIR})
+
 find_package(BISON 3.7.4 REQUIRED)
 find_package(FLEX 2.6.4 REQUIRED)
 find_package(LLVM REQUIRED CONFIG)
@@ -62,6 +65,7 @@ set_property(TARGET ptlang_parser PROPERTY C_STANDARD 17)
 target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
+                           PUBLIC ${PTLANG_STB_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
 add_library(ptlang_ir_builder OBJECT

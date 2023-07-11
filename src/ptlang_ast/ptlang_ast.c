@@ -1,6 +1,6 @@
 #include "ptlang_ast_impl.h"
 
-ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl_list members)
+ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl *members)
 {
     ptlang_ast_struct_def struct_def = malloc(sizeof(struct ptlang_ast_struct_def_s));
     *struct_def = (struct ptlang_ast_struct_def_s){
@@ -56,7 +56,7 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl_list parameters,
+ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl *parameters,
                                     ptlang_ast_stmt stmt, bool export)
 {
     ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
@@ -87,71 +87,79 @@ void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init) { decl-
 
 void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->export = export; }
 
-ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
-{
-    ptlang_ast_decl_list decl_list = malloc(sizeof(struct ptlang_ast_decl_list_s));
-    *decl_list = (struct ptlang_ast_decl_list_s){
-        .count = 0,
-    };
-    return decl_list;
-}
+// ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
+// {
+//     ptlang_ast_decl_list decl_list = malloc(sizeof(struct ptlang_ast_decl_list_s));
+//     *decl_list = (struct ptlang_ast_decl_list_s){
+//         .count = 0,
+//     };
+//     return decl_list;
+// }
 
-void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
-{
-    list->count++;
-    list->decls = realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
-    list->decls[list->count - 1] = decl;
-}
+// void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
+// {
+//     list->count++;
+//     list->decls = realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
+//     list->decls[list->count - 1] = decl;
+// }
 
-ptlang_ast_type_list ptlang_ast_type_list_new(void)
-{
-    ptlang_ast_type_list type_list = malloc(sizeof(struct ptlang_ast_type_list_s));
-    *type_list = (struct ptlang_ast_type_list_s){
-        .count = 0,
-    };
-    return type_list;
-}
+// ptlang_ast_type_list ptlang_ast_type_list_new(void)
+// {
+//     ptlang_ast_type_list type_list = malloc(sizeof(struct ptlang_ast_type_list_s));
+//     *type_list = (struct ptlang_ast_type_list_s){
+//         .count = 0,
+//     };
+//     return type_list;
+// }
 
-void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
-{
-    list->count++;
-    list->types = realloc(list->types, sizeof(ptlang_ast_type) * list->count);
-    list->types[list->count - 1] = type;
-}
+// void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
+// {
+//     list->count++;
+//     list->types = realloc(list->types, sizeof(ptlang_ast_type) * list->count);
+//     list->types[list->count - 1] = type;
+// }
 
-ptlang_ast_exp_list ptlang_ast_exp_list_new(void)
-{
-    ptlang_ast_exp_list exp_list = malloc(sizeof(struct ptlang_ast_exp_list_s));
-    *exp_list = (struct ptlang_ast_exp_list_s){
-        .count = 0,
-    };
-    return exp_list;
-}
+// ptlang_ast_exp_list ptlang_ast_exp_list_new(void)
+// {
+//     ptlang_ast_exp_list exp_list = malloc(sizeof(struct ptlang_ast_exp_list_s));
+//     *exp_list = (struct ptlang_ast_exp_list_s){
+//         .count = 0,
+//     };
+//     return exp_list;
+// }
 
-void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
-{
-    list->count++;
-    list->exps = realloc(list->exps, sizeof(ptlang_ast_exp) * list->count);
-    list->exps[list->count - 1] = exp;
-}
+// void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
+// {
+//     list->count++;
+//     list->exps = realloc(list->exps, sizeof(ptlang_ast_exp) * list->count);
+//     list->exps[list->count - 1] = exp;
+// }
 
-ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new(void)
-{
-    ptlang_ast_str_exp_list str_exp_list = malloc(sizeof(struct ptlang_ast_str_exp_list_s));
-    *str_exp_list = (struct ptlang_ast_str_exp_list_s){
-        .count = 0,
-    };
-    return str_exp_list;
-}
+// ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new(void)
+// {
+//     ptlang_ast_str_exp_list str_exp_list = malloc(sizeof(struct ptlang_ast_str_exp_list_s));
+//     *str_exp_list = (struct ptlang_ast_str_exp_list_s){
+//         .count = 0,
+//     };
+//     return str_exp_list;
+// }
 
-void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang_ast_exp exp)
+// void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang_ast_exp exp)
+// {
+//     list->count++;
+//     list->str_exps = realloc(list->str_exps, sizeof(struct ptlang_ast_str_exp_s) * list->count);
+//     list->str_exps[list->count - 1] = (struct ptlang_ast_str_exp_s){
+//         .str = str,
+//         .exp = exp,
+//     };
+// }
+
+void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, char *str, ptlang_ast_exp exp)
 {
-    list->count++;
-    list->str_exps = realloc(list->str_exps, sizeof(struct ptlang_ast_str_exp_s) * list->count);
-    list->str_exps[list->count - 1] = (struct ptlang_ast_str_exp_s){
-        .str = str,
-        .exp = exp,
-    };
+    arrput(*list, ((struct ptlang_ast_struct_member_s){
+                      .str = str,
+                      .exp = exp,
+                  }));
 }
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
@@ -178,7 +186,7 @@ ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size)
     return type;
 }
 
-ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type_list parameters)
+ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters)
 {
     ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
@@ -289,7 +297,7 @@ BINARY_OP(bitwise_xor, BITWISE_XOR)
 UNARY_OP(bitwise_inverse, BITWISE_INVERSE)
 UNARY_OP(length, LENGTH)
 
-ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp_list parameters)
+ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp *parameters)
 {
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -316,7 +324,7 @@ STR_REPR(variable, VARIABLE)
 STR_REPR(integer, INTEGER)
 STR_REPR(float, FLOAT)
 
-ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list members)
+ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_struct_member_list members)
 {
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -330,7 +338,7 @@ ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_str_exp_list mem
     return exp;
 }
 
-ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp_list values)
+ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *values)
 {
     ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -533,16 +541,14 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
     return stmt;
 }
 
-ptlang_ast_type_list ptlang_ast_type_list_copy(ptlang_ast_type_list type_list)
+ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list)
 {
-    ptlang_ast_type_list copy = malloc(sizeof(struct ptlang_ast_type_list_s));
-    *copy = (struct ptlang_ast_type_list_s){
-        .count = type_list->count,
-    };
-    copy->types = realloc(copy->types, sizeof(ptlang_ast_type) * copy->count);
-    for (uint64_t i = 0; i < type_list->count; i++)
+    ptlang_ast_type *copy = NULL;
+    size_t type_list_len = arrlenu(type_list);
+    arrsetlen(copy, type_list_len);
+    for (size_t i = 0; i < type_list_len; i++)
     {
-        copy->types[i] = ptlang_ast_type_copy(type_list->types[i]);
+        copy[i] = ptlang_ast_type_copy(type_list[i]);
     }
     return copy;
 }
@@ -762,7 +768,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         break;
     case PTLANG_AST_EXP_STRUCT:
         free(exp->content.struct_.type);
-        ptlang_ast_str_exp_list_destroy(exp->content.struct_.members);
+        ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
         ptlang_ast_type_destroy(exp->content.array.type);
@@ -813,42 +819,40 @@ void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
     free(struct_def);
 }
 
-void ptlang_ast_decl_list_destroy(ptlang_ast_decl_list decl_list)
+void ptlang_ast_decl_list_destroy(ptlang_ast_decl *decl_list)
 {
-    for (uint64_t i = 0; i < decl_list->count; i++)
+    for (size_t i = 0; i < arrlenu(decl_list); i++)
     {
-        ptlang_ast_decl_destroy(decl_list->decls[i]);
+        ptlang_ast_decl_destroy(decl_list[i]);
     }
-    free(decl_list->decls);
-    free(decl_list);
-}
-void ptlang_ast_type_list_destroy(ptlang_ast_type_list type_list)
-{
-    for (uint64_t i = 0; i < type_list->count; i++)
-    {
-        ptlang_ast_type_destroy(type_list->types[i]);
-    }
-    free(type_list->types);
-    free(type_list);
+    arrfree(decl_list);
 }
 
-void ptlang_ast_exp_list_destroy(ptlang_ast_exp_list exp_list)
+void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list)
 {
-    for (uint64_t i = 0; i < exp_list->count; i++)
+
+    for (size_t i = 0; i < arrlenu(type_list); i++)
     {
-        ptlang_ast_exp_destroy(exp_list->exps[i]);
+        ptlang_ast_type_destroy(type_list[i]);
     }
-    free(exp_list->exps);
-    free(exp_list);
+    arrfree(type_list);
 }
 
-void ptlang_ast_str_exp_list_destroy(ptlang_ast_str_exp_list str_exp_list)
+void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list)
 {
-    for (uint64_t i = 0; i < str_exp_list->count; i++)
+    for (size_t i = 0; i < arrlenu(exp_list); i++)
     {
-        free(str_exp_list->str_exps[i].str);
-        ptlang_ast_exp_destroy(str_exp_list->str_exps[i].exp);
+        ptlang_ast_exp_destroy(exp_list[i]);
     }
-    free(str_exp_list->str_exps);
-    free(str_exp_list);
+    arrfree(exp_list);
+}
+
+void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list)
+{
+    for (size_t i = 0; i < arrlenu(member_list); i++)
+    {
+        free(member_list[i].str);
+        ptlang_ast_exp_destroy(member_list[i].exp);
+    }
+    arrfree(member_list);
 }
