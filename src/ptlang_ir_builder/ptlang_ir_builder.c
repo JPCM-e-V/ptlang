@@ -45,13 +45,17 @@ static inline void ptlang_ir_builder_new_scope(ptlang_ir_builder_scope *parent, 
     };
 }
 
-static inline void ptlang_ir_builder_scope_destroy(ptlang_ir_builder_scope *scope) { ptlang_free(scope->entries); }
+static inline void ptlang_ir_builder_scope_destroy(ptlang_ir_builder_scope *scope)
+{
+    ptlang_free(scope->entries);
+}
 
 static inline void ptlang_ir_builder_scope_add(ptlang_ir_builder_scope *scope, char *name, LLVMValueRef value,
                                                ptlang_ast_type type, bool direct)
 {
     scope->entry_count++;
-    scope->entries = ptlang_realloc(scope->entries, sizeof(ptlang_ir_builder_scope_entry) * scope->entry_count);
+    scope->entries =
+        ptlang_realloc(scope->entries, sizeof(ptlang_ir_builder_scope_entry) * scope->entry_count);
     scope->entries[scope->entry_count - 1] = (ptlang_ir_builder_scope_entry){
         .name = name,
         .value = value,
@@ -109,7 +113,7 @@ static inline ptlang_ast_type ptlang_ir_builder_unname_type(ptlang_ast_type type
                                                             ptlang_ir_builder_type_scope *type_scope)
 {
     ptlang_ast_type new_type;
-    while (type->type == PTLANG_AST_TYPE_NAMED)
+    while (type != NULL && type->type == PTLANG_AST_TYPE_NAMED)
     {
         new_type = shget(type_scope, type->content.name).ptlang_type;
         if (new_type == NULL)
