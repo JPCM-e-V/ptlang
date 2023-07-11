@@ -14,47 +14,54 @@ ptlang_ast_module ptlang_ast_module_new(void)
 {
     ptlang_ast_module module = ptlang_malloc(sizeof(struct ptlang_ast_module_s));
     *module = (struct ptlang_ast_module_s){
-        .function_count = 0,
-        .declaration_count = 0,
-        .struct_def_count = 0,
-        .type_alias_count = 0,
+        .functions = NULL,
+        .declarations = NULL,
+        .struct_defs = NULL,
+        .type_aliases = NULL,
     };
     return module;
 }
 
 void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function)
 {
-    module->function_count++;
-    module->functions = ptlang_realloc(module->functions, sizeof(ptlang_ast_func) * module->function_count);
-    module->functions[module->function_count - 1] = function;
+    arrput(module->functions, function);
+    // module->function_count++;
+    // module->functions = ptlang_realloc(module->functions, sizeof(ptlang_ast_func) *
+    // module->function_count); module->functions[module->function_count - 1] = function;
 }
 
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration)
 {
-    module->declaration_count++;
-    module->declarations =
-        ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
-    module->declarations[module->declaration_count - 1] = declaration;
+    arrput(module->declarations, declaration);
+    // module->declaration_count++;
+    // module->declarations =
+    //     ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
+    // module->declarations[module->declaration_count - 1] = declaration;
 }
 
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def)
 {
-    module->struct_def_count++;
-    module->struct_defs =
-        ptlang_realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
-    module->struct_defs[module->struct_def_count - 1] = struct_def;
+    arrput(module->struct_defs, struct_def);
+    // module->struct_def_count++;
+    // module->struct_defs =
+    //     ptlang_realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
+    // module->struct_defs[module->struct_def_count - 1] = struct_def;
 }
 
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
 {
-    module->type_alias_count++;
-    module->type_aliases = ptlang_realloc(
-        module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
+    arrput(module->type_aliases, ((struct ptlang_ast_module_type_alias_s){
+                                     .name = name,
+                                     .type = type,
+                                 }));
+    // module->type_alias_count++;
+    // module->type_aliases = ptlang_realloc(
+    //     module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
-    module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
-        .name = name,
-        .type = type,
-    };
+    // module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
+    //     .name = name,
+    //     .type = type,
+    // };
 }
 
 ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl *parameters,
@@ -432,7 +439,7 @@ ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
         .type = PTLANG_AST_STMT_BLOCK,
         .content.block =
             {
-                .stmt_count = 0,
+                .stmts = NULL,
             },
     };
     return stmt;
@@ -442,10 +449,12 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
 {
     assert(block_stmt->type == PTLANG_AST_STMT_BLOCK);
 
-    block_stmt->content.block.stmt_count++;
-    block_stmt->content.block.stmts = ptlang_realloc(
-        block_stmt->content.block.stmts, sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
-    block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
+    arrput(block_stmt->content.block.stmts, stmt);
+
+    // block_stmt->content.block.stmt_count++;
+    // block_stmt->content.block.stmts = ptlang_realloc(
+    //     block_stmt->content.block.stmts, sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
+    // block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
 {
@@ -657,11 +666,11 @@ void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
     switch (stmt->type)
     {
     case PTLANG_AST_STMT_BLOCK:
-        for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
+        for (size_t i = 0; i < arrlenu(stmt->content.block.stmts); i++)
         {
             ptlang_ast_stmt_destroy(stmt->content.block.stmts[i]);
         }
-        ptlang_free(stmt->content.block.stmts);
+        arrfree(stmt->content.block.stmts);
         break;
     case PTLANG_AST_STMT_EXP:
     case PTLANG_AST_STMT_RETURN:
@@ -689,27 +698,27 @@ void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
 
 void ptlang_ast_module_destroy(ptlang_ast_module module)
 {
-    for (uint64_t i = 0; i < module->function_count; i++)
+    for (size_t i = 0; i < arrlenu(module->functions); i++)
     {
         ptlang_ast_func_destroy(module->functions[i]);
     }
-    ptlang_free(module->functions);
-    for (uint64_t i = 0; i < module->declaration_count; i++)
+    arrfree(module->functions);
+    for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
         ptlang_ast_decl_destroy(module->declarations[i]);
     }
-    ptlang_free(module->declarations);
-    for (uint64_t i = 0; i < module->struct_def_count; i++)
+    arrfree(module->declarations);
+    for (size_t i = 0; i < arrlenu(module->struct_defs); i++)
     {
         ptlang_ast_struct_def_destroy(module->struct_defs[i]);
     }
-    ptlang_free(module->struct_defs);
-    for (uint64_t i = 0; i < module->type_alias_count; i++)
+    arrfree(module->struct_defs);
+    for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
         ptlang_free(module->type_aliases[i].name);
         ptlang_ast_type_destroy(module->type_aliases[i].type);
     }
-    ptlang_free(module->type_aliases);
+    arrfree(module->type_aliases);
 
     ptlang_free(module);
 }

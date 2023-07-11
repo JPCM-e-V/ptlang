@@ -24,13 +24,9 @@ struct ptlang_ast_module_type_alias_s
 
 struct ptlang_ast_module_s
 {
-    uint64_t function_count;
     ptlang_ast_func *functions;
-    uint64_t declaration_count;
     ptlang_ast_decl *declarations;
-    uint64_t struct_def_count;
     ptlang_ast_struct_def *struct_defs;
-    uint64_t type_alias_count;
     struct ptlang_ast_module_type_alias_s *type_aliases;
 };
 
@@ -76,7 +72,6 @@ struct ptlang_ast_struct_member_s
 
 struct ptlang_ast_stmt_block_s
 {
-    uint64_t stmt_count;
     ptlang_ast_stmt *stmts;
 };
 

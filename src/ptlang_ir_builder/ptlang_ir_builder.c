@@ -33,7 +33,7 @@ typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
 struct ptlang_ir_builder_scope_s
 {
     ptlang_ir_builder_scope *parent;
-    uint64_t entry_count;
+    // uint64_t entry_count;
     ptlang_ir_builder_scope_entry *entries;
 };
 
@@ -41,27 +41,33 @@ static inline void ptlang_ir_builder_new_scope(ptlang_ir_builder_scope *parent, 
 {
     *new = (ptlang_ir_builder_scope){
         .parent = parent,
-        .entry_count = 0,
+        .entries = NULL,
     };
 }
 
 static inline void ptlang_ir_builder_scope_destroy(ptlang_ir_builder_scope *scope)
 {
-    ptlang_free(scope->entries);
+    arrfree(scope->entries);
 }
 
 static inline void ptlang_ir_builder_scope_add(ptlang_ir_builder_scope *scope, char *name, LLVMValueRef value,
                                                ptlang_ast_type type, bool direct)
 {
-    scope->entry_count++;
-    scope->entries =
-        ptlang_realloc(scope->entries, sizeof(ptlang_ir_builder_scope_entry) * scope->entry_count);
-    scope->entries[scope->entry_count - 1] = (ptlang_ir_builder_scope_entry){
-        .name = name,
-        .value = value,
-        .type = type,
-        .direct = direct,
-    };
+    arrput(scope->entries, ((ptlang_ir_builder_scope_entry){
+                               .name = name,
+                               .value = value,
+                               .type = type,
+                               .direct = direct,
+                           }));
+    // scope->entry_count++;
+    // scope->entries =
+    //     ptlang_realloc(scope->entries, sizeof(ptlang_ir_builder_scope_entry) * scope->entry_count);
+    // scope->entries[scope->entry_count - 1] = (ptlang_ir_builder_scope_entry){
+    //     .name = name,
+    //     .value = value,
+    //     .type = type,
+    //     .direct = direct,
+    // };
 }
 
 static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *scope, char *name,
@@ -69,7 +75,7 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
 {
     while (scope != NULL)
     {
-        for (uint64_t i = 0; i < scope->entry_count; i++)
+        for (size_t i = 0; i < arrlenu(scope->entries); i++)
         {
             if (strcmp(scope->entries[i].name, name) == 0)
             {
@@ -1677,7 +1683,7 @@ static void ptlang_ir_builder_stmt_allocas(ptlang_ast_stmt stmt, ptlang_ir_build
         ctx->scope = ptlang_malloc(sizeof(ptlang_ir_builder_scope));
         ctx->scopes[ctx->scope_number - 1] = ctx->scope;
         ptlang_ir_builder_new_scope(old_scope, ctx->scope);
-        for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
+        for (size_t i = 0; i < arrlenu(stmt->content.block.stmts); i++)
         {
             ptlang_ir_builder_stmt_allocas(stmt->content.block.stmts[i], ctx);
         }
@@ -1718,7 +1724,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         ptlang_ir_builder_scope *old_scope = ctx->scope;
         ctx->scope = ctx->scopes[ctx->scope_number];
         ctx->scope_number++;
-        for (uint64_t i = 0; i < stmt->content.block.stmt_count; i++)
+        for (size_t i = 0; i < arrlenu(stmt->content.block.stmts); i++)
         {
             ptlang_ir_builder_stmt(stmt->content.block.stmts[i], ctx);
         }
@@ -1861,7 +1867,7 @@ typedef struct
 
 static char **
 ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
-                                                                ptlang_ir_builder_type_scope *type_scope)
+                                                                ptlang_ir_builder_build_context *ctx)
 {
     char **referenced_types = NULL;
     switch (ast_type->type)
@@ -1872,26 +1878,26 @@ ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type 
         break;
     case PTLANG_AST_TYPE_ARRAY:
         return ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ast_type->content.array.type,
-                                                                               type_scope);
+                                                                               ctx);
     case PTLANG_AST_TYPE_HEAP_ARRAY:
         return ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
-            ast_type->content.heap_array.type, type_scope);
+            ast_type->content.heap_array.type, ctx);
     case PTLANG_AST_TYPE_REFERENCE:
         return ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
-            ast_type->content.reference.type, type_scope);
+            ast_type->content.reference.type, ctx);
     case PTLANG_AST_TYPE_NAMED:
-        if (shgeti(type_scope, ast_type->content.name) == -1)
+        if (shgeti(ctx->type_scope, ast_type->content.name) == -1)
             arrput(referenced_types, ast_type->content.name);
         else
             arrput(referenced_types, "");
         break;
     case PTLANG_AST_TYPE_FUNCTION:
         referenced_types = ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
-            ast_type->content.function.return_type, type_scope);
+            ast_type->content.function.return_type, ctx);
         for (size_t i = 0; i < arrlenu(ast_type->content.function.parameters); i++)
         {
             char **param_referenced_types = ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(
-                ast_type->content.function.parameters[i], type_scope);
+                ast_type->content.function.parameters[i], ctx);
             for (size_t j = 0; j < arrlenu(param_referenced_types); j++)
             {
                 arrput(referenced_types, param_referenced_types[j]);
@@ -1904,7 +1910,7 @@ ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type 
 }
 static ptlang_ir_builder_type_alias
 ptlang_ir_builder_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias,
-                                    ptlang_ir_builder_type_scope *type_scope)
+                                    ptlang_ir_builder_build_context *ctx)
 {
     // ptlang_ir_builder_type_alias type_alias = ptlang_malloc(sizeof(struct ptlang_ir_builder_type_alias_s));
 
@@ -1912,7 +1918,7 @@ ptlang_ir_builder_type_alias_create(struct ptlang_ast_module_type_alias_s ast_ty
         .name = ast_type_alias.name,
         .type = ast_type_alias.type,
         .referenced_types =
-            ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ast_type_alias.type, type_scope),
+            ptlang_ir_builder_type_alias_get_referenced_types_from_ast_type(ast_type_alias.type, ctx),
         .referencing_types = NULL,
         .resolved = false,
     };
@@ -1992,13 +1998,13 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         .target_info = target_info,
     };
 
-    ptlang_ir_builder_scope global_scope = {.entry_count = 0};
+    ptlang_ir_builder_scope global_scope = {.entries = NULL};
     // ptlang_ir_builder_type_scope *type_scope = NULL;
 
     // ptlang_ir_builder_struct_def *struct_defs = NULL;
 
-    LLVMTypeRef *structs = ptlang_malloc(sizeof(LLVMTypeRef) * ast_module->struct_def_count);
-    for (uint64_t i = 0; i < ast_module->struct_def_count; i++)
+    LLVMTypeRef *structs = ptlang_malloc(sizeof(LLVMTypeRef) * arrlenu(ast_module->struct_defs));
+    for (size_t i = 0; i < arrlenu(ast_module->struct_defs); i++)
     {
         structs[i] = LLVMStructCreateNamed(LLVMGetGlobalContext(), ast_module->struct_defs[i]->name);
         shput(ctx.type_scope, ast_module->struct_defs[i]->name,
@@ -2024,14 +2030,14 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
               .resolved = false,
           }));
 
-    for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
         ptlang_ir_builder_type_alias type_alias =
-            ptlang_ir_builder_type_alias_create(ast_module->type_aliases[i], ctx.type_scope);
+            ptlang_ir_builder_type_alias_create(ast_module->type_aliases[i], &ctx);
         shput(alias_table, ast_module->type_aliases[i].name, type_alias);
     }
 
-    for (uint64_t i = 0; i < ast_module->type_alias_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
         ptlang_ir_builder_type_alias *type_alias = &shget(alias_table, ast_module->type_aliases[i].name);
         for (size_t j = 0; j < arrlenu(type_alias->referenced_types); j++)
@@ -2081,7 +2087,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     arrfree(alias_candidates);
 
-    for (uint64_t i = 0; i < ast_module->type_alias_count + 1; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases) + 1; i++)
     {
         ptlang_ir_builder_type_alias type_alias = alias_table[i].value;
         arrfree(type_alias.referenced_types);
@@ -2090,7 +2096,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     shfree(alias_table);
 
-    for (uint64_t i = 0; i < ast_module->struct_def_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->struct_defs); i++)
     {
         LLVMTypeRef *elements =
             ptlang_malloc(sizeof(LLVMTypeRef) * arrlenu(ast_module->struct_defs[i]->members));
@@ -2103,8 +2109,8 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
     }
     ptlang_free(structs);
 
-    LLVMValueRef *glob_decl_values = ptlang_malloc(sizeof(LLVMValueRef) * ast_module->declaration_count);
-    for (uint64_t i = 0; i < ast_module->declaration_count; i++)
+    LLVMValueRef *glob_decl_values = ptlang_malloc(sizeof(LLVMValueRef) * arrlenu(ast_module->declarations));
+    for (size_t i = 0; i < arrlenu(ast_module->declarations); i++)
     {
         LLVMTypeRef t = ptlang_ir_builder_type(ast_module->declarations[i]->type, &ctx);
         glob_decl_values[i] = LLVMAddGlobal(llvm_module, t, ast_module->declarations[i]->name);
@@ -2115,9 +2121,9 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
                                     ast_module->declarations[i]->type, false);
     }
 
-    LLVMValueRef *functions = ptlang_malloc(sizeof(LLVMValueRef) * ast_module->function_count);
-    ptlang_ast_type *function_types = ptlang_malloc(sizeof(ptlang_ast_type) * ast_module->function_count);
-    for (uint64_t i = 0; i < ast_module->function_count; i++)
+    LLVMValueRef *functions = ptlang_malloc(sizeof(LLVMValueRef) * arrlenu(ast_module->functions));
+    ptlang_ast_type *function_types = ptlang_malloc(sizeof(ptlang_ast_type) * arrlenu(ast_module->functions));
+    for (size_t i = 0; i < arrlenu(ast_module->functions); i++)
     {
         ptlang_ast_type *param_type_list = NULL;
 
@@ -2156,7 +2162,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
                                     function_types[i], true);
     }
 
-    for (uint64_t i = 0; i < ast_module->declaration_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->declarations); i++)
     {
         LLVMSetInitializer(
             glob_decl_values[i],
@@ -2167,7 +2173,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
     }
     ptlang_free(glob_decl_values);
 
-    for (uint64_t i = 0; i < ast_module->function_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->functions); i++)
     {
         ctx.function = functions[i];
         ctx.return_type = ast_module->functions[i]->return_type;
@@ -2266,7 +2272,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
     LLVMDisposeBuilder(ctx.builder);
 
-    for (uint64_t i = 0; i < ast_module->function_count; i++)
+    for (size_t i = 0; i < arrlenu(ast_module->functions); i++)
     {
         ptlang_ast_type_destroy(function_types[i]);
     }
