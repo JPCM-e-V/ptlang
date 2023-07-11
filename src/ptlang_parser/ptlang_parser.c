@@ -25,7 +25,7 @@ ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYL
     bool is_signed = str[0] == 's' || str[0] == 'S';
     uint32_t size = strtoul(str + sizeof(char), NULL, 10);
 
-    free(str);
+    ptlang_free(str);
 
     if (size > 1 << 23)
     {

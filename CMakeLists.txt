@@ -20,6 +20,7 @@ add_library(ptlang_ast OBJECT
 set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
 target_include_directories(ptlang_ast
+                           PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PUBLIC ${PTLANG_STB_DIR})
 
 find_package(BISON 3.7.4 REQUIRED)
@@ -65,6 +66,7 @@ set_property(TARGET ptlang_parser PROPERTY C_STANDARD 17)
 target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
+                           PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PUBLIC ${PTLANG_STB_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
@@ -73,6 +75,7 @@ add_library(ptlang_ir_builder OBJECT
 
 target_include_directories(ptlang_ir_builder
                            PRIVATE ${PTLANG_AST_SRC_DIR}
+                           PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PUBLIC ${PTLANG_LLVM_INCLUDEDIR}
                            PUBLIC ${PTLANG_STB_DIR})
 

@@ -8,7 +8,7 @@
     #define SAVE_STR                              \
         {                                         \
             size_t str_len = strlen(yytext) + 1;  \
-            yylval->str = malloc(str_len);        \
+            yylval->str = ptlang_malloc(str_len);        \
             memcpy(yylval->str, yytext, str_len); \
         }
 

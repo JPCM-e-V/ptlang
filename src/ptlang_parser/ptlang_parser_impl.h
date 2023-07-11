@@ -3,6 +3,8 @@
 
 #include "parser.h"
 #include "ptlang_parser.h"
+#include "ptlang_utils.h"
+
 #include <errno.h>
 
 #ifndef YYSTYPE

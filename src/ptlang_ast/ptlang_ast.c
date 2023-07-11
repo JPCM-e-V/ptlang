@@ -2,7 +2,7 @@
 
 ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl *members)
 {
-    ptlang_ast_struct_def struct_def = malloc(sizeof(struct ptlang_ast_struct_def_s));
+    ptlang_ast_struct_def struct_def = ptlang_malloc(sizeof(struct ptlang_ast_struct_def_s));
     *struct_def = (struct ptlang_ast_struct_def_s){
         .name = name,
         .members = members,
@@ -12,7 +12,7 @@ ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl *mem
 
 ptlang_ast_module ptlang_ast_module_new(void)
 {
-    ptlang_ast_module module = malloc(sizeof(struct ptlang_ast_module_s));
+    ptlang_ast_module module = ptlang_malloc(sizeof(struct ptlang_ast_module_s));
     *module = (struct ptlang_ast_module_s){
         .function_count = 0,
         .declaration_count = 0,
@@ -25,14 +25,14 @@ ptlang_ast_module ptlang_ast_module_new(void)
 void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function)
 {
     module->function_count++;
-    module->functions = realloc(module->functions, sizeof(ptlang_ast_func) * module->function_count);
+    module->functions = ptlang_realloc(module->functions, sizeof(ptlang_ast_func) * module->function_count);
     module->functions[module->function_count - 1] = function;
 }
 
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration)
 {
     module->declaration_count++;
-    module->declarations = realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
+    module->declarations = ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
     module->declarations[module->declaration_count - 1] = declaration;
 }
 
@@ -40,14 +40,14 @@ void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struc
 {
     module->struct_def_count++;
     module->struct_defs =
-        realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
+        ptlang_realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
     module->struct_defs[module->struct_def_count - 1] = struct_def;
 }
 
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
 {
     module->type_alias_count++;
-    module->type_aliases = realloc(module->type_aliases,
+    module->type_aliases = ptlang_realloc(module->type_aliases,
                                    sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
     module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
@@ -59,7 +59,7 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
 ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl *parameters,
                                     ptlang_ast_stmt stmt, bool export)
 {
-    ptlang_ast_func function = malloc(sizeof(struct ptlang_ast_func_s));
+    ptlang_ast_func function = ptlang_malloc(sizeof(struct ptlang_ast_func_s));
     *function = (struct ptlang_ast_func_s){
         .name = name,
         .return_type = return_type,
@@ -72,7 +72,7 @@ ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptl
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
 {
-    ptlang_ast_decl declaration = malloc(sizeof(struct ptlang_ast_decl_s));
+    ptlang_ast_decl declaration = ptlang_malloc(sizeof(struct ptlang_ast_decl_s));
     *declaration = (struct ptlang_ast_decl_s){
         .type = type,
         .name = name,
@@ -89,7 +89,7 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 // {
-//     ptlang_ast_decl_list decl_list = malloc(sizeof(struct ptlang_ast_decl_list_s));
+//     ptlang_ast_decl_list decl_list = ptlang_malloc(sizeof(struct ptlang_ast_decl_list_s));
 //     *decl_list = (struct ptlang_ast_decl_list_s){
 //         .count = 0,
 //     };
@@ -99,13 +99,13 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 // void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl)
 // {
 //     list->count++;
-//     list->decls = realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
+//     list->decls = ptlang_realloc(list->decls, sizeof(ptlang_ast_decl) * list->count);
 //     list->decls[list->count - 1] = decl;
 // }
 
 // ptlang_ast_type_list ptlang_ast_type_list_new(void)
 // {
-//     ptlang_ast_type_list type_list = malloc(sizeof(struct ptlang_ast_type_list_s));
+//     ptlang_ast_type_list type_list = ptlang_malloc(sizeof(struct ptlang_ast_type_list_s));
 //     *type_list = (struct ptlang_ast_type_list_s){
 //         .count = 0,
 //     };
@@ -115,13 +115,13 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 // void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
 // {
 //     list->count++;
-//     list->types = realloc(list->types, sizeof(ptlang_ast_type) * list->count);
+//     list->types = ptlang_realloc(list->types, sizeof(ptlang_ast_type) * list->count);
 //     list->types[list->count - 1] = type;
 // }
 
 // ptlang_ast_exp_list ptlang_ast_exp_list_new(void)
 // {
-//     ptlang_ast_exp_list exp_list = malloc(sizeof(struct ptlang_ast_exp_list_s));
+//     ptlang_ast_exp_list exp_list = ptlang_malloc(sizeof(struct ptlang_ast_exp_list_s));
 //     *exp_list = (struct ptlang_ast_exp_list_s){
 //         .count = 0,
 //     };
@@ -131,13 +131,13 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 // void ptlang_ast_exp_list_add(ptlang_ast_exp_list list, ptlang_ast_exp exp)
 // {
 //     list->count++;
-//     list->exps = realloc(list->exps, sizeof(ptlang_ast_exp) * list->count);
+//     list->exps = ptlang_realloc(list->exps, sizeof(ptlang_ast_exp) * list->count);
 //     list->exps[list->count - 1] = exp;
 // }
 
 // ptlang_ast_str_exp_list ptlang_ast_str_exp_list_new(void)
 // {
-//     ptlang_ast_str_exp_list str_exp_list = malloc(sizeof(struct ptlang_ast_str_exp_list_s));
+//     ptlang_ast_str_exp_list str_exp_list = ptlang_malloc(sizeof(struct ptlang_ast_str_exp_list_s));
 //     *str_exp_list = (struct ptlang_ast_str_exp_list_s){
 //         .count = 0,
 //     };
@@ -147,7 +147,7 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 // void ptlang_ast_str_exp_list_add(ptlang_ast_str_exp_list list, char *str, ptlang_ast_exp exp)
 // {
 //     list->count++;
-//     list->str_exps = realloc(list->str_exps, sizeof(struct ptlang_ast_str_exp_s) * list->count);
+//     list->str_exps = ptlang_realloc(list->str_exps, sizeof(struct ptlang_ast_str_exp_s) * list->count);
 //     list->str_exps[list->count - 1] = (struct ptlang_ast_str_exp_s){
 //         .str = str,
 //         .exp = exp,
@@ -164,7 +164,7 @@ void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, char
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_INTEGER,
         .content.integer =
@@ -178,7 +178,7 @@ ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
 
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FLOAT,
         .content.float_size = size,
@@ -188,7 +188,7 @@ ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size)
 
 ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FUNCTION,
         .content.function =
@@ -202,7 +202,7 @@ ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast
 
 ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_HEAP_ARRAY,
         .content.heap_array.type = element_type,
@@ -211,7 +211,7 @@ ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type)
 }
 ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_ARRAY,
         .content.array =
@@ -224,7 +224,7 @@ ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len
 }
 ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool writable)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_REFERENCE,
         .content.reference =
@@ -238,7 +238,7 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
 
 ptlang_ast_type ptlang_ast_type_named(char *name)
 {
-    ptlang_ast_type type = malloc(sizeof(struct ptlang_ast_type_s));
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_NAMED,
         .content.name = name,
@@ -249,7 +249,7 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
 #define BINARY_OP(lower, upper)                                                                              \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value)       \
     {                                                                                                        \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.binary_operator =                                                                       \
@@ -264,7 +264,7 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
 #define UNARY_OP(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value)                                        \
     {                                                                                                        \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.unary_operator = value,                                                                 \
@@ -299,7 +299,7 @@ UNARY_OP(length, LENGTH)
 
 ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp *parameters)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_FUNCTION_CALL,
         .content.function_call =
@@ -314,7 +314,7 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
 #define STR_REPR(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation)                                    \
     {                                                                                                        \
-        ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
         *exp = (struct ptlang_ast_exp_s){.type = PTLANG_AST_EXP_##upper,                                     \
                                          .content.str_prepresentation = str_representation};                 \
         return exp;                                                                                          \
@@ -326,7 +326,7 @@ STR_REPR(float, FLOAT)
 
 ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_struct_member_list members)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT,
         .content.struct_ =
@@ -340,7 +340,7 @@ ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_struct_member_li
 
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *values)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY,
         .content.array =
@@ -355,7 +355,7 @@ ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *va
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value,
                                                    ptlang_ast_exp else_value)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_TERNARY,
         .content.ternary_operator =
@@ -369,7 +369,7 @@ ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptl
 }
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_CAST,
         .content.cast =
@@ -383,7 +383,7 @@ ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp valu
 
 ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT_MEMBER,
         .content.struct_member =
@@ -396,7 +396,7 @@ ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *me
 }
 ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY_ELEMENT,
         .content.array_element =
@@ -410,7 +410,7 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
 
 ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
 {
-    ptlang_ast_exp exp = malloc(sizeof(struct ptlang_ast_exp_s));
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_REFERENCE,
         .content.reference =
@@ -426,7 +426,7 @@ UNARY_OP(dereference, DEREFERENCE)
 
 ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BLOCK,
         .content.block =
@@ -442,13 +442,13 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
     assert(block_stmt->type == PTLANG_AST_STMT_BLOCK);
 
     block_stmt->content.block.stmt_count++;
-    block_stmt->content.block.stmts = realloc(block_stmt->content.block.stmts,
+    block_stmt->content.block.stmts = ptlang_realloc(block_stmt->content.block.stmts,
                                               sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
     block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_EXP,
         .content.exp = exp,
@@ -457,7 +457,7 @@ ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
 }
 ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_DECL,
         .content.decl = decl,
@@ -466,7 +466,7 @@ ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl)
 }
 ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF,
         .content.control_flow =
@@ -480,7 +480,7 @@ ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt
 ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
                                             ptlang_ast_stmt else_stmt)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF_ELSE,
         .content.control_flow2 =
@@ -493,7 +493,7 @@ ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast
 }
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt loop_stmt)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_WHILE,
         .content.control_flow =
@@ -506,7 +506,7 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
 }
 ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
         .content.exp = return_value,
@@ -515,7 +515,7 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
 }
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
         .content.exp = return_value,
@@ -524,7 +524,7 @@ ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
 }
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BREAK,
         .content.nesting_level = nesting_level,
@@ -533,7 +533,7 @@ ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
 }
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
 {
-    ptlang_ast_stmt stmt = malloc(sizeof(struct ptlang_ast_stmt_s));
+    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_CONTINUE,
         .content.nesting_level = nesting_level,
@@ -578,7 +578,7 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     case PTLANG_AST_TYPE_NAMED:
     {
         size_t name_len = strlen(type->content.name) + 1;
-        char *name = malloc(name_len);
+        char *name = ptlang_malloc(name_len);
         memcpy(name, type->content.name, name_len);
         return ptlang_ast_type_named(name);
     }
@@ -637,7 +637,7 @@ void ptlang_ast_type_destroy_content(ptlang_ast_type type)
             ptlang_ast_type_destroy(type->content.reference.type);
             break;
         case PTLANG_AST_TYPE_NAMED:
-            free(type->content.name);
+            ptlang_free(type->content.name);
             break;
         default:
             break;
@@ -648,7 +648,7 @@ void ptlang_ast_type_destroy_content(ptlang_ast_type type)
 void ptlang_ast_type_destroy(ptlang_ast_type type)
 {
     ptlang_ast_type_destroy_content(type);
-    free(type);
+    ptlang_free(type);
 }
 
 void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
@@ -660,7 +660,7 @@ void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
         {
             ptlang_ast_stmt_destroy(stmt->content.block.stmts[i]);
         }
-        free(stmt->content.block.stmts);
+        ptlang_free(stmt->content.block.stmts);
         break;
     case PTLANG_AST_STMT_EXP:
     case PTLANG_AST_STMT_RETURN:
@@ -683,7 +683,7 @@ void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
     default:
         break;
     }
-    free(stmt);
+    ptlang_free(stmt);
 }
 
 void ptlang_ast_module_destroy(ptlang_ast_module module)
@@ -692,35 +692,35 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
     {
         ptlang_ast_func_destroy(module->functions[i]);
     }
-    free(module->functions);
+    ptlang_free(module->functions);
     for (uint64_t i = 0; i < module->declaration_count; i++)
     {
         ptlang_ast_decl_destroy(module->declarations[i]);
     }
-    free(module->declarations);
+    ptlang_free(module->declarations);
     for (uint64_t i = 0; i < module->struct_def_count; i++)
     {
         ptlang_ast_struct_def_destroy(module->struct_defs[i]);
     }
-    free(module->struct_defs);
+    ptlang_free(module->struct_defs);
     for (uint64_t i = 0; i < module->type_alias_count; i++)
     {
-        free(module->type_aliases[i].name);
+        ptlang_free(module->type_aliases[i].name);
         ptlang_ast_type_destroy(module->type_aliases[i].type);
     }
-    free(module->type_aliases);
+    ptlang_free(module->type_aliases);
 
-    free(module);
+    ptlang_free(module);
 }
 
 void ptlang_ast_func_destroy(ptlang_ast_func func)
 {
-    free(func->name);
+    ptlang_free(func->name);
     ptlang_ast_type_destroy(func->return_type);
     ptlang_ast_decl_list_destroy(func->parameters);
     ptlang_ast_stmt_destroy(func->stmt);
 
-    free(func);
+    ptlang_free(func);
 }
 
 void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
@@ -764,10 +764,10 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_VARIABLE:
     case PTLANG_AST_EXP_INTEGER:
     case PTLANG_AST_EXP_FLOAT:
-        free(exp->content.str_prepresentation);
+        ptlang_free(exp->content.str_prepresentation);
         break;
     case PTLANG_AST_EXP_STRUCT:
-        free(exp->content.struct_.type);
+        ptlang_free(exp->content.struct_.type);
         ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
@@ -785,7 +785,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         break;
     case PTLANG_AST_EXP_STRUCT_MEMBER:
         ptlang_ast_exp_destroy(exp->content.struct_member.struct_);
-        free(exp->content.struct_member.member_name);
+        ptlang_free(exp->content.struct_member.member_name);
         break;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
         ptlang_ast_exp_destroy(exp->content.array_element.array);
@@ -796,7 +796,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         break;
     }
 
-    free(exp);
+    ptlang_free(exp);
 }
 
 void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
@@ -806,17 +806,17 @@ void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
     {
         ptlang_ast_exp_destroy(decl->init);
     }
-    free(decl->name);
+    ptlang_free(decl->name);
 
-    free(decl);
+    ptlang_free(decl);
 }
 
 void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
 {
-    free(struct_def->name);
+    ptlang_free(struct_def->name);
     ptlang_ast_decl_list_destroy(struct_def->members);
 
-    free(struct_def);
+    ptlang_free(struct_def);
 }
 
 void ptlang_ast_decl_list_destroy(ptlang_ast_decl *decl_list)
@@ -851,7 +851,7 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 {
     for (size_t i = 0; i < arrlenu(member_list); i++)
     {
-        free(member_list[i].str);
+        ptlang_free(member_list[i].str);
         ptlang_ast_exp_destroy(member_list[i].exp);
     }
     arrfree(member_list);

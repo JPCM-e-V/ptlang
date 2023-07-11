@@ -2,6 +2,7 @@
 #define PTLANG_AST_IMPL_H
 
 #include "ptlang_ast.h"
+#include "ptlang_utils.h"
 
 #include "stb_ds.h"
 
