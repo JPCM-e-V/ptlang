@@ -32,7 +32,8 @@ void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func fu
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration)
 {
     module->declaration_count++;
-    module->declarations = ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
+    module->declarations =
+        ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
     module->declarations[module->declaration_count - 1] = declaration;
 }
 
@@ -47,8 +48,8 @@ void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struc
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
 {
     module->type_alias_count++;
-    module->type_aliases = ptlang_realloc(module->type_aliases,
-                                   sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
+    module->type_aliases = ptlang_realloc(
+        module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
 
     module->type_aliases[module->type_alias_count - 1] = (struct ptlang_ast_module_type_alias_s){
         .name = name,
@@ -249,7 +250,7 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
 #define BINARY_OP(lower, upper)                                                                              \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value)       \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.binary_operator =                                                                       \
@@ -264,7 +265,7 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
 #define UNARY_OP(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value)                                        \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.unary_operator = value,                                                                 \
@@ -314,7 +315,7 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
 #define STR_REPR(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation)                                    \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                        \
+        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
         *exp = (struct ptlang_ast_exp_s){.type = PTLANG_AST_EXP_##upper,                                     \
                                          .content.str_prepresentation = str_representation};                 \
         return exp;                                                                                          \
@@ -442,8 +443,8 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
     assert(block_stmt->type == PTLANG_AST_STMT_BLOCK);
 
     block_stmt->content.block.stmt_count++;
-    block_stmt->content.block.stmts = ptlang_realloc(block_stmt->content.block.stmts,
-                                              sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
+    block_stmt->content.block.stmts = ptlang_realloc(
+        block_stmt->content.block.stmts, sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
     block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
