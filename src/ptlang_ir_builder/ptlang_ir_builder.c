@@ -20,12 +20,17 @@
         }                                                                                                    \
     }
 
-typedef struct ptlang_ir_builder_scope_entry_s
+typedef struct ptlang_ir_builder_scope_entry_value_s
 {
-    char *name;
     LLVMValueRef value;
     ptlang_ast_type type;
     bool direct; // whether the value is directly stored (for functions)
+} ptlang_ir_builder_scope_entry_value;
+
+typedef struct ptlang_ir_builder_scope_entry_s
+{
+    char *key;
+    ptlang_ir_builder_scope_entry_value value;
 } ptlang_ir_builder_scope_entry;
 
 typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
@@ -45,20 +50,17 @@ static inline void ptlang_ir_builder_new_scope(ptlang_ir_builder_scope *parent, 
     };
 }
 
-static inline void ptlang_ir_builder_scope_destroy(ptlang_ir_builder_scope *scope)
-{
-    arrfree(scope->entries);
-}
+static inline void ptlang_ir_builder_scope_destroy(ptlang_ir_builder_scope *scope) { shfree(scope->entries); }
 
 static inline void ptlang_ir_builder_scope_add(ptlang_ir_builder_scope *scope, char *name, LLVMValueRef value,
                                                ptlang_ast_type type, bool direct)
 {
-    arrput(scope->entries, ((ptlang_ir_builder_scope_entry){
-                               .name = name,
-                               .value = value,
-                               .type = type,
-                               .direct = direct,
-                           }));
+    shput(scope->entries, name,
+          ((ptlang_ir_builder_scope_entry_value){
+              .value = value,
+              .type = type,
+              .direct = direct,
+          }));
     // scope->entry_count++;
     // scope->entries =
     //     ptlang_realloc(scope->entries, sizeof(ptlang_ir_builder_scope_entry) * scope->entry_count);
@@ -75,20 +77,24 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
 {
     while (scope != NULL)
     {
-        for (size_t i = 0; i < arrlenu(scope->entries); i++)
+        // for (size_t i = 0; i < arrlenu(scope->entries); i++)
+        // {
+        //     if (strcmp(scope->entries[i].name, name) == 0)
+        //     {
+        ptrdiff_t i = shgeti(scope->entries, name);
+        if (i != -1)
         {
-            if (strcmp(scope->entries[i].name, name) == 0)
+            if (type != NULL)
             {
-                if (type != NULL)
-                {
-                    *type = scope->entries[i].type;
-                }
-                if (direct != NULL)
-                {
-                    *direct = scope->entries[i].direct;
-                }
-                return scope->entries[i].value;
+                *type = scope->entries[i].value.type;
             }
+            if (direct != NULL)
+            {
+                *direct = scope->entries[i].value.direct;
+            }
+            return scope->entries[i].value.value;
+            //     }
+            // }
         }
         scope = scope->parent;
     }
