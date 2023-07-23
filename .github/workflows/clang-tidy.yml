@@ -17,6 +17,9 @@ jobs:
       - name: Install Deps using Homebrew
         if: contains(matrix.os, 'macos')
         run: brew install bison llvm
+      - name: Install Deps using Chocolatey
+        if: contains(matrix.os, 'windows')
+        run: choco install winflexbison3
 
       - uses: actions/checkout@v3
         with:
@@ -33,7 +36,7 @@ jobs:
           if [[ "${{matrix.os}}" == "windows"* ]]; then
             cmake -B '${{github.workspace}}\build' -G Ninja -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER='C:/Program Files/LLVM/bin/clang.exe'
           elif [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang
+            cmake -B '${{github.workspace}}/build' -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison
           else
             cmake -B '${{github.workspace}}/build' -G 'Unix Makefiles' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang
           fi
