@@ -18,7 +18,9 @@ jobs:
         if: contains(matrix.os, 'macos')
         run: brew install bison llvm
 
-      - run: where clang
+      - run: |
+          get-command clang
+          clang --help
         if: contains(matrix.os, 'windows')
       - name: clang-tidy
         shell: bash
