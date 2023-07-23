@@ -17,5 +17,9 @@ jobs:
       - name: Install Deps using Homebrew
         if: contains(matrix.os, 'macos')
         run: brew install bison llvm
+
+      - run: where clang
+        if: contains(matrix.os, 'windows')
       - name: clang-tidy
+        shell: bash
         run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy --help
