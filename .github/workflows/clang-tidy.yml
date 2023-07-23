@@ -1,4 +1,4 @@
-name: Test
+name: clang-tidy
 
 on:
   push:
@@ -14,5 +14,8 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+      - name: Install Deps using Homebrew
+        if: contains(matrix.os, 'macos')
+        run: brew install bison llvm
       - name: clang-tidy
-        run: clang-tidy --help
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy --help
