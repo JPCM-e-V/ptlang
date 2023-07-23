@@ -5,6 +5,9 @@
 %{
     #include "ptlang_parser_impl.h"
     #include "stb_ds.h"
+
+    #define ppcp ptlang_parser_code_position
+    #define ppcpft ptlang_parser_code_position_from_to
 %}
 
 %define api.prefix {ptlang_yy}
@@ -13,7 +16,7 @@
     char *str;
     ptlang_ast_type type;
     ptlang_ast_stmt stmt;
-    ptlang_ast_module module;
+//    ptlang_ast_module module;
     ptlang_ast_func func;
     ptlang_ast_exp exp;
     ptlang_ast_decl decl;
@@ -23,6 +26,7 @@
     ptlang_ast_exp *exp_list;
     ptlang_ast_struct_member_list struct_member_list;
     enum ptlang_ast_type_float_size float_size;
+    ptlang_ast_ident ident;
 }
 
 %define api.pure true
@@ -86,7 +90,7 @@
 %type <str> int_val
 %type <type> type
 %type <stmt> stmt block
-%type <module> module
+//%type <module> module
 %type <func> func
 %type <exp> exp const_exp
 %type <decl> non_const_decl const_decl decl decl_statement module_decl_without_export module_decl
@@ -94,6 +98,7 @@
 %type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
 %type <struct_member_list> members one_or_more_members
+%type <ident> ident
 
 %precedence single_if
 %precedence ELSE
@@ -116,18 +121,18 @@
 /* %precedence array_type */
 
 
-%start file
+%start module
 
 %%
 
-file: module { *ptlang_parser_module_out = $1; }
+module:
+      | module func { ptlang_ast_module_add_function(*ptlang_parser_module_out, $2); }
+      | module module_decl SEMICOLON { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $2); }
+      | module STRUCT_DEF ident OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
+        { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, ptlang_ast_struct_def_new($3, $5, ppcpft(&@2, &@$))); }
+      | module TYPE_ALIAS ident type { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $3, $4, ppcpft(&@2, &@$)); }
 
-module: { $$ = ptlang_ast_module_new(); }
-      | module func { $$ = $1; ptlang_ast_module_add_function($$, $2); }
-      | module module_decl SEMICOLON { $$ = $1; ptlang_ast_module_add_declaration($$, $2); }
-      | module STRUCT_DEF IDENT OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
-        { $$ = $1; ptlang_ast_module_add_struct_def($$, ptlang_ast_struct_def_new($3, $5)); }
-      | module TYPE_ALIAS IDENT type { $$ = $1; ptlang_ast_module_add_type_alias($$, $3, $4); }
+ident: IDENT { $$ = (ptlang_ast_ident){$1, ppcp(&@1)}; }
 
 struct_members: { $$ = NULL; }
       | one_or_more_struct_members { $$ = $1; }
@@ -136,10 +141,10 @@ struct_members: { $$ = NULL; }
 one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-func: type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
-    | IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5, false); }
-    | EXPORT type IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
-    | EXPORT IDENT OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, NULL, $4, $6, true); }
+func: type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
+    | ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5, false); }
+    | EXPORT type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
+    | EXPORT ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, NULL, $4, $6, true); }
 
 params: { $$ = NULL; }
       | one_or_more_params { $$ = $1; }
@@ -148,9 +153,9 @@ params: { $$ = NULL; }
 one_or_more_params: non_const_decl { $$ = NULL; arrput($$, $1); }
                   | one_or_more_params COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-non_const_decl: type IDENT { $$ = ptlang_ast_decl_new($1, $2, true); }
+non_const_decl: type ident { $$ = ptlang_ast_decl_new($1, $2, true, ppcp(&@$)); }
 
-const_decl: CONST type IDENT { $$ = ptlang_ast_decl_new($2, $3, false);}
+const_decl: CONST type ident { $$ = ptlang_ast_decl_new($2, $3, false, ppcp(&@$));}
 
 decl: non_const_decl { $$=$1; } 
     | const_decl { $$=$1; }
@@ -165,13 +170,13 @@ module_decl: module_decl_without_export { $$ = $1; }
            | EXPORT module_decl_without_export {$$ = $2; ptlang_ast_decl_set_export($$, true);}
 
 type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
-    | FLOAT_TYPE { $$ = ptlang_ast_type_float($1); }
-    | OPEN_BRACKET types CLOSE_BRACKET COLON type { $$ = ptlang_ast_type_function($5, $2); }
-    | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3); }
-    | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2)); ptlang_free($2); } // TODO Overflow
-    | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true); }
-    | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false); }
-    | IDENT { $$ = ptlang_ast_type_named($1); }
+    | FLOAT_TYPE { $$ = ptlang_ast_type_float($1, ppcp(&@$)); }
+    | OPEN_BRACKET types CLOSE_BRACKET COLON type { $$ = ptlang_ast_type_function($5, $2, ppcp(&@$)); }
+    | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3, ppcp(&@$)); }
+    | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); ptlang_free($2); } // TODO Overflow
+    | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true, ppcp(&@$)); }
+    | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false, ppcp(&@$)); }
+    | IDENT { $$ = ptlang_ast_type_named($1, ppcp(&@$)); }
     /* | DUMMY { $$ = NULL; } */
 
 types: { $$ = NULL; }
@@ -185,63 +190,63 @@ one_or_more_types: type { $$ = NULL; arrput($$, $1); }
 // []f128
 
 stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
-    | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1); }
-    | decl_statement SEMICOLON { $$ = ptlang_ast_stmt_decl_new($1); }
-    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt %prec single_if { $$ = ptlang_ast_stmt_if_new($3, $5); }
-    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt ELSE stmt { $$ = ptlang_ast_stmt_if_else_new($3, $5, $7); }
-    | WHILE OPEN_BRACKET exp CLOSE_BRACKET stmt { $$ = ptlang_ast_stmt_while_new($3, $5); }
-    | RET_VAL exp SEMICOLON {$$ = ptlang_ast_stmt_ret_val_new($2); }
-    | RETURN exp SEMICOLON {$$ = ptlang_ast_stmt_return_new($2); }
-    | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL); }
-    | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(0); }
-    | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(0); }
-    | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2)); }
-    | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2)); }
+    | exp SEMICOLON { $$ = ptlang_ast_stmt_expr_new($1, ppcp(&@$)); }
+    | decl_statement SEMICOLON { $$ = ptlang_ast_stmt_decl_new($1, ppcp(&@$)); }
+    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt %prec single_if { $$ = ptlang_ast_stmt_if_new($3, $5, ppcp(&@$)); }
+    | IF OPEN_BRACKET exp CLOSE_BRACKET stmt ELSE stmt { $$ = ptlang_ast_stmt_if_else_new($3, $5, $7, ppcp(&@$)); }
+    | WHILE OPEN_BRACKET exp CLOSE_BRACKET stmt { $$ = ptlang_ast_stmt_while_new($3, $5, ppcp(&@$)); }
+    | RET_VAL exp SEMICOLON {$$ = ptlang_ast_stmt_ret_val_new($2, ppcp(&@$)); }
+    | RETURN exp SEMICOLON {$$ = ptlang_ast_stmt_return_new($2, ppcp(&@$)); }
+    | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL, ppcp(&@$)); }
+    | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(0, ppcp(&@$)); }
+    | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(0, ppcp(&@$)); }
+    | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
+    | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
 
-block: { $$ = ptlang_ast_stmt_block_new(); }
+block: { $$ = ptlang_ast_stmt_block_new(ppcp(&@$)); }
      | block stmt { $$ = $1; ptlang_ast_stmt_block_add_stmt($$, $2); }
 
 
-const_exp: int_val { $$ = ptlang_ast_exp_integer_new($1); }
-         | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1); }
+const_exp: int_val { $$ = ptlang_ast_exp_integer_new($1, ppcp(&@$)); }
+         | FLOAT_VAL { $$ = ptlang_ast_exp_float_new($1, ppcp(&@$)); }
 
 
 exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
-   | exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3); }
-   | exp PLUS exp { $$ = ptlang_ast_exp_addition_new($1, $3); }
-   | exp MINUS exp { $$ = ptlang_ast_exp_subtraction_new($1, $3); }
-   | MINUS exp %prec negation { $$ = ptlang_ast_exp_negation_new($2); }
-   | exp STAR exp { $$ = ptlang_ast_exp_multiplication_new($1, $3); }
-   | exp SLASH exp { $$ = ptlang_ast_exp_division_new($1, $3); }
-   | exp MOD exp { $$ = ptlang_ast_exp_modulo_new($1, $3); }
-   | exp PERCENT exp { $$ = ptlang_ast_exp_remainder_new($1, $3); }
-   | exp EQEQ exp { $$ = ptlang_ast_exp_equal_new($1, $3); }
-   | exp NEQ exp { $$ = ptlang_ast_exp_not_equal_new($1, $3); }
-   | exp GREATER exp { $$ = ptlang_ast_exp_greater_new($1, $3); }
-   | exp GEQ exp { $$ = ptlang_ast_exp_greater_equal_new($1, $3); }
-   | exp LESSER exp { $$ = ptlang_ast_exp_less_new($1, $3); }
-   | exp LEQ exp { $$ = ptlang_ast_exp_less_equal_new($1, $3); }
-   | exp LEFT_SHIFT exp { $$ = ptlang_ast_exp_left_shift_new($1, $3); }
-   | exp RIGHT_SHIFT exp { $$ = ptlang_ast_exp_right_shift_new($1, $3); }
-   | exp AND exp { $$ = ptlang_ast_exp_and_new($1, $3); }
-   | exp OR exp { $$ = ptlang_ast_exp_or_new($1, $3); }
-   | NOT exp { $$ = ptlang_ast_exp_not_new($2); }
-   | exp AMPERSAND exp { $$ = ptlang_ast_exp_bitwise_and_new($1, $3); }
-   | exp VERTICAL_BAR exp { $$ = ptlang_ast_exp_bitwise_or_new($1, $3); }
-   | exp CIRCUMFLEX exp { $$ = ptlang_ast_exp_bitwise_xor_new($1, $3); }
-   | TILDE exp { $$ = ptlang_ast_exp_bitwise_inverse_new($2); }
-   | HASHTAG exp { $$ = ptlang_ast_exp_length_new($2); }
-   | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3); }
-   | IDENT { $$ = ptlang_ast_exp_variable_new($1); }
-   | IDENT OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3); }
-   | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5); }
-   | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5); }
-   | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4); }
-   | exp DOT IDENT { $$ = ptlang_ast_exp_struct_member_new($1, $3); }
-   | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3); }
-   | AMPERSAND exp %prec reference { $$ = ptlang_ast_exp_reference_new(true, $2); }
-   | AMPERSAND CONST exp %prec reference { $$ = ptlang_ast_exp_reference_new(false, $3); }
-   | STAR exp %prec dereference { $$ = ptlang_ast_exp_dereference_new($2); }
+   | exp EQ exp { $$ = ptlang_ast_exp_assignment_new($1, $3, ppcp(&@$)); }
+   | exp PLUS exp { $$ = ptlang_ast_exp_addition_new($1, $3, ppcp(&@$)); }
+   | exp MINUS exp { $$ = ptlang_ast_exp_subtraction_new($1, $3, ppcp(&@$)); }
+   | MINUS exp %prec negation { $$ = ptlang_ast_exp_negation_new($2, ppcp(&@$)); }
+   | exp STAR exp { $$ = ptlang_ast_exp_multiplication_new($1, $3, ppcp(&@$)); }
+   | exp SLASH exp { $$ = ptlang_ast_exp_division_new($1, $3, ppcp(&@$)); }
+   | exp MOD exp { $$ = ptlang_ast_exp_modulo_new($1, $3, ppcp(&@$)); }
+   | exp PERCENT exp { $$ = ptlang_ast_exp_remainder_new($1, $3, ppcp(&@$)); }
+   | exp EQEQ exp { $$ = ptlang_ast_exp_equal_new($1, $3, ppcp(&@$)); }
+   | exp NEQ exp { $$ = ptlang_ast_exp_not_equal_new($1, $3, ppcp(&@$)); }
+   | exp GREATER exp { $$ = ptlang_ast_exp_greater_new($1, $3, ppcp(&@$)); }
+   | exp GEQ exp { $$ = ptlang_ast_exp_greater_equal_new($1, $3, ppcp(&@$)); }
+   | exp LESSER exp { $$ = ptlang_ast_exp_less_new($1, $3, ppcp(&@$)); }
+   | exp LEQ exp { $$ = ptlang_ast_exp_less_equal_new($1, $3, ppcp(&@$)); }
+   | exp LEFT_SHIFT exp { $$ = ptlang_ast_exp_left_shift_new($1, $3, ppcp(&@$)); }
+   | exp RIGHT_SHIFT exp { $$ = ptlang_ast_exp_right_shift_new($1, $3, ppcp(&@$)); }
+   | exp AND exp { $$ = ptlang_ast_exp_and_new($1, $3, ppcp(&@$)); }
+   | exp OR exp { $$ = ptlang_ast_exp_or_new($1, $3, ppcp(&@$)); }
+   | NOT exp { $$ = ptlang_ast_exp_not_new($2, ppcp(&@$)); }
+   | exp AMPERSAND exp { $$ = ptlang_ast_exp_bitwise_and_new($1, $3, ppcp(&@$)); }
+   | exp VERTICAL_BAR exp { $$ = ptlang_ast_exp_bitwise_or_new($1, $3, ppcp(&@$)); }
+   | exp CIRCUMFLEX exp { $$ = ptlang_ast_exp_bitwise_xor_new($1, $3, ppcp(&@$)); }
+   | TILDE exp { $$ = ptlang_ast_exp_bitwise_inverse_new($2, ppcp(&@$)); }
+   | HASHTAG exp { $$ = ptlang_ast_exp_length_new($2, ppcp(&@$)); }
+   | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3, ppcp(&@$)); }
+   | IDENT { $$ = ptlang_ast_exp_variable_new($1, ppcp(&@$)); }
+   | ident OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3, ppcp(&@$)); }
+   | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5, ppcp(&@$)); }
+   | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5, ppcp(&@$)); }
+   | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4, ppcp(&@$)); }
+   | exp DOT ident { $$ = ptlang_ast_exp_struct_member_new($1, $3, ppcp(&@$)); }
+   | exp OPEN_SQUARE_BRACKET exp CLOSE_SQUARE_BRACKET { $$ = ptlang_ast_exp_array_element_new($1, $3, ppcp(&@$)); }
+   | AMPERSAND exp %prec reference { $$ = ptlang_ast_exp_reference_new(true, $2, ppcp(&@$)); }
+   | AMPERSAND CONST exp %prec reference { $$ = ptlang_ast_exp_reference_new(false, $3, ppcp(&@$)); }
+   | STAR exp %prec dereference { $$ = ptlang_ast_exp_dereference_new($2, ppcp(&@$)); }
    | const_exp { $$ = $1; }
    /* | DUMMY { $$ = NULL; } */
 
@@ -256,8 +261,8 @@ members: { $$ = NULL; }
        | one_or_more_members { $$ = $1; }
        | one_or_more_members COMMA { $$ = $1; }
 
-one_or_more_members: IDENT exp { $$ = NULL; ptlang_ast_struct_member_list_add(&$$, $1, $2); }
-                   | one_or_more_members COMMA IDENT exp { $$ = $1; ptlang_ast_struct_member_list_add(&$$, $3, $4); }
+one_or_more_members: ident exp { $$ = NULL; ptlang_ast_struct_member_list_add(&$$, $1, $2, ppcp(&@$)); }
+                   | one_or_more_members COMMA ident exp { $$ = $1; ptlang_ast_struct_member_list_add(&$$, $3, $4, ppcpft(&@3,&@$)); }
 
 int_val: INT { $$ = $1; }
        | INT_VAL { $$ = $1; }

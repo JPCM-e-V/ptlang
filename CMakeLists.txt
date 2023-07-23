@@ -84,6 +84,7 @@ add_library(ptlang_verify OBJECT
                
 target_include_directories(ptlang_verify
                             PRIVATE ${PTLANG_AST_SRC_DIR}
+                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
                             PUBLIC ${PTLANG_STB_DIR})
 
 # llvm_map_components_to_libnames(llvm_libs support core irreader)
@@ -101,6 +102,7 @@ target_link_directories(ptlang_ir_builder
 add_executable(ptlang ${PTLANG_MAIN_SRC_DIR}/main.c)
 
 target_include_directories(ptlang
+                           PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}

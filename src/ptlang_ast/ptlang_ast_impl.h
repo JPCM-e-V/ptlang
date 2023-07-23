@@ -12,14 +12,16 @@
 
 struct ptlang_ast_struct_def_s
 {
-    char *name;
+    ptlang_ast_ident name;
     ptlang_ast_decl *members;
+    ptlang_ast_code_position pos;
 };
 
 struct ptlang_ast_module_type_alias_s
 {
-    char *name;
+    ptlang_ast_ident name;
     ptlang_ast_type type;
+    ptlang_ast_code_position pos;
 };
 
 struct ptlang_ast_module_s
@@ -34,9 +36,10 @@ struct ptlang_ast_decl_s
 {
     ptlang_ast_type type;
     ptlang_ast_exp init;
-    char *name;
+    ptlang_ast_ident name;
     bool writable;
     bool export;
+    ptlang_ast_code_position pos;
 };
 
 // struct ptlang_ast_decl_list_s
@@ -60,8 +63,9 @@ struct ptlang_ast_decl_s
 
 struct ptlang_ast_struct_member_s
 {
-    char *str;
+    ptlang_ast_ident str;
     ptlang_ast_exp exp;
+    ptlang_ast_code_position pos;
 };
 
 // struct ptlang_ast_str_exp_list_s
@@ -111,6 +115,7 @@ struct ptlang_ast_stmt_s
         struct ptlang_ast_stmt_control_flow2_s control_flow2;
         uint64_t nesting_level;
     } content;
+    ptlang_ast_code_position pos;
 };
 
 struct ptlang_ast_exp_binary_operator_s
@@ -140,7 +145,7 @@ struct ptlang_ast_exp_cast_s
 
 struct ptlang_ast_exp_struct_s
 {
-    char *type;
+    ptlang_ast_ident type;
     ptlang_ast_struct_member_list members;
 };
 
@@ -153,7 +158,7 @@ struct ptlang_ast_exp_array_s
 struct ptlang_ast_exp_struct_member_s
 {
     ptlang_ast_exp struct_;
-    char *member_name;
+    ptlang_ast_ident member_name;
 };
 
 struct ptlang_ast_exp_array_element_s
@@ -223,6 +228,7 @@ struct ptlang_ast_exp_s
         struct ptlang_ast_exp_array_element_s array_element;
         struct ptlang_ast_exp_reference_s reference;
     } content;
+    ptlang_ast_code_position pos;
 };
 
 struct ptlang_ast_type_integer_s
@@ -276,15 +282,17 @@ struct ptlang_ast_type_s
         struct ptlang_ast_type_reference_s reference;
         char *name;
     } content;
+    ptlang_ast_code_position pos;
 };
 
 struct ptlang_ast_func_s
 {
-    char *name;
+    ptlang_ast_ident name;
     ptlang_ast_type return_type;
     ptlang_ast_decl *parameters;
     ptlang_ast_stmt stmt;
     bool export;
+    ptlang_ast_code_position pos;
 };
 
 void ptlang_ast_type_destroy_content(ptlang_ast_type type);

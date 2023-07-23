@@ -1,15 +1,48 @@
+#include "ptlang_context.h"
+#include "ptlang_error.h"
 #include "ptlang_ir_builder.h"
 #include "ptlang_parser.h"
 #include "ptlang_verify.h"
 
+#include <inttypes.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
 
+void print_error(ptlang_error error)
+{
+    fprintf(stderr, "%s from %" PRIu64 ":%" PRIu64 " to %" PRIu64 ":%" PRIu64 " : %s\n",
+            ptlang_error_type_name(error.type), error.pos.from_line, error.pos.from_column, error.pos.to_line,
+            error.pos.to_column, error.message);
+}
+
+void handle_errors(ptlang_error *errors)
+{
+    for (size_t i = 0; i < arrlenu(errors); i++)
+    {
+        print_error(errors[i]);
+        ptlang_free(errors[i].message);
+    }
+    arrfree(errors);
+}
+
 int main(void)
 {
+    ptlang_context ctx = {0};
     ptlang_ast_module mod;
-    ptlang_parser_parse(stdin, &mod);
-    ptlang_verify_module(mod);
+    ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
+    if (syntax_errors != NULL)
+    {
+        handle_errors(syntax_errors);
+        ptlang_ast_module_destroy(mod);
+        exit(1);
+    }
+    ptlang_error *semantic_errors = ptlang_verify_module(mod, &ctx);
+    if (semantic_errors != NULL)
+    {
+        handle_errors(semantic_errors);
+        ptlang_ast_module_destroy(mod);
+        exit(1);
+    }
 
     char *triple = LLVMGetDefaultTargetTriple();
 

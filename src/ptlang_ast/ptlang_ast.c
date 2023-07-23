@@ -1,11 +1,13 @@
 #include "ptlang_ast_impl.h"
 
-ptlang_ast_struct_def ptlang_ast_struct_def_new(char *name, ptlang_ast_decl *members)
+ptlang_ast_struct_def ptlang_ast_struct_def_new(ptlang_ast_ident name, ptlang_ast_decl *members,
+                                                ptlang_ast_code_position pos)
 {
     ptlang_ast_struct_def struct_def = ptlang_malloc(sizeof(struct ptlang_ast_struct_def_s));
     *struct_def = (struct ptlang_ast_struct_def_s){
         .name = name,
         .members = members,
+        .pos = pos,
     };
     return struct_def;
 }
@@ -48,11 +50,13 @@ void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struc
     // module->struct_defs[module->struct_def_count - 1] = struct_def;
 }
 
-void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptlang_ast_type type)
+void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident name, ptlang_ast_type type,
+                                      ptlang_ast_code_position pos)
 {
     arrput(module->type_aliases, ((struct ptlang_ast_module_type_alias_s){
                                      .name = name,
                                      .type = type,
+                                     .pos = pos,
                                  }));
     // module->type_alias_count++;
     // module->type_aliases = ptlang_realloc(
@@ -64,8 +68,8 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, char *name, ptla
     // };
 }
 
-ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptlang_ast_decl *parameters,
-                                    ptlang_ast_stmt stmt, bool export)
+ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
+                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool export)
 {
     ptlang_ast_func function = ptlang_malloc(sizeof(struct ptlang_ast_func_s));
     *function = (struct ptlang_ast_func_s){
@@ -78,7 +82,8 @@ ptlang_ast_func ptlang_ast_func_new(char *name, ptlang_ast_type return_type, ptl
     return function;
 }
 
-ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writable)
+ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name, bool writable,
+                                    ptlang_ast_code_position pos)
 {
     ptlang_ast_decl declaration = ptlang_malloc(sizeof(struct ptlang_ast_decl_s));
     *declaration = (struct ptlang_ast_decl_s){
@@ -87,6 +92,7 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, char *name, bool writa
         .writable = writable,
         .export = false,
         .init = 0,
+        .pos = pos,
     };
     return declaration;
 }
@@ -162,15 +168,17 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->expor
 //     };
 // }
 
-void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, char *str, ptlang_ast_exp exp)
+void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, ptlang_ast_ident str,
+                                       ptlang_ast_exp exp, ptlang_ast_code_position pos)
 {
     arrput(*list, ((struct ptlang_ast_struct_member_s){
                       .str = str,
                       .exp = exp,
+                      .pos = pos,
                   }));
 }
 
-ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
+ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size, ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
@@ -180,21 +188,24 @@ ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size)
                 .is_signed = is_signed,
                 .size = size,
             },
+        .pos = pos,
     };
     return type;
 }
 
-ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size)
+ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size, ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FLOAT,
         .content.float_size = size,
+        .pos = pos,
     };
     return type;
 }
 
-ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters)
+ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters,
+                                         ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
@@ -204,20 +215,23 @@ ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast
                 .return_type = return_type,
                 .parameters = parameters,
             },
+        .pos = pos,
     };
     return type;
 }
 
-ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type)
+ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type, ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_HEAP_ARRAY,
         .content.heap_array.type = element_type,
+        .pos = pos,
     };
     return type;
 }
-ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len)
+ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len,
+                                      ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
@@ -227,10 +241,12 @@ ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len
                 .type = element_type,
                 .len = len,
             },
+        .pos = pos,
     };
     return type;
 }
-ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool writable)
+ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool writable,
+                                          ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
@@ -240,22 +256,25 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
                 .type = element_type,
                 .writable = writable,
             },
+        .pos = pos,
     };
     return type;
 }
 
-ptlang_ast_type ptlang_ast_type_named(char *name)
+ptlang_ast_type ptlang_ast_type_named(char *name, ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_NAMED,
         .content.name = name,
+        .pos = pos,
     };
     return type;
 }
 
 #define BINARY_OP(lower, upper)                                                                              \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value)       \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value,       \
+                                                ptlang_ast_code_position pos)                                \
     {                                                                                                        \
         ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
@@ -265,17 +284,19 @@ ptlang_ast_type ptlang_ast_type_named(char *name)
                     .left_value = left_value,                                                                \
                     .right_value = right_value,                                                              \
                 },                                                                                           \
+            .pos = pos,                                                                                      \
         };                                                                                                   \
         return exp;                                                                                          \
     }
 
 #define UNARY_OP(lower, upper)                                                                               \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value)                                        \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value, ptlang_ast_code_position pos)          \
     {                                                                                                        \
         ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
         *exp = (struct ptlang_ast_exp_s){                                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.unary_operator = value,                                                                 \
+            .pos = pos,                                                                                      \
         };                                                                                                   \
         return exp;                                                                                          \
     }
@@ -305,7 +326,8 @@ BINARY_OP(bitwise_xor, BITWISE_XOR)
 UNARY_OP(bitwise_inverse, BITWISE_INVERSE)
 UNARY_OP(length, LENGTH)
 
-ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp *parameters)
+ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp *parameters,
+                                                ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -315,16 +337,20 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
                 .function = function,
                 .parameters = parameters,
             },
+        .pos = pos,
     };
     return exp;
 }
 
 #define STR_REPR(lower, upper)                                                                               \
-    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation)                                    \
+    ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation, ptlang_ast_code_position pos)      \
     {                                                                                                        \
         ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
-        *exp = (struct ptlang_ast_exp_s){.type = PTLANG_AST_EXP_##upper,                                     \
-                                         .content.str_prepresentation = str_representation};                 \
+        *exp = (struct ptlang_ast_exp_s){                                                                    \
+            .type = PTLANG_AST_EXP_##upper,                                                                  \
+            .content.str_prepresentation = str_representation,                                               \
+            .pos = pos,                                                                                      \
+        };                                                                                                   \
         return exp;                                                                                          \
     }
 
@@ -332,7 +358,8 @@ STR_REPR(variable, VARIABLE)
 STR_REPR(integer, INTEGER)
 STR_REPR(float, FLOAT)
 
-ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_struct_member_list members)
+ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_ident type, ptlang_ast_struct_member_list members,
+                                         ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -342,11 +369,13 @@ ptlang_ast_exp ptlang_ast_exp_struct_new(char *type, ptlang_ast_struct_member_li
                 .type = type,
                 .members = members,
             },
+        .pos = pos,
     };
     return exp;
 }
 
-ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *values)
+ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *values,
+                                        ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -356,12 +385,13 @@ ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *va
                 .type = type,
                 .values = values,
             },
+        .pos = pos,
     };
     return exp;
 }
 
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value,
-                                                   ptlang_ast_exp else_value)
+                                                   ptlang_ast_exp else_value, ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -372,10 +402,12 @@ ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptl
                 .if_value = if_value,
                 .else_value = else_value,
             },
+        .pos = pos,
     };
     return exp;
 }
-ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value)
+ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value,
+                                       ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -385,11 +417,13 @@ ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp valu
                 .type = type,
                 .value = value,
             },
+        .pos = pos,
     };
     return exp;
 }
 
-ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *member_name)
+ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, ptlang_ast_ident member_name,
+                                                ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -399,10 +433,12 @@ ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, char *me
                 .struct_ = struct_,
                 .member_name = member_name,
             },
+        .pos = pos,
     };
     return exp;
 }
-ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index)
+ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index,
+                                                ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -412,11 +448,12 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
                 .array = array,
                 .index = index,
             },
+        .pos = pos,
     };
     return exp;
 }
 
-ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
+ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value, ptlang_ast_code_position pos)
 {
     ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     *exp = (struct ptlang_ast_exp_s){
@@ -426,13 +463,14 @@ ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value)
                 .writable = writable,
                 .value = value,
             },
+        .pos = pos,
     };
     return exp;
 }
 
 UNARY_OP(dereference, DEREFERENCE)
 
-ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
+ptlang_ast_stmt ptlang_ast_stmt_block_new(ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
@@ -441,6 +479,7 @@ ptlang_ast_stmt ptlang_ast_stmt_block_new(void)
             {
                 .stmts = NULL,
             },
+        .pos = pos,
     };
     return stmt;
 }
@@ -456,25 +495,28 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
     //     block_stmt->content.block.stmts, sizeof(ptlang_ast_stmt) * block_stmt->content.block.stmt_count);
     // block_stmt->content.block.stmts[block_stmt->content.block.stmt_count - 1] = stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp)
+ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_EXP,
         .content.exp = exp,
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl)
+ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_DECL,
         .content.decl = decl,
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt)
+ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
+                                       ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
@@ -484,11 +526,12 @@ ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt
                 .condition = condition,
                 .stmt = if_stmt,
             },
+        .pos = pos,
     };
     return stmt;
 }
 ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
-                                            ptlang_ast_stmt else_stmt)
+                                            ptlang_ast_stmt else_stmt, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
@@ -498,10 +541,12 @@ ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast
                 .condition = condition,
                 .stmt = {if_stmt, else_stmt},
             },
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt loop_stmt)
+ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt loop_stmt,
+                                          ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
@@ -511,42 +556,47 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
                 .condition = condition,
                 .stmt = loop_stmt,
             },
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value)
+ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
         .content.exp = return_value,
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value)
+ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
         .content.exp = return_value,
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level)
+ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BREAK,
         .content.nesting_level = nesting_level,
+        .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level)
+ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
     *stmt = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_CONTINUE,
         .content.nesting_level = nesting_level,
+        .pos = pos,
     };
     return stmt;
 }
@@ -572,25 +622,28 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     switch (type->type)
     {
     case PTLANG_AST_TYPE_INTEGER:
-        return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size);
+        return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
+                                       type->pos);
     case PTLANG_AST_TYPE_FLOAT:
-        return ptlang_ast_type_float(type->content.float_size);
+        return ptlang_ast_type_float(type->content.float_size, type->pos);
     case PTLANG_AST_TYPE_FUNCTION:
         return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type),
-                                        ptlang_ast_type_list_copy(type->content.function.parameters));
+                                        ptlang_ast_type_list_copy(type->content.function.parameters),
+                                        type->pos);
     case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type));
+        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type), type->pos);
     case PTLANG_AST_TYPE_ARRAY:
-        return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len);
+        return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len,
+                                     type->pos);
     case PTLANG_AST_TYPE_REFERENCE:
         return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type),
-                                         type->content.reference.writable);
+                                         type->content.reference.writable, type->pos);
     case PTLANG_AST_TYPE_NAMED:
     {
         size_t name_len = strlen(type->content.name) + 1;
         char *name = ptlang_malloc(name_len);
         memcpy(name, type->content.name, name_len);
-        return ptlang_ast_type_named(name);
+        return ptlang_ast_type_named(name, type->pos);
     }
     }
 }
@@ -715,7 +768,7 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
     arrfree(module->struct_defs);
     for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
-        ptlang_free(module->type_aliases[i].name);
+        ptlang_free(module->type_aliases[i].name.name);
         ptlang_ast_type_destroy(module->type_aliases[i].type);
     }
     arrfree(module->type_aliases);
@@ -725,7 +778,7 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
 
 void ptlang_ast_func_destroy(ptlang_ast_func func)
 {
-    ptlang_free(func->name);
+    ptlang_free(func->name.name);
     ptlang_ast_type_destroy(func->return_type);
     ptlang_ast_decl_list_destroy(func->parameters);
     ptlang_ast_stmt_destroy(func->stmt);
@@ -777,7 +830,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         ptlang_free(exp->content.str_prepresentation);
         break;
     case PTLANG_AST_EXP_STRUCT:
-        ptlang_free(exp->content.struct_.type);
+        ptlang_free(exp->content.struct_.type.name);
         ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
@@ -795,7 +848,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         break;
     case PTLANG_AST_EXP_STRUCT_MEMBER:
         ptlang_ast_exp_destroy(exp->content.struct_member.struct_);
-        ptlang_free(exp->content.struct_member.member_name);
+        ptlang_free(exp->content.struct_member.member_name.name);
         break;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
         ptlang_ast_exp_destroy(exp->content.array_element.array);
@@ -816,14 +869,14 @@ void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
     {
         ptlang_ast_exp_destroy(decl->init);
     }
-    ptlang_free(decl->name);
+    ptlang_free(decl->name.name);
 
     ptlang_free(decl);
 }
 
 void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
 {
-    ptlang_free(struct_def->name);
+    ptlang_free(struct_def->name.name);
     ptlang_ast_decl_list_destroy(struct_def->members);
 
     ptlang_free(struct_def);
@@ -861,7 +914,7 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 {
     for (size_t i = 0; i < arrlenu(member_list); i++)
     {
-        ptlang_free(member_list[i].str);
+        ptlang_free(member_list[i].str.name);
         ptlang_ast_exp_destroy(member_list[i].exp);
     }
     arrfree(member_list);
