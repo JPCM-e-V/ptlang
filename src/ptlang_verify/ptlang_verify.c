@@ -21,20 +21,171 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
 {
     ptlang_error *errors = NULL;
     ptlang_verify_type_resolvability(module, ctx, &errors);
+    ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
     return errors;
+}
+
+static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang_context *ctx,
+                                      ptlang_error **errors)
+{
+
+    // Type aliases
+
+    pltang_verify_struct_table *struct_table = NULL;
+
+    // pltang_verify_type_alias primitive_alias = ;
+
+    for (size_t i = 0; i < arrlenu(struct_defs); i++)
+    {
+        for (size_t j = 0; j < arrlenu(struct_defs[i]->members); j++)
+        {
+            for (size_t k = 0; k < j; k++)
+            {
+                if (strcmp(struct_defs[i]->members[j]->name.name, struct_defs[i]->members[k]->name.name) == 0)
+                {
+                    size_t message_len = sizeof("The struct member name '' is already used.") +
+                                         strlen(struct_defs[i]->members[j]->name.name);
+                    char *message = ptlang_malloc(message_len);
+                    snprintf(message, message_len, "The struct member name '%s' is already used.",
+                             struct_defs[i]->members[j]->name.name);
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
+                                        .pos = struct_defs[i]->members[j]->name.pos,
+                                        .message = message,
+                                    }));
+                }
+            }
+        }
+
+        pltang_verify_struct struct_ = pltang_verify_struct_create(struct_defs[i], ctx, errors);
+        shput(struct_table, struct_defs[i]->name.name, struct_);
+    }
+
+    pltang_verify_struct **candidates = NULL;
+
+    for (size_t i = 0; i < arrlenu(struct_defs); i++)
+    {
+        pltang_verify_struct *struct_ = &shget(struct_table, struct_defs[i]->name.name);
+        for (size_t j = 0; j < arrlenu(struct_->referenced_types); j++)
+        {
+            size_t index = shgeti(struct_table, struct_->referenced_types[j]);
+            arrput(struct_table[index].value.referencing_types, struct_);
+        }
+        if (arrlenu(struct_->referenced_types) == 0)
+        {
+            arrput(candidates, struct_);
+        }
+    }
+
+    while (arrlenu(candidates) != 0)
+    {
+        pltang_verify_struct *struct_ = arrpop(candidates);
+
+        // check if resolved
+        if (struct_->resolved)
+            continue;
+        struct_->resolved = true;
+        for (size_t i = 0; i < arrlenu(struct_->referenced_types); i++)
+        {
+            if (!shget(struct_table, struct_->referenced_types[i]).resolved)
+            {
+                struct_->resolved = false;
+                break;
+            }
+        }
+        if (!struct_->resolved)
+            continue;
+
+        // add referencing types to candidates
+        for (size_t i = 0; i < arrlenu(struct_->referencing_types); i++)
+        {
+            arrput(candidates, struct_->referencing_types[i]);
+        }
+    }
+
+    arrfree(candidates);
+
+    for (size_t i = 0; i < shlen(struct_table); i++)
+    {
+        pltang_verify_struct struct_ = struct_table[i].value;
+        if (!struct_.resolved)
+        {
+            size_t message_len = sizeof("The struct  is recursive.") + strlen(struct_.name);
+            char *message = ptlang_malloc(message_len);
+            snprintf(message, message_len, "The struct %s is recursive.", struct_.name);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_STRUCT_RECURSION,
+                                .pos = struct_.pos,
+                                .message = message,
+                            }));
+        }
+        arrfree(struct_.referenced_types);
+        arrfree(struct_.referencing_types);
+    }
+
+    shfree(struct_table);
+}
+
+static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang_error **errors)
+{
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_FUNCTION:
+    {
+        bool correct = ptlang_verify_type(type->content.function.return_type, ctx, errors);
+        for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
+        {
+            correct = ptlang_verify_type(type->content.function.parameters[i], ctx, errors) && correct;
+        }
+        return correct;
+    }
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        return ptlang_verify_type(type->content.heap_array.type, ctx, errors);
+    case PTLANG_AST_TYPE_ARRAY:
+        return ptlang_verify_type(type->content.array.type, ctx, errors);
+    case PTLANG_AST_TYPE_REFERENCE:
+        return ptlang_verify_type(type->content.reference.type, ctx, errors);
+    case PTLANG_AST_TYPE_NAMED:
+        if (shgeti(ctx->type_scope, type->content.name) == -1)
+        {
+            size_t message_len = sizeof("The type  is not defined.") + strlen(type->content.name);
+            char *message = ptlang_malloc(message_len);
+            snprintf(message, message_len, "The type %s is not defined.", type->content.name);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE_UNDEFINED,
+                                .pos = type->pos,
+                                .message = message,
+                            }));
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    default:
+        return true;
+    }
 }
 
 static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlang_context *ctx,
                                              ptlang_error **errors)
 {
+    // add structs to typescope
+
+    for (size_t i = 0; i < arrlenu(ast_module->struct_defs); i++)
+    {
+        shput(ctx->type_scope, ast_module->struct_defs[i]->name.name,
+              ((ptlang_context_type_scope_entry){.type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT,
+                                                 .value.struct_def = ast_module->struct_defs[i]}));
+    }
 
     // Type aliases
 
-    pltang_verify_type_alias_table *alias_table = NULL;
+    pltang_verify_type_alias_table *struct_table = NULL;
 
     // pltang_verify_type_alias primitive_alias = ;
 
-    shput(alias_table, "",
+    shput(struct_table, "",
           ((pltang_verify_type_alias){
               .name = "",
               .resolved = false,
@@ -42,96 +193,96 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
 
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
-        pltang_verify_type_alias type_alias =
-            pltang_verify_type_alias_create(ast_module->type_aliases[i], ctx);
-        shput(alias_table, ast_module->type_aliases[i].name.name, type_alias);
+        pltang_verify_type_alias struct_ = pltang_verify_type_alias_create(ast_module->type_aliases[i], ctx);
+        shput(struct_table, ast_module->type_aliases[i].name.name, struct_);
     }
 
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
-        pltang_verify_type_alias *type_alias = &shget(alias_table, ast_module->type_aliases[i].name.name);
-        for (size_t j = 0; j < arrlenu(type_alias->referenced_types); j++)
+        pltang_verify_type_alias *struct_ = &shget(struct_table, ast_module->type_aliases[i].name.name);
+        for (size_t j = 0; j < arrlenu(struct_->referenced_types); j++)
         {
-            size_t index = shgeti(alias_table, type_alias->referenced_types[j].name);
+            size_t index = shgeti(struct_table, struct_->referenced_types[j].name);
             if (index == -1)
             {
                 size_t message_len =
-                    sizeof("The type  is not defined.") + strlen(type_alias->referenced_types[j].name);
+                    sizeof("The type  is not defined.") + strlen(struct_->referenced_types[j].name);
                 char *message = ptlang_malloc(message_len);
                 snprintf(message, message_len, "The type %s is not defined.",
-                         type_alias->referenced_types[j].name);
+                         struct_->referenced_types[j].name);
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_TYPE_UNDEFINED,
-                                    .pos = type_alias->referenced_types[j].pos,
+                                    .pos = struct_->referenced_types[j].pos,
                                     .message = message,
                                 }));
             }
             else
             {
-                arrput(alias_table[index].value.referencing_types, type_alias);
+                arrput(struct_table[index].value.referencing_types, struct_);
             }
         }
     }
 
-    pltang_verify_type_alias **alias_candidates = NULL;
-    arrput(alias_candidates, &alias_table[0].value);
-    while (arrlenu(alias_candidates) != 0)
+    pltang_verify_type_alias **candidates = NULL;
+    arrput(candidates, &struct_table[0].value);
+    while (arrlenu(candidates) != 0)
     {
-        pltang_verify_type_alias *type_alias = arrpop(alias_candidates);
+        pltang_verify_type_alias *struct_ = arrpop(candidates);
 
         // check if resolved
-        if (type_alias->resolved)
+        if (struct_->resolved)
             continue;
-        type_alias->resolved = true;
-        for (size_t i = 0; i < arrlenu(type_alias->referenced_types); i++)
+        struct_->resolved = true;
+        for (size_t i = 0; i < arrlenu(struct_->referenced_types); i++)
         {
-            if (!shget(alias_table, type_alias->referenced_types[i].name).resolved)
+            if (!shget(struct_table, struct_->referenced_types[i].name).resolved)
             {
-                type_alias->resolved = false;
+                struct_->resolved = false;
                 break;
             }
         }
-        if (!type_alias->resolved)
+        if (!struct_->resolved)
             continue;
 
         // add type to type scope
-        if (*type_alias->name != '\0')
+        if (*struct_->name != '\0')
         {
-            shput(ctx->type_scope, type_alias->name,
+            shput(ctx->type_scope, struct_->name,
                   ((ptlang_context_type_scope_entry){
-                      //   .type = pltang_verify_type(type_alias->type, ctx),
-                      .ptlang_type = ptlang_context_unname_type(type_alias->type, ctx->type_scope),
+                      //   .type = pltang_verify_type(struct_->type, ctx),
+                      .type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS,
+                      .value.ptlang_type = ptlang_context_unname_type(struct_->type, ctx->type_scope),
                   }));
         }
 
         // add referencing types to candidates
-        for (size_t i = 0; i < arrlenu(type_alias->referencing_types); i++)
+        for (size_t i = 0; i < arrlenu(struct_->referencing_types); i++)
         {
-            arrput(alias_candidates, type_alias->referencing_types[i]);
+            arrput(candidates, struct_->referencing_types[i]);
         }
     }
 
-    arrfree(alias_candidates);
+    arrfree(candidates);
 
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases) + 1; i++)
     {
-        pltang_verify_type_alias type_alias = alias_table[i].value;
-        if (!type_alias.resolved)
+        pltang_verify_type_alias struct_ = struct_table[i].value;
+        if (!struct_.resolved)
         {
-            size_t message_len = sizeof("The type  could not be resolved.") + strlen(type_alias.name);
+            size_t message_len = sizeof("The type  could not be resolved.") + strlen(struct_.name);
             char *message = ptlang_malloc(message_len);
-            snprintf(message, message_len, "The type %s could not be resolved.", type_alias.name);
+            snprintf(message, message_len, "The type %s could not be resolved.", struct_.name);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNRESOLVABLE,
-                                .pos = type_alias.pos,
+                                .pos = struct_.pos,
                                 .message = message,
                             }));
         }
-        arrfree(type_alias.referenced_types);
-        arrfree(type_alias.referencing_types);
+        arrfree(struct_.referenced_types);
+        arrfree(struct_.referencing_types);
     }
 
-    shfree(alias_table);
+    shfree(struct_table);
 }
 
 static ptlang_ast_ident *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
@@ -182,7 +333,7 @@ static ptlang_ast_ident *pltang_verify_type_alias_get_referenced_types_from_ast_
 static pltang_verify_type_alias
 pltang_verify_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias, ptlang_context *ctx)
 {
-    // pltang_verify_type_alias type_alias = ptlang_malloc(sizeof(struct pltang_verify_type_alias_s));
+    // pltang_verify_type_alias struct_ = ptlang_malloc(sizeof(struct pltang_verify_type_alias_s));
 
     return (struct pltang_verify_type_alias_s){
         .name = ast_type_alias.name.name,
@@ -193,5 +344,47 @@ pltang_verify_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_a
         .referencing_types = NULL,
         .resolved = false,
     };
-    // return type_alias;
+    // return struct_;
+}
+
+static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
+                                                                        ptlang_context *ctx,
+                                                                        ptlang_error **errors)
+{
+    char **referenced_types = NULL;
+
+    for (size_t i = 0; i < arrlenu(struct_def->members); i++)
+    {
+        ptlang_ast_type type = struct_def->members[i]->type;
+        if (!ptlang_verify_type(type, ctx, errors))
+            continue;
+        type = ptlang_context_unname_type(type, ctx->type_scope);
+        while (type->type == PTLANG_AST_TYPE_ARRAY)
+        {
+            type = type->content.array.type;
+            type = ptlang_context_unname_type(type, ctx->type_scope);
+        }
+
+        if (type->type == PTLANG_AST_TYPE_NAMED)
+        {
+            // => must be struct
+            arrput(referenced_types, type->content.name);
+        }
+    }
+    return referenced_types;
+}
+
+static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
+                                                        ptlang_context *ctx, ptlang_error **errors)
+{
+
+    return (struct pltang_verify_struct_s){
+        .name = ast_struct_def->name.name,
+        .pos = ast_struct_def->pos,
+        .referenced_types =
+            pltang_verify_struct_get_referenced_types_from_struct_def(ast_struct_def, ctx, errors),
+        .referencing_types = NULL,
+        .resolved = false,
+    };
+    // return struct_;
 }

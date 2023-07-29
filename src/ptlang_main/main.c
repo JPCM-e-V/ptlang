@@ -30,19 +30,21 @@ int main(void)
     ptlang_context ctx = {0};
     ptlang_ast_module mod;
     ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
-    if (syntax_errors != NULL)
+    if (arrlenu(syntax_errors) != 0)
     {
         handle_errors(syntax_errors);
         ptlang_ast_module_destroy(mod);
         exit(1);
     }
     ptlang_error *semantic_errors = ptlang_verify_module(mod, &ctx);
-    if (semantic_errors != NULL)
+    if (arrlenu(semantic_errors) != 0)
     {
         handle_errors(semantic_errors);
         ptlang_ast_module_destroy(mod);
         exit(1);
     }
+
+    pltang_context_destory(&ctx);
 
     char *triple = LLVMGetDefaultTargetTriple();
 

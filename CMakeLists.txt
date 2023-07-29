@@ -99,7 +99,9 @@ target_link_options(ptlang_ir_builder
 target_link_directories(ptlang_ir_builder
                         PUBLIC ${PTLANG_LLVM_LIBDIR})
 
-add_executable(ptlang ${PTLANG_MAIN_SRC_DIR}/main.c)
+add_executable(ptlang
+               ${PTLANG_MAIN_SRC_DIR}/ptlang_context.c
+               ${PTLANG_MAIN_SRC_DIR}/main.c)
 
 target_include_directories(ptlang
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}

@@ -6,7 +6,16 @@
 typedef struct ptlang_context_type_scope_entry_s
 {
     // LLVMTypeRef type;
-    ptlang_ast_type ptlang_type;
+    enum
+    {
+        PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS,
+        PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT,
+    } type;
+    union
+    {
+        ptlang_ast_type ptlang_type;
+        ptlang_ast_struct_def struct_def;
+    } value;
 } ptlang_context_type_scope_entry;
 
 typedef struct ptlang_context_type_scope_s
@@ -20,20 +29,7 @@ typedef struct ptlang_context_s
     ptlang_context_type_scope *type_scope;
 } ptlang_context;
 
-static inline ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type,
-                                                         ptlang_context_type_scope *type_scope)
-{
-    ptlang_ast_type new_type;
-    while (type != NULL && type->type == PTLANG_AST_TYPE_NAMED)
-    {
-        new_type = shget(type_scope, type->content.name).ptlang_type;
-        if (new_type == NULL)
-        {
-            break;
-        }
-        type = new_type;
-    }
-    return type;
-}
+void pltang_context_destory(ptlang_context *ctx);
+ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope);
 
 #endif
