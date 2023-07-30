@@ -1818,7 +1818,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         ptlang_ir_builder_stmt(stmt->content.control_flow.stmt, ctx);
         LLVMBuildBr(ctx->builder, condition_block);
 
-        arrpop(ctx->break_and_continue_blocks);
+        (void)arrpop(ctx->break_and_continue_blocks);
 
         LLVMPositionBuilderAtEnd(ctx->builder, endwhile_block);
         break;
