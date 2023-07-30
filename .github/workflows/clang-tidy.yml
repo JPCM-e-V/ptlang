@@ -8,7 +8,7 @@ jobs:
   build:
     strategy:
       matrix:
-        # build-type: [Debug, RelWithDebInfo]
+        build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, macos-latest]
       fail-fast: false
     runs-on: ${{matrix.os}}
@@ -35,7 +35,7 @@ jobs:
           fi
         
       - name: Bison and Flex
-        run: cmake --build '${{github.workspace}}/build' -- lexer.h lexer.c parser.h parser.c
+        run: cmake --build '${{github.workspace}}/build' --config ${{matrix.build-type}} -- lexer.h lexer.c parser.h parser.c
 
       - name: clang-tidy
         shell: bash
