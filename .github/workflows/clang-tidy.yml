@@ -29,9 +29,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)"
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison
           else
-            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(llvm-config-15 --cmakedir)"
           fi
         
       - name: Bison and Flex
@@ -39,4 +39,4 @@ jobs:
 
       - name: clang-tidy
         shell: bash
-        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy -p build $(find ./src -type f -name '*.c' -o -type f -name '*.h') ./b/parser.h ./b/lexer.c ./b/parser.c --warnings-as-errors='*'
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy -p build $(find ./src -type f -name '*.c' -o -type f -name '*.h') ${{github.workspace}}/build/parser.h ${{github.workspace}}/build/lexer.c ${{github.workspace}}/build/parser.c --warnings-as-errors='*'
