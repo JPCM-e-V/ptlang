@@ -33,4 +33,4 @@ jobs:
 
       - name: clang-tidy
         shell: bash
-        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy --help
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy -p build $(find ./src -type f -name '*.c') --warnings-as-errors='*'
