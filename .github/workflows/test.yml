@@ -11,7 +11,17 @@ jobs:
         build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, macos-latest]
         asan-args: ["", "-fsanitize=address"]
-        compiler: ["/usr/bin/clang", "/usr/bin/gcc"]
+        include:
+          - os: ubuntu-latest
+            compiler: /usr/bin/clang
+          - os: ubuntu-latest
+            compiler: /usr/bin/gcc
+          - os: macos-latest
+            compiler: /usr/bin/clang
+          - os: macos-latest
+            compiler: /usr/bin/gcc-11
+          - os: macos-latest
+            compiler: /usr/bin/gcc-12
       fail-fast: false
     runs-on: ${{matrix.os}}
 
