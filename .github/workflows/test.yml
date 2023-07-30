@@ -37,6 +37,7 @@ jobs:
     - name: Configure CMake
       shell: bash
       run: |
+          which gcc-12
           if [[ "${{matrix.os}}" == "macos"* ]]; then
             cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE="${{matrix.build-type}}" -DCMAKE_C_COMPILER=${{matrix.compiler}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
           else
