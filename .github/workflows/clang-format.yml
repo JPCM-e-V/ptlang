@@ -17,4 +17,4 @@ jobs:
 
       - name: clang-format
         shell: bash
-        run: clang-format --help
+        run: clang-format --version
