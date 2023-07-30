@@ -13,6 +13,10 @@ jobs:
     runs-on: ${{matrix.os}}
 
     steps:
+      - name: Install Deps using Homebrew
+        if: contains(matrix.os, 'macos')
+        run: brew install llvm
+
       - uses: actions/checkout@v3
 
       - name: clang-format
