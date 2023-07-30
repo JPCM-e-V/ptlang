@@ -11,13 +11,10 @@ jobs:
         build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, macos-latest]
         asan-args: ["", "-fsanitize=address"]
+        compiler: ["/usr/bin/clang"]
         include:
           - os: ubuntu-latest
-            compiler: /usr/bin/clang
-          - os: ubuntu-latest
             compiler: /usr/bin/gcc
-          - os: macos-latest
-            compiler: /usr/bin/clang
           - os: macos-latest
             compiler: /usr/bin/gcc-11
           - os: macos-latest
