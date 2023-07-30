@@ -21,4 +21,4 @@ jobs:
 
       - name: clang-format
         shell: bash
-        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-format --version
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-format --style=file --dry-run --Werror --verbose $(find ./src -type f -name '*.c' -o -type f -name '*.h')
