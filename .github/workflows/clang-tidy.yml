@@ -10,6 +10,7 @@ jobs:
       matrix:
         build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, macos-latest]
+        std: ["c11", "c17"]
       fail-fast: false
     runs-on: ${{matrix.os}}
 
@@ -29,9 +30,9 @@ jobs:
         shell: bash
         run: |
           if [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-std=${{matrix.std}}" -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison
           else
-            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(llvm-config-15 --cmakedir)"
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-std=${{matrix.std}}" -DLLVM_DIR="$(llvm-config-15 --cmakedir)"
           fi
         
       - name: Bison and Flex
