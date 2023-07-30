@@ -1,0 +1,24 @@
+name: clang-format
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    runs-on: ${{matrix.os}}
+
+    steps:
+      - name: Install Deps using Homebrew
+        if: contains(matrix.os, 'macos')
+        run: brew install llvm
+
+      - uses: actions/checkout@v3
+
+      - name: clang-format
+        shell: bash
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-format --style=file --dry-run --Werror --verbose $(find ./src -type f -name '*.c' -o -type f -name '*.h')

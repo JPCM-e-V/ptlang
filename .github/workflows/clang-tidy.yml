@@ -1,0 +1,42 @@
+name: clang-tidy
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        build-type: [Debug, RelWithDebInfo]
+        os: [ubuntu-latest, macos-latest]
+      fail-fast: false
+    runs-on: ${{matrix.os}}
+
+    steps:
+      - name: Install Deps using Homebrew
+        if: contains(matrix.os, 'macos')
+        run: brew install bison llvm ninja
+      - name: Install Deps using Apt-Get
+        if: contains(matrix.os, 'ubuntu')
+        run: sudo apt-get update && sudo apt-get install -y ninja-build llvm-15-dev
+
+      - uses: actions/checkout@v3
+        with:
+          submodules: 'recursive'
+
+      - name: CMake
+        shell: bash
+        run: |
+          if [[ "${{matrix.os}}" == "macos"* ]]; then
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison
+          else
+            cmake -B '${{github.workspace}}/build' -G 'Ninja' -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=/usr/bin/clang -DLLVM_DIR="$(llvm-config-15 --cmakedir)"
+          fi
+        
+      - name: Bison and Flex
+        run: cmake --build '${{github.workspace}}/build' --config ${{matrix.build-type}} -- lexer.h lexer.c parser.h parser.c
+
+      - name: clang-tidy
+        shell: bash
+        run: PATH=$PATH:/usr/local/opt/llvm/bin clang-tidy -p build $(find ./src -type f -name '*.c' -o -type f -name '*.h') ${{github.workspace}}/build/parser.h ${{github.workspace}}/build/lexer.c ${{github.workspace}}/build/parser.c --warnings-as-errors='*'
