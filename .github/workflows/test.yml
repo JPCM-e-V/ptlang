@@ -11,6 +11,15 @@ jobs:
         build-type: [Debug, RelWithDebInfo]
         os: [ubuntu-latest, macos-latest]
         asan-args: ["", "-fsanitize=address"]
+        std: ["c11", "c17"]
+        compiler: ["/usr/bin/clang", "/usr/bin/gcc", "/usr/local/bin/gcc-11", "/usr/local/bin/gcc-12"]
+        exclude:
+          - os: macos-latest
+            compiler: /usr/bin/gcc
+          - os: ubuntu-latest
+            compiler: /usr/local/bin/gcc-11
+          - os: ubuntu-latest
+            compiler: /usr/local/bin/gcc-12
       fail-fast: false
     runs-on: ${{matrix.os}}
 
@@ -30,9 +39,9 @@ jobs:
       shell: bash
       run: |
           if [[ "${{matrix.os}}" == "macos"* ]]; then
-            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DBISON_EXECUTABLE=/usr/local/opt/bison/bin/bison -DLLVM_DIR="$(/usr/local/opt/llvm/bin/llvm-config --cmakedir)" -DCMAKE_BUILD_TYPE="${{matrix.build-type}}" -DCMAKE_C_COMPILER=${{matrix.compiler}} -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror -std=${{matrix.std}} ${{matrix.asan-args}}"
           else
-            cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER=/usr/bin/clang -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror ${{matrix.asan-args}}"
+            cmake -B '${{github.workspace}}/build' -DLLVM_DIR="$(llvm-config-15 --cmakedir)" -DCMAKE_BUILD_TYPE=${{matrix.build-type}} -DCMAKE_C_COMPILER="${{matrix.compiler}}" -DCMAKE_C_FLAGS="-Wpedantic -Wall -Werror -std=${{matrix.std}} ${{matrix.asan-args}}"
           fi
 
     - name: Build

@@ -341,6 +341,7 @@ static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builde
     case PTLANG_AST_TYPE_NAMED:
         return shget(ctx->type_scope, type->content.name).type;
     }
+    abort();
 }
 
 // static ptlang_ast_type ptlang_ir_builder_type_for_bitwise(ptlang_ast_type type)
@@ -610,6 +611,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     }
 
     // LLVMSizeOf():
+    abort();
 }
 
 static LLVMValueRef ptlang_ir_builder_type_default_value(ptlang_ast_type type,
@@ -660,6 +662,7 @@ static LLVMValueRef ptlang_ir_builder_type_default_value(ptlang_ast_type type,
         return struct_;
     }
     }
+    abort();
 }
 
 static LLVMValueRef ptlang_ir_builder_build_cast(LLVMValueRef input, ptlang_ast_type from, ptlang_ast_type to,
@@ -1675,6 +1678,7 @@ static LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_
                               "dereference");
     }
     }
+    abort();
 }
 
 static void ptlang_ir_builder_stmt_allocas(ptlang_ast_stmt stmt, ptlang_ir_builder_build_context *ctx)
@@ -1814,7 +1818,7 @@ static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_build
         ptlang_ir_builder_stmt(stmt->content.control_flow.stmt, ctx);
         LLVMBuildBr(ctx->builder, condition_block);
 
-        arrpop(ctx->break_and_continue_blocks);
+        (void)arrpop(ctx->break_and_continue_blocks);
 
         LLVMPositionBuilderAtEnd(ctx->builder, endwhile_block);
         break;

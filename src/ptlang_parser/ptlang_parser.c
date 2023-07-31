@@ -62,15 +62,18 @@ ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYL
     bool is_signed = str[0] == 's' || str[0] == 'S';
     uint32_t size = strtoul(str + sizeof(char), NULL, 10);
 
-    ptlang_free(str);
-
     if (size > 1 << 23)
     {
 #define max_msg_len sizeof("Size of Integer must be below 8388608, but is XXXXXXX.")
         char msg[max_msg_len];
-        snprintf(msg, max_msg_len, "Size of integer must be below 8388608, but is %u.", size);
+        snprintf(msg, max_msg_len, "Size of integer must be below 8388608, but is %s.", str + sizeof(char));
 #undef max_msg_len
+        ptlang_free(str);
         ptlang_yyerror(yylloc, msg);
+    }
+    else
+    {
+        ptlang_free(str);
     }
     return ptlang_ast_type_integer(is_signed, size, ptlang_parser_code_position(yylloc));
 }

@@ -646,6 +646,7 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
         return ptlang_ast_type_named(name, type->pos);
     }
     }
+    abort();
 }
 
 // ptlang_ast_func *ptlang_ast_module_get_funcs(ptlang_ast_module module, uint64_t *count)
