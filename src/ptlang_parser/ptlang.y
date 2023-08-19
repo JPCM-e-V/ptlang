@@ -198,8 +198,8 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | RET_VAL exp SEMICOLON {$$ = ptlang_ast_stmt_ret_val_new($2, ppcp(&@$)); }
     | RETURN exp SEMICOLON {$$ = ptlang_ast_stmt_return_new($2, ppcp(&@$)); }
     | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL, ppcp(&@$)); }
-    | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(0, ppcp(&@$)); }
-    | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(0, ppcp(&@$)); }
+    | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(1, ppcp(&@$)); }
+    | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(1, ppcp(&@$)); }
     | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
     | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
 

@@ -27,6 +27,7 @@ typedef struct ptlang_context_type_scope_s
 typedef struct ptlang_context_s
 {
     ptlang_context_type_scope *type_scope;
+    ptlang_ast_decl *scope; // Impl of a scope: store len of this array, add new entries, reset len to previous len
 } ptlang_context;
 
 void pltang_context_destory(ptlang_context *ctx);
