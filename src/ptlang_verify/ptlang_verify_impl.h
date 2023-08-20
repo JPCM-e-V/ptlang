@@ -3,6 +3,7 @@
 
 #include "ptlang_ast_impl.h"
 #include "ptlang_verify.h"
+#include <inttypes.h>
 #include <stdio.h>
 
 #include "stb_ds.h"

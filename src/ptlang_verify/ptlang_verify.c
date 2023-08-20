@@ -29,7 +29,6 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
     return errors;
 }
 
-
 static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors)
 {
     for (size_t i = 0; i < arrlenu(functions); i++)
@@ -37,7 +36,6 @@ static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *
         ptlang_verify_function(functions[i], ctx, errors);
     }
 }
-
 
 static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx, ptlang_error **errors)
 {
@@ -62,6 +60,7 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
     switch (statement->type)
     {
     case PTLANG_AST_STMT_BLOCK:
+    {
         bool will_return = false;
         for (size_t i = 0; i < arrlenu(statement->content.block.stmts); i++)
         {
@@ -72,6 +71,7 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
             }
         }
         return will_return;
+    }
     case PTLANG_AST_STMT_EXP:
         ptlang_verify_expression(statement->content.exp, ctx, errors);
         return false;
@@ -117,7 +117,8 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
             size_t message_len = sizeof("Given nesting level 18446744073709551615 exceeds current nesting "
                                         "level of 18446744073709551615");
             char *message = ptlang_malloc(message_len);
-            snprintf(message, message_len, "Given nesting level %llu exceeds current nesting level of %llu",
+            snprintf(message, message_len,
+                     "Given nesting level %" PRIu64 " exceeds current nesting level of %" PRIu64,
                      statement->content.nesting_level, nesting_level);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE,
