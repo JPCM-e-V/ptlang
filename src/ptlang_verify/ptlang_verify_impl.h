@@ -54,15 +54,19 @@ static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang
 static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
                                                         ptlang_context *ctx, ptlang_error **errors);
 
-static void ptlang_verify_decl(ptlang_ast_decl decl, ptlang_context *ctx, ptlang_error **errors);
+static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+                               ptlang_error **errors);
 
 static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx, ptlang_error **errors);
 
 static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
                                     bool validate_return_type, ptlang_ast_type wanted_return_type,
-                                    ptlang_context *ctx, ptlang_error **errors);
+                                    size_t scope_offset, ptlang_context *ctx, ptlang_error **errors);
 
 static ptlang_ast_type ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx,
                                                 ptlang_error **errors);
+
+static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx,
+                               ptlang_error **errors);
 
 #endif

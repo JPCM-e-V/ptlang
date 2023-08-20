@@ -229,6 +229,7 @@ struct ptlang_ast_exp_s
         struct ptlang_ast_exp_reference_s reference;
     } content;
     ptlang_ast_code_position pos;
+    ptlang_ast_type ast_type; // use only after verify
 };
 
 struct ptlang_ast_type_integer_s

@@ -22,7 +22,7 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
     ptlang_error *errors = NULL;
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_verify_decl(module->declarations[i], ctx, &errors);
+        ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
     }
     ptlang_verify_type_resolvability(module, ctx, &errors);
     ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
@@ -41,65 +41,97 @@ static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx
 {
     bool validate_return_type = ptlang_verify_type(function->return_type, ctx, errors);
 
+    size_t function_scope_offset = arrlenu(ctx->scope);
+
     for (size_t i = 0; i < arrlenu(function->parameters); i++)
     {
         ptlang_verify_type(function->parameters[i]->type, ctx, errors);
         // TODO add to scope
     }
 
-    ptlang_verify_statement(function->stmt, 0, validate_return_type, NULL, ctx, errors);
+    size_t function_stmt_scope_offset = arrlenu(ctx->scope);
+
+    ptlang_verify_statement(function->stmt, 0, validate_return_type, function->return_type,
+                            function_stmt_scope_offset, ctx, errors);
+
+    // arrsetlen(ctx->scope, function_stmt_scope_offset);
+    arrsetlen(ctx->scope, function_scope_offset);
 }
 // returns true exactly if the statement will always return something (independent of whether there was an
 // error)
 static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
                                     bool validate_return_type, ptlang_ast_type wanted_return_type,
-                                    ptlang_context *ctx, ptlang_error **errors)
+                                    size_t scope_offset, ptlang_context *ctx, ptlang_error **errors)
 {
-    ptlang_ast_type condition_type;
-
     switch (statement->type)
     {
     case PTLANG_AST_STMT_BLOCK:
     {
+        size_t new_scope_offset = arrlenu(ctx->scope);
         bool will_return = false;
         for (size_t i = 0; i < arrlenu(statement->content.block.stmts); i++)
         {
             if (ptlang_verify_statement(statement->content.block.stmts[i], nesting_level,
-                                        validate_return_type, wanted_return_type, ctx, errors))
+                                        validate_return_type, wanted_return_type, new_scope_offset, ctx,
+                                        errors))
             {
                 will_return = true;
             }
         }
+        arrsetlen(ctx->scope, new_scope_offset);
         return will_return;
     }
     case PTLANG_AST_STMT_EXP:
         ptlang_verify_expression(statement->content.exp, ctx, errors);
         return false;
     case PTLANG_AST_STMT_DECL:
-        // TODO
-        ptlang_verify_decl(statement->content.decl, ctx, errors);
+        ptlang_verify_decl(statement->content.decl, scope_offset, ctx, errors);
         return false;
     case PTLANG_AST_STMT_IF:
     case PTLANG_AST_STMT_WHILE:
-        condition_type = ptlang_verify_expression(statement->content.control_flow.condition, ctx, errors);
-        // TODO: error if condition_type is not castable to bool
-        ptlang_verify_statement(statement->content.control_flow.stmt,
-                                nesting_level + (statement->type == PTLANG_AST_STMT_WHILE),
-                                validate_return_type, wanted_return_type, ctx, errors);
-        return false;
     case PTLANG_AST_STMT_IF_ELSE:
-        condition_type = ptlang_verify_expression(statement->content.control_flow2.condition, ctx, errors);
-        // TODO: error if condition_type is not castable to bool
-        return ptlang_verify_statement(statement->content.control_flow2.stmt[0], nesting_level,
-                                       validate_return_type, wanted_return_type, ctx, errors) &&
-               ptlang_verify_statement(statement->content.control_flow2.stmt[1], nesting_level,
-                                       validate_return_type, wanted_return_type, ctx, errors);
+    {
+        ptlang_ast_exp condition = statement->type == PTLANG_AST_STMT_IF_ELSE
+                                       ? statement->content.control_flow2.condition
+                                       : statement->content.control_flow.condition;
+        if (ptlang_verify_expression(condition, ctx, errors))
+        {
+            if (condition->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+                condition->ast_type->type != PTLANG_AST_TYPE_FLOAT)
+            {
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_TYPE_MISMATCH,
+                                    .pos = condition->pos,
+                                    .message = "Control flow condition must be a float or an int.",
+                                }));
+            }
+        }
+
+        if (statement->type != PTLANG_AST_STMT_IF_ELSE)
+        {
+
+            ptlang_verify_statement(statement->content.control_flow.stmt,
+                                    nesting_level + (statement->type == PTLANG_AST_STMT_WHILE),
+                                    validate_return_type, wanted_return_type, scope_offset, ctx, errors);
+            return false;
+        }
+        else
+        {
+
+            return ptlang_verify_statement(statement->content.control_flow2.stmt[0], nesting_level,
+                                           validate_return_type, wanted_return_type, scope_offset, ctx,
+                                           errors) &&
+                   ptlang_verify_statement(statement->content.control_flow2.stmt[1], nesting_level,
+                                           validate_return_type, wanted_return_type, scope_offset, ctx,
+                                           errors);
+        }
+    }
     case PTLANG_AST_STMT_RETURN:
     case PTLANG_AST_STMT_RET_VAL:
         if (validate_return_type)
         {
             ptlang_ast_type return_type = ptlang_verify_expression(statement->content.exp, ctx, errors);
-            // check if return_type can be auto-casted to wanted_return_type
+            // TODO check if return_type can be auto-casted to wanted_return_type
         }
         return true;
     case PTLANG_AST_STMT_BREAK:
@@ -130,17 +162,43 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
     }
 }
 
-static void ptlang_verify_decl(ptlang_ast_decl decl, ptlang_context *ctx, ptlang_error **errors)
+static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+                               ptlang_error **errors)
 {
-    // TODO
+
+    bool correct = ptlang_verify_type(decl->type, ctx, errors);
+
+    for (size_t i = scope_offset; i < arrlenu(ctx->scope); i++)
+    {
+        if (strcmp(ctx->scope[i]->name.name, decl->name.name) == 0)
+        {
+            size_t message_len = sizeof("The variable name '' is already used in the current scope.") +
+                                 strlen(decl->name.name);
+            char *message = ptlang_malloc(message_len);
+            snprintf(message, message_len, "The variable name '%s' is already used in the current scope.",
+                     decl->name.name);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
+                                .pos = decl->pos,
+                                .message = message,
+                            }));
+            correct = false;
+            break;
+        }
+    }
+
+    if (correct)
+    {
+
+        arrpush(ctx->scope, decl);
+    }
 }
 
-// returns the ast type of the expression
-static ptlang_ast_type ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx,
-                                                ptlang_error **errors)
+// returns true if the expression is an error type
+static bool ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx, ptlang_error **errors)
 {
     // TODO
-    return NULL;
+    return false;
 }
 
 static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang_context *ctx,
@@ -505,4 +563,23 @@ static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def as
         .resolved = false,
     };
     // return struct_;
+}
+
+static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx,
+                               ptlang_error **errors)
+{
+    to = ptlang_context_unname_type(to, ctx->type_scope);
+    from = ptlang_context_unname_type(from, ctx->type_scope);
+    if ((to->type == PTLANG_AST_TYPE_FLOAT || to->type == PTLANG_AST_TYPE_INTEGER) &&
+        (from->type == PTLANG_AST_TYPE_FLOAT || from->type == PTLANG_AST_TYPE_INTEGER))
+    {
+        return true;
+    }
+    if (to->type == PTLANG_AST_TYPE_REFERENCE && from->type == PTLANG_AST_TYPE_REFERENCE)
+    {
+        if (ptlang_ast_type_equals(to->content.reference.type, from->content.reference.type) &&
+            !to->content.reference.writable)
+            return true;
+    }
+    return ptlang_ast_type_equals(to, from);
 }

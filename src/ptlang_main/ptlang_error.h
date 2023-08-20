@@ -11,7 +11,8 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_STRUCT_RECURSION,
     PTLANG_ERROR_TYPE_UNDEFINED,
     PTLANG_ERROR_TYPE_MISMATCH,
-    PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE
+    PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE,
+    PTLANG_ERROR_VARIABLE_NAME_DUPLICATION,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -19,9 +20,10 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_TYPE_UNRESOLVABLE          ? "Type Unresolvable Error"                      \
     : error_type == PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION  ? "Struct Member Duplication"                    \
     : error_type == PTLANG_ERROR_STRUCT_RECURSION           ? "Struct Recursion Error"                       \
-    : error_type == PTLANG_ERROR_TYPE_MISMATCH              ? "Type Mismatch Error"                          \
     : error_type == PTLANG_ERROR_TYPE_UNDEFINED             ? "Type Undefined Error"                         \
+    : error_type == PTLANG_ERROR_TYPE_MISMATCH              ? "Type Mismatch Error"                          \
     : error_type == PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE ? "Nesting Level Out of Range Error"             \
+    : error_type == PTLANG_ERROR_VARIABLE_NAME_DUPLICATION  ? "Variable Name Duplication"                    \
                                                             : "Unkown Error"
 
 typedef struct ptlang_error_s

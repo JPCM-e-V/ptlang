@@ -184,4 +184,6 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list);
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
 void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list);
 
+bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2);
+
 #endif
