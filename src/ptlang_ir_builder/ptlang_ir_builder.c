@@ -297,16 +297,13 @@ static ptlang_ast_type ptlang_ir_builder_combine_types(ptlang_ast_type a, ptlang
 
 static LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx)
 {
-    if (type == NULL)
-    {
-        return LLVMVoidType();
-    }
-
     LLVMTypeRef *param_types;
     LLVMTypeRef function_type;
 
     switch (type->type)
     {
+    case PTLANG_AST_TYPE_VOID:
+        return LLVMVoidType();
     case PTLANG_AST_TYPE_INTEGER:
         return LLVMIntType(type->content.integer.size);
     case PTLANG_AST_TYPE_FLOAT:
@@ -621,6 +618,8 @@ static LLVMValueRef ptlang_ir_builder_type_default_value(ptlang_ast_type type,
     LLVMTypeRef llvm_type = ptlang_ir_builder_type(type, ctx);
     switch (type->type)
     {
+    case PTLANG_AST_TYPE_VOID:
+        abort();
     case PTLANG_AST_TYPE_INTEGER:
         return LLVMConstInt(llvm_type, 0, false);
     case PTLANG_AST_TYPE_FLOAT:
@@ -2001,7 +2000,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         LLVMSetLinkage(functions[i],
                        ast_module->functions[i]->export ? LLVMExternalLinkage : LLVMInternalLinkage);
 
-        if (ast_module->functions[i]->return_type != NULL)
+        if (ast_module->functions[i]->return_type->type != PTLANG_AST_TYPE_VOID)
         {
             ptlang_ir_builder_type_add_attributes(ast_module->functions[i]->return_type, functions[i],
                                                   LLVMAttributeReturnIndex, &ctx);
@@ -2047,7 +2046,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         ptlang_ir_builder_new_scope(&global_scope, &function_scope);
         ctx.scope = &function_scope;
 
-        if (ast_module->functions[i]->return_type != NULL)
+        if (ast_module->functions[i]->return_type->type != PTLANG_AST_TYPE_VOID)
         {
             ctx.return_ptr = LLVMBuildAlloca(
                 ctx.builder, ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx), "return");
@@ -2082,7 +2081,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
         ctx.scope_number = 0;
 
-        if (ast_module->functions[i]->return_type != NULL)
+        if (ast_module->functions[i]->return_type->type != PTLANG_AST_TYPE_VOID)
         {
             LLVMBuildStore(ctx.builder,
                            ptlang_ir_builder_type_default_value(ast_module->functions[i]->return_type, &ctx),
@@ -2109,7 +2108,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
 
         LLVMPositionBuilderAtEnd(ctx.builder, ctx.return_block);
 
-        if (ast_module->functions[i]->return_type != NULL)
+        if (ast_module->functions[i]->return_type->type != PTLANG_AST_TYPE_VOID)
         {
             LLVMTypeRef t = ptlang_ir_builder_type(ast_module->functions[i]->return_type, &ctx);
             LLVMValueRef return_value = LLVMBuildLoad2(ctx.builder, t, ctx.return_ptr, "");

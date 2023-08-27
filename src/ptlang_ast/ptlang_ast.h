@@ -2,6 +2,7 @@
 #define PTLANG_AST_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 typedef struct ptlang_ast_code_position_s
@@ -73,6 +74,7 @@ void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export);
 void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, ptlang_ast_ident str,
                                        ptlang_ast_exp exp, ptlang_ast_code_position pos);
 
+ptlang_ast_type ptlang_ast_type_void(void);
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size, ptlang_ast_code_position pos);
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size, ptlang_ast_code_position pos);
 ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters,
@@ -185,5 +187,7 @@ void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
 void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list);
 
 bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2);
+
+void ptlang_ast_type_to_string(ptlang_ast_type type, size_t *len, char *out);
 
 #endif

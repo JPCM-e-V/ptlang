@@ -20,12 +20,13 @@
 ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx)
 {
     ptlang_error *errors = NULL;
+    ptlang_verify_type_resolvability(module, ctx, &errors);
+    ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
         ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
     }
-    ptlang_verify_type_resolvability(module, ctx, &errors);
-    ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
+    ptlang_verify_functions(module->functions, ctx, &errors);
     return errors;
 }
 
@@ -45,48 +46,64 @@ static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx
 
     for (size_t i = 0; i < arrlenu(function->parameters); i++)
     {
-        ptlang_verify_type(function->parameters[i]->type, ctx, errors);
-        // TODO add to scope
+        if (!ptlang_verify_type(function->parameters[i]->type, ctx, errors))
+        {
+            function->parameters[i]->type = NULL;
+        }
+        arrput(ctx->scope, function->parameters[i]);
     }
 
     size_t function_stmt_scope_offset = arrlenu(ctx->scope);
 
+    bool has_return_value = false;
+    bool is_unreachable = false;
+
     ptlang_verify_statement(function->stmt, 0, validate_return_type, function->return_type,
-                            function_stmt_scope_offset, ctx, errors);
+                            function_stmt_scope_offset, &has_return_value, &is_unreachable, ctx, errors);
 
     // arrsetlen(ctx->scope, function_stmt_scope_offset);
     arrsetlen(ctx->scope, function_scope_offset);
 }
-// returns true exactly if the statement will always return something (independent of whether there was an
-// error)
-static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
+
+// returns false, if there was any error
+static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
                                     bool validate_return_type, ptlang_ast_type wanted_return_type,
-                                    size_t scope_offset, ptlang_context *ctx, ptlang_error **errors)
+                                    size_t scope_offset, bool *has_return_value, bool *is_unreachable,
+                                    ptlang_context *ctx, ptlang_error **errors)
 {
+    *has_return_value = false;
     switch (statement->type)
     {
     case PTLANG_AST_STMT_BLOCK:
     {
         size_t new_scope_offset = arrlenu(ctx->scope);
-        bool will_return = false;
         for (size_t i = 0; i < arrlenu(statement->content.block.stmts); i++)
         {
-            if (ptlang_verify_statement(statement->content.block.stmts[i], nesting_level,
-                                        validate_return_type, wanted_return_type, new_scope_offset, ctx,
-                                        errors))
+            if (*is_unreachable)
             {
-                will_return = true;
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_CODE_UNREACHABLE,
+                                    .pos = statement->content.block.stmts[i]->pos,
+                                    .message = "Dead code detected.",
+                                }));
+                *is_unreachable = false;
             }
+            bool *child_node_has_return_value = false;
+            ptlang_verify_statement(statement->content.block.stmts[i], nesting_level, validate_return_type,
+                                    wanted_return_type, new_scope_offset, child_node_has_return_value,
+                                    is_unreachable, ctx, errors);
+            *has_return_value |= *child_node_has_return_value;
         }
         arrsetlen(ctx->scope, new_scope_offset);
-        return will_return;
+        break;
     }
     case PTLANG_AST_STMT_EXP:
         ptlang_verify_expression(statement->content.exp, ctx, errors);
-        return false;
+        break;
+
     case PTLANG_AST_STMT_DECL:
         ptlang_verify_decl(statement->content.decl, scope_offset, ctx, errors);
-        return false;
+        break;
     case PTLANG_AST_STMT_IF:
     case PTLANG_AST_STMT_WHILE:
     case PTLANG_AST_STMT_IF_ELSE:
@@ -112,30 +129,61 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
 
             ptlang_verify_statement(statement->content.control_flow.stmt,
                                     nesting_level + (statement->type == PTLANG_AST_STMT_WHILE),
-                                    validate_return_type, wanted_return_type, scope_offset, ctx, errors);
-            return false;
+                                    validate_return_type, wanted_return_type, scope_offset, has_return_value,
+                                    is_unreachable, ctx, errors);
+            *is_unreachable = false;
+            *has_return_value = false;
         }
         else
         {
+            bool child_nodes_have_return_value[2] = {false, false};
+            bool child_nodes_are_unreachable[2] = {false, false};
 
-            return ptlang_verify_statement(statement->content.control_flow2.stmt[0], nesting_level,
-                                           validate_return_type, wanted_return_type, scope_offset, ctx,
-                                           errors) &&
-                   ptlang_verify_statement(statement->content.control_flow2.stmt[1], nesting_level,
-                                           validate_return_type, wanted_return_type, scope_offset, ctx,
-                                           errors);
+            ptlang_verify_statement(statement->content.control_flow2.stmt[0], nesting_level,
+                                    validate_return_type, wanted_return_type, scope_offset,
+                                    &child_nodes_have_return_value[0], &child_nodes_are_unreachable[0], ctx,
+                                    errors);
+            ptlang_verify_statement(statement->content.control_flow2.stmt[1], nesting_level,
+                                    validate_return_type, wanted_return_type, scope_offset,
+                                    &child_nodes_have_return_value[1], &child_nodes_are_unreachable[1], ctx,
+                                    errors);
+            *has_return_value = child_nodes_have_return_value[0] && child_nodes_have_return_value[1];
+            *is_unreachable = child_nodes_are_unreachable[0] && child_nodes_are_unreachable[1];
         }
+        break;
     }
     case PTLANG_AST_STMT_RETURN:
+        *is_unreachable = true;
     case PTLANG_AST_STMT_RET_VAL:
+        *has_return_value = false;
+        bool expression_correct = ptlang_verify_expression(statement->content.exp, ctx, errors);
         if (validate_return_type)
         {
-            ptlang_ast_type return_type = ptlang_verify_expression(statement->content.exp, ctx, errors);
-            // TODO check if return_type can be auto-casted to wanted_return_type
+            if (expression_correct)
+            {
+                ptlang_ast_type return_type = statement->content.exp->ast_type;
+                if (!ptlang_verify_cast(return_type, wanted_return_type, ctx, errors))
+                {
+                    // TODO
+                    abort();
+                    // size_t message_len = sizeof(" cannot be casted to the expected return type .");
+
+                    // char *message = ptlang_malloc(message_len);
+                    // snprintf(message, message_len, "%s cannot be casted to the expected return type %s.",
+                    //           ptlang_ast_type_to_string(wanted_return_type), nesting_level);
+                    // arrput(*errors, ((ptlang_error){
+                    //                     .type = PTLANG_ERROR_TYPE_MISMATCH,
+                    //                     .pos = condition->pos,
+                    //                     .message = ".",
+                    //                 }));
+                }
+            }
         }
-        return true;
+        break;
     case PTLANG_AST_STMT_BREAK:
     case PTLANG_AST_STMT_CONTINUE:
+        *has_return_value = false;
+
         if (statement->content.nesting_level == 0)
         {
             arrput(*errors, ((ptlang_error){
@@ -158,7 +206,12 @@ static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
                                 .message = message,
                             }));
         }
-        return false;
+        else
+        {
+            *is_unreachable = true;
+        }
+
+        break;
     }
 }
 
@@ -194,7 +247,7 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
     }
 }
 
-// returns true if the expression is an error type
+// returns true if the expression is correct
 static bool ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx, ptlang_error **errors)
 {
     // TODO
@@ -467,6 +520,9 @@ static ptlang_ast_ident *pltang_verify_type_alias_get_referenced_types_from_ast_
     ptlang_ast_ident *referenced_types = NULL;
     switch (ast_type->type)
     {
+    case PTLANG_AST_TYPE_VOID:
+        abort();
+        break;
     case PTLANG_AST_TYPE_INTEGER:
     case PTLANG_AST_TYPE_FLOAT:
         arrput(referenced_types, ((ptlang_ast_ident){.name = "", .pos = ((ptlang_ast_code_position){0})}));

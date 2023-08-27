@@ -142,9 +142,9 @@ one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
 func: type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
-    | ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, NULL, $3, $5, false); }
+    | ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, ptlang_ast_type_void(), $3, $5, false); }
     | EXPORT type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
-    | EXPORT ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, NULL, $4, $6, true); }
+    | EXPORT ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, ptlang_ast_type_void(), $4, $6, true); }
 
 params: { $$ = NULL; }
       | one_or_more_params { $$ = $1; }

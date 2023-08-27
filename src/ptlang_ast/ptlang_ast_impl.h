@@ -7,6 +7,7 @@
 #include "stb_ds.h"
 
 #include <assert.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -265,6 +266,7 @@ struct ptlang_ast_type_s
 {
     enum
     {
+        PTLANG_AST_TYPE_VOID,
         PTLANG_AST_TYPE_INTEGER,
         PTLANG_AST_TYPE_FLOAT,
         PTLANG_AST_TYPE_FUNCTION,

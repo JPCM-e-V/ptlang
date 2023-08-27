@@ -178,6 +178,15 @@ void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, ptla
                   }));
 }
 
+ptlang_ast_type ptlang_ast_type_void(void)
+{
+    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
+    *type = (struct ptlang_ast_type_s){
+        .type = PTLANG_AST_TYPE_VOID,
+    };
+    return type;
+}
+
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size, ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
@@ -621,6 +630,8 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     }
     switch (type->type)
     {
+    case PTLANG_AST_TYPE_VOID:
+        return ptlang_ast_type_void();
     case PTLANG_AST_TYPE_INTEGER:
         return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
                                        type->pos);
@@ -928,6 +939,8 @@ bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2)
         return false;
     switch (type_1->type)
     {
+    case PTLANG_AST_TYPE_VOID:
+        return true;
     case PTLANG_AST_TYPE_INTEGER:
         return type_1->content.integer.is_signed == type_2->content.integer.is_signed &&
                type_1->content.integer.size == type_2->content.integer.size;
@@ -957,5 +970,63 @@ bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2)
                type_1->content.reference.writable == type_2->content.reference.writable;
     case PTLANG_AST_TYPE_NAMED:
         return 0 == strcmp(type_1->content.name, type_2->content.name);
+    }
+}
+
+void ptlang_ast_type_to_string(ptlang_ast_type type, size_t *len, char *out)
+{
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_VOID:
+        *len = 0;
+        if (out != NULL)
+        {
+            *out = '\0';
+        }
+        break;
+    case PTLANG_AST_TYPE_INTEGER:
+    {
+        *len = sizeof("?8388607");
+        if (out != NULL)
+        {
+            snprintf(out, *len, "%c%d", type->content.integer.is_signed ? 's' : 'u',
+                     type->content.integer.size);
+        }
+        break;
+    }
+    case PTLANG_AST_TYPE_FLOAT:
+    {
+        *len = sizeof("f128");
+        if (out != NULL)
+        {
+            snprintf(out, *len, "f%d", type->content.float_size);
+        }
+        break;
+    }
+    case PTLANG_AST_TYPE_FUNCTION:
+    {
+        abort();
+        break;
+    }
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+    {
+        abort();
+        break;
+    }
+    case PTLANG_AST_TYPE_ARRAY:
+    {
+        abort();
+        break;
+    }
+    case PTLANG_AST_TYPE_REFERENCE:
+    {
+        abort();
+        break;
+    }
+    case PTLANG_AST_TYPE_NAMED:
+    {
+        abort();
+        break;
+    }
     }
 }

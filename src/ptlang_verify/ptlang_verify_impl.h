@@ -59,14 +59,16 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
 
 static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx, ptlang_error **errors);
 
-static bool ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
+static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_level,
                                     bool validate_return_type, ptlang_ast_type wanted_return_type,
-                                    size_t scope_offset, ptlang_context *ctx, ptlang_error **errors);
+                                    size_t scope_offset, bool *has_return_value, bool *is_unreachable,
+                                    ptlang_context *ctx, ptlang_error **errors);
 
-static ptlang_ast_type ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx,
-                                                ptlang_error **errors);
+static bool ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx, ptlang_error **errors);
 
 static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx,
                                ptlang_error **errors);
+
+static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors);
 
 #endif
