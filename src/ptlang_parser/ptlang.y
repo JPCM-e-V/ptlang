@@ -27,13 +27,14 @@
     ptlang_ast_struct_member_list struct_member_list;
     enum ptlang_ast_type_float_size float_size;
     ptlang_ast_ident ident;
+    struct {ptlang_ast_type type, ptlang_ast_ident ident} ident_and_type;
 }
 
 %define api.pure true
 %locations
 
 %glr-parser
-%expect-rr 3
+%expect-rr 1
 
 %token PLUS
 %token MINUS
@@ -86,19 +87,22 @@
 %token QUESTION_MARK
 %token COLON
 %token HASHTAG
+%token VOID
 
 %type <str> int_val
-%type <type> type
+%type <type> type type_or_void void
 %type <stmt> stmt block
 //%type <module> module
-%type <func> func
+%type <func> func function
 %type <exp> exp const_exp
-%type <decl> non_const_decl const_decl decl decl_statement module_decl_without_export module_decl
+%type <decl> const_decl decl decl_statement module_decl declaration declaration_without_export non_const_decl
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
 %type <type_list> types one_or_more_types
 %type <exp_list> exps one_or_more_exps
 %type <struct_member_list> members one_or_more_members
 %type <ident> ident
+%type <struct_def> struct_def
+%type <ident_and_type> ident_and_type
 
 %precedence single_if
 %precedence ELSE
@@ -126,11 +130,16 @@
 %%
 
 module:
-      | module func { ptlang_ast_module_add_function(*ptlang_parser_module_out, $2); }
-      | module module_decl SEMICOLON { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $2); }
-      | module STRUCT_DEF ident OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
-        { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, ptlang_ast_struct_def_new($3, $5, ppcpft(&@2, &@$))); }
-      | module TYPE_ALIAS ident type { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $3, $4, ppcpft(&@2, &@$)); }
+      | declaration { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $1); }
+      | function { ptlang_ast_module_add_function(*ptlang_parser_module_out, $1); }
+      | struct_def { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, $1); }
+      | TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $2, $3, ppcpft(&@2, &@$)); }
+
+declaration: module_decl SEMICOLON { $$ = $1; }
+
+function: EXPORT func { $$ = $2; ptlang_ast_func_set_export($$, true); }
+        | func { $$ = $1; }
+
 
 ident: IDENT { $$ = (ptlang_ast_ident){$1, ppcp(&@1)}; }
 
@@ -141,10 +150,9 @@ struct_members: { $$ = NULL; }
 one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-func: type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, $1, $4, $6, false); }
-    | ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($1, ptlang_ast_type_void(), $3, $5, false); }
-    | EXPORT type ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($3, $2, $5, $7, true); }
-    | EXPORT ident OPEN_BRACKET params CLOSE_BRACKET stmt { $$ = ptlang_ast_func_new($2, ptlang_ast_type_void(), $4, $6, true); }
+func: ident_and_type OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new(($1)->ident, ($1)->type, $3, $5, false); }
+    | void ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($2, $1, $4, $6, false);}
+
 
 params: { $$ = NULL; }
       | one_or_more_params { $$ = $1; }
@@ -153,7 +161,9 @@ params: { $$ = NULL; }
 one_or_more_params: non_const_decl { $$ = NULL; arrput($$, $1); }
                   | one_or_more_params COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-non_const_decl: type ident { $$ = ptlang_ast_decl_new($1, $2, true, ppcp(&@$)); }
+non_const_decl: ident_and_type { $$ = ptlang_ast_decl_new($1.type, $1.ident, true, ppcp(&@$)); }
+
+ident_and_type: type ident { $$.ident = $1; $$.type = $2; }
 
 const_decl: CONST type ident { $$ = ptlang_ast_decl_new($2, $3, false, ppcp(&@$));}
 
@@ -163,21 +173,27 @@ decl: non_const_decl { $$=$1; }
 decl_statement: decl EQ exp { $$ = $1; ptlang_ast_decl_set_init($1, $3); }
     | non_const_decl { $$ = $1; }
 
-module_decl_without_export: decl EQ const_exp { $$ = $1; ptlang_ast_decl_set_init($1, $3); }
-           | non_const_decl { $$ = $1; }
+declaration_without_export: decl EQ const_exp { $$ = $1; ptlang_ast_decl_set_init($$, $3); }
+                         | non_const_decl { $$ = $1; }
 
-module_decl: module_decl_without_export { $$ = $1; }
-           | EXPORT module_decl_without_export {$$ = $2; ptlang_ast_decl_set_export($$, true);}
+module_decl: declaration_without_export { $$ = $1; }
+
+struct_def: STRUCT_DEF ident OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
+           { $$ = ptlang_ast_struct_def_new($2, $4, ppcpft(&@2, &@$)); }
+
 
 type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
     | FLOAT_TYPE { $$ = ptlang_ast_type_float($1, ppcp(&@$)); }
-    | OPEN_BRACKET types CLOSE_BRACKET COLON type { $$ = ptlang_ast_type_function($5, $2, ppcp(&@$)); }
+    | OPEN_BRACKET types CLOSE_BRACKET COLON type_or_void { $$ = ptlang_ast_type_function($5, $2, ppcp(&@$)); }
     | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3, ppcp(&@$)); }
     | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); ptlang_free($2); } // TODO Overflow
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true, ppcp(&@$)); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false, ppcp(&@$)); }
     | IDENT { $$ = ptlang_ast_type_named($1, ppcp(&@$)); }
     /* | DUMMY { $$ = NULL; } */
+
+type_or_void: type {$$ = $1;} | void { $$ = $1; }
+void: VOID { $$ = ptlang_ast_type_void(ppcp(&@$)); }
 
 types: { $$ = NULL; }
     | one_or_more_types { $$ = $1; }
@@ -239,7 +255,7 @@ exp: OPEN_BRACKET exp CLOSE_BRACKET { $$ = $2; }
    | exp OPEN_BRACKET exps CLOSE_BRACKET { $$ = ptlang_ast_exp_function_call_new($1, $3, ppcp(&@$)); }
    | IDENT { $$ = ptlang_ast_exp_variable_new($1, ppcp(&@$)); }
    | ident OPEN_CURLY_BRACE members CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_struct_new($1, $3, ppcp(&@$)); }
-   | type OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($1, $5, ppcp(&@$)); }
+   | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type OPEN_CURLY_BRACE exps CLOSE_CURLY_BRACE { $$ = ptlang_ast_exp_array_new($3, $5, ppcp(&@$)); }
    | exp QUESTION_MARK exp COLON exp { $$ = ptlang_ast_exp_ternary_operator_new($1, $3, $5, ppcp(&@$)); }
    | LESSER type GREATER exp %prec cast { $$ = ptlang_ast_exp_cast_new($2, $4, ppcp(&@$)); }
    | exp DOT ident { $$ = ptlang_ast_exp_struct_member_new($1, $3, ppcp(&@$)); }

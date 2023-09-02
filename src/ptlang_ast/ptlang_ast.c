@@ -178,11 +178,12 @@ void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, ptla
                   }));
 }
 
-ptlang_ast_type ptlang_ast_type_void(void)
+ptlang_ast_type ptlang_ast_type_void(ptlang_ast_code_position pos)
 {
     ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
     *type = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_VOID,
+        .pos = pos,
     };
     return type;
 }
@@ -631,7 +632,7 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     switch (type->type)
     {
     case PTLANG_AST_TYPE_VOID:
-        return ptlang_ast_type_void();
+        return ptlang_ast_type_void(type->pos);
     case PTLANG_AST_TYPE_INTEGER:
         return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
                                        type->pos);
@@ -973,60 +974,131 @@ bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2)
     }
 }
 
-void ptlang_ast_type_to_string(ptlang_ast_type type, size_t *len, char *out)
+size_t ptlang_ast_type_to_string(ptlang_ast_type type, char *out)
 {
+    size_t size;
     switch (type->type)
     {
     case PTLANG_AST_TYPE_VOID:
-        *len = 0;
+        size = sizeof("void");
         if (out != NULL)
         {
-            *out = '\0';
+            *(out + 0) = 'v';
+            *(out + 1) = 'o';
+            *(out + 2) = 'i';
+            *(out + 3) = 'd';
         }
         break;
     case PTLANG_AST_TYPE_INTEGER:
     {
-        *len = sizeof("?8388607");
+        size = sizeof("?8388607");
         if (out != NULL)
         {
-            snprintf(out, *len, "%c%d", type->content.integer.is_signed ? 's' : 'u',
+            snprintf(out, size, "%c%" PRIu32, type->content.integer.is_signed ? 's' : 'u',
                      type->content.integer.size);
         }
         break;
     }
     case PTLANG_AST_TYPE_FLOAT:
     {
-        *len = sizeof("f128");
+        size = sizeof("f128");
         if (out != NULL)
         {
-            snprintf(out, *len, "f%d", type->content.float_size);
+            snprintf(out, size, "f%d", type->content.float_size);
         }
         break;
     }
     case PTLANG_AST_TYPE_FUNCTION:
     {
-        abort();
+        size = sizeof("(): ") - 1 + ptlang_ast_type_to_string(type->content.function.return_type, NULL);
+        for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
+        {
+            size +=
+                ptlang_ast_type_to_string(type->content.function.parameters[i], NULL) - 1 + sizeof(", ") - 1;
+        }
+        if (arrlenu(type->content.function.parameters) != 0)
+        {
+            size -= sizeof(", ") - 1;
+        }
+
+        if (out != NULL)
+        {
+            *out = '(';
+            out++;
+            for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
+            {
+                out += ptlang_ast_type_to_string(type->content.function.parameters[i], out) - 1;
+                if (i < arrlenu(type->content.function.parameters) - 1)
+                {
+                    *out = ',';
+                    out++;
+                    *out = ' ';
+                    out++;
+                }
+            }
+            memcpy(out, "): ", sizeof("): ") - 1);
+            out += sizeof("): ") - 1;
+
+            ptlang_ast_type_to_string(type->content.function.return_type, out);
+        }
+
         break;
     }
     case PTLANG_AST_TYPE_HEAP_ARRAY:
     {
-        abort();
+
+        size = ptlang_ast_type_to_string(type->content.array.type, out) + sizeof("[]") - 1;
+
+        if (out != NULL)
+        {
+            memcpy(out, "[]", sizeof("[]") - 1);
+            ptlang_ast_type_to_string(type->content.array.type, out + sizeof("[]") - 1);
+        }
         break;
     }
     case PTLANG_AST_TYPE_ARRAY:
     {
-        abort();
+        size_t element_size = ptlang_ast_type_to_string(type->content.array.type, out);
+
+        size = element_size + sizeof("[18446744073709551615]") - 1;
+
+        if (out != NULL)
+        {
+            size_t prefix_len = snprintf(out, size - element_size, "[%" PRIu64 "]", type->content.array.len);
+            ptlang_ast_type_to_string(type->content.array.type, out + prefix_len);
+        }
         break;
     }
     case PTLANG_AST_TYPE_REFERENCE:
     {
-        abort();
+        size = ptlang_ast_type_to_string(type->content.reference.type, NULL) + sizeof("&") - 1;
+        if (!type->content.reference.writable)
+        {
+            size += sizeof("const ") - 1;
+        }
+        if (out != NULL)
+        {
+            *out = '&';
+            out++;
+            if (!type->content.reference.writable)
+            {
+                memcpy(out + 1, "const ", sizeof("const ") - 1);
+                out += sizeof("const ") - 1;
+            }
+            ptlang_ast_type_to_string(type->content.reference.type, out);
+        }
+
         break;
     }
     case PTLANG_AST_TYPE_NAMED:
     {
-        abort();
+        size = strlen(type->content.name) + 1;
+        if (out != NULL)
+        {
+            memcpy(out, type->content.name, size);
+        }
         break;
     }
     }
+    return size;
 }

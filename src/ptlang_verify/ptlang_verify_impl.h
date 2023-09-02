@@ -64,10 +64,12 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
                                     size_t scope_offset, bool *has_return_value, bool *is_unreachable,
                                     ptlang_context *ctx, ptlang_error **errors);
 
-static bool ptlang_verify_expression(ptlang_ast_exp expression, ptlang_context *ctx, ptlang_error **errors);
+static bool ptlang_verify_exp(ptlang_ast_exp expression, ptlang_context *ctx, ptlang_error **errors);
 
-static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx,
-                               ptlang_error **errors);
+static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx);
+
+static void ptlang_verify_check_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_ast_code_position pos,
+                                     ptlang_context *ctx, ptlang_error **errors);
 
 static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors);
 

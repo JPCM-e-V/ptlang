@@ -14,6 +14,7 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE,
     PTLANG_ERROR_VARIABLE_NAME_DUPLICATION,
     PTLANG_ERROR_CODE_UNREACHABLE,
+    PTLANG_ERROR_EXP_UNWRITABLE,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -26,6 +27,7 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE ? "Nesting Level Out of Range Error"             \
     : error_type == PTLANG_ERROR_VARIABLE_NAME_DUPLICATION  ? "Variable Name Duplication"                    \
     : error_type == PTLANG_ERROR_CODE_UNREACHABLE           ? "Code Unreachable"                             \
+    : error_type == PTLANG_ERROR_EXP_UNWRITABLE             ? "Expression Unwritable Error"                  \
                                                             : "Unkown Error"
 
 typedef struct ptlang_error_s
