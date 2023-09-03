@@ -1,5 +1,79 @@
 #include "ptlang_utils_impl.h"
 
+static void tarjan(ptlang_utils_graph_node *v, ptlang_utils_graph_node *graph,
+                   ptlang_utils_graph_node ***stack, size_t *index, ptlang_utils_graph_node ***cycles)
+{
+    v->index = *index;
+    v->lowlink = *index;
+    (*index)++;
+    arrput(*stack, v);
+    v->on_stack = true;
+    bool self_reference = false;
+
+    for (size_t i = 0; i < arrlenu(v->edges_to); ++i)
+    {
+        ptlang_utils_graph_node *w = v->edges_to[i];
+
+        if (w->index == -1)
+        {
+            tarjan(w, graph, stack, index, cycles);
+            if (w->lowlink < v->lowlink)
+            {
+                v->lowlink = w->lowlink;
+            }
+        }
+        else if (w->on_stack)
+        {
+            if (w->index < v->lowlink)
+            {
+                v->lowlink = w->index;
+            }
+            else if (w == v)
+            {
+                self_reference = true;
+            }
+        }
+    }
+
+    if (v->lowlink == v->index)
+    {
+        ptlang_utils_graph_node *w = arrpop(*stack);
+        w->on_stack = false;
+        w->in_cycle = w != v || self_reference;
+        if (w != v || self_reference)
+            arrpush(*cycles, w);
+        while (w != v)
+        {
+            w = arrpop(*stack);
+            arrpush(*cycles, w);
+            w->on_stack = false;
+            w->in_cycle = true;
+        }
+    }
+}
+
+/**
+ * @return ptlang_utils_graph_node** an array of all nodes in cycles grouped by cycle
+ */
+ptlang_utils_graph_node **ptlang_utils_find_cycles(ptlang_utils_graph_node *graph)
+{
+    ptlang_utils_graph_node **stack = NULL;
+    ptlang_utils_graph_node **cycles = NULL;
+    size_t index = 0;
+
+    for (size_t i = 0; i < arrlenu(graph); ++i)
+    {
+        ptlang_utils_graph_node *current = graph + i;
+        if (current->index == -1)
+        {
+            tarjan(current, graph, &stack, &index, &cycles);
+        }
+    }
+
+    arrfree(stack);
+    return cycles;
+}
+
 char *ptlang_utils_build_str(char **components)
 {
     size_t str_len = 0;
