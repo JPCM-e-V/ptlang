@@ -2,6 +2,7 @@
 #define PTLANG_VERIFY_IMPL_H
 
 #include "ptlang_ast_impl.h"
+#include "ptlang_utils.h"
 #include "ptlang_verify.h"
 #include <inttypes.h>
 #include <stdio.h>
@@ -72,5 +73,14 @@ static void ptlang_verify_check_cast(ptlang_ast_type from, ptlang_ast_type to, p
                                      ptlang_context *ctx, ptlang_error **errors);
 
 static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors);
+
+static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
+                                                                           ptlang_context *ctx,
+                                                                           ptlang_error **errors,
+                                                                           bool *has_error);
+
+static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
+                                                                        ptlang_context *ctx,
+                                                                        ptlang_error **errors);
 
 #endif

@@ -16,6 +16,7 @@ typedef struct ptlang_context_type_scope_entry_s
         ptlang_ast_type ptlang_type;
         ptlang_ast_struct_def struct_def;
     } value;
+    size_t index; // seperate for structs and type aliases
 } ptlang_context_type_scope_entry;
 
 typedef struct ptlang_context_type_scope_s

@@ -494,102 +494,62 @@ static bool ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang_context *ctx,
                                       ptlang_error **errors)
 {
-
-    // Type aliases
-
-    pltang_verify_struct_table *type_alias_table = NULL;
-
-    // pltang_verify_type_alias primitive_alias = ;
-
+    ptlang_utils_graph_node *nodes = NULL;
     for (size_t i = 0; i < arrlenu(struct_defs); i++)
     {
-        for (size_t j = 0; j < arrlenu(struct_defs[i]->members); j++)
-        {
-            for (size_t k = 0; k < j; k++)
-            {
-                if (strcmp(struct_defs[i]->members[j]->name.name, struct_defs[i]->members[k]->name.name) == 0)
-                {
-                    size_t message_len = sizeof("The struct member name '' is already used.") +
-                                         strlen(struct_defs[i]->members[j]->name.name);
-                    char *message = ptlang_malloc(message_len);
-                    snprintf(message, message_len, "The struct member name '%s' is already used.",
-                             struct_defs[i]->members[j]->name.name);
-                    arrput(*errors, ((ptlang_error){
-                                        .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
-                                        .pos = struct_defs[i]->members[j]->name.pos,
-                                        .message = message,
-                                    }));
-                }
-            }
-        }
-
-        pltang_verify_struct type_alias = pltang_verify_struct_create(struct_defs[i], ctx, errors);
-        shput(type_alias_table, struct_defs[i]->name.name, type_alias);
+        arrpush(nodes, (struct node_s){.index = -1});
     }
-
-    pltang_verify_struct **candidates = NULL;
-
     for (size_t i = 0; i < arrlenu(struct_defs); i++)
     {
-        pltang_verify_struct *type_alias = &shget(type_alias_table, struct_defs[i]->name.name);
-        for (size_t j = 0; j < arrlenu(type_alias->referenced_types); j++)
+        char **referenced_types =
+            pltang_verify_struct_get_referenced_types_from_struct_def(struct_defs[i], ctx, errors);
+        for (size_t j = 0; j < arrlenu(referenced_types); j++)
         {
-            size_t index = shgeti(type_alias_table, type_alias->referenced_types[j]);
-            arrput(type_alias_table[index].value.referencing_types, type_alias);
+            arrpush(nodes[i].edges_to, &nodes[shget(ctx->type_scope, referenced_types[j]).index]);
         }
-        if (arrlenu(type_alias->referenced_types) == 0)
-        {
-            arrput(candidates, type_alias);
-        }
+        arrfree(referenced_types);
     }
 
-    while (arrlenu(candidates) != 0)
+    ptlang_utils_graph_node **cycles = ptlang_utils_find_cycles(nodes);
+
+    for (size_t i = 0, lowlink = 0; i < arrlenu(cycles);)
     {
-        pltang_verify_struct *type_alias = arrpop(candidates);
-
-        // check if resolved
-        if (type_alias->resolved)
-            continue;
-        type_alias->resolved = true;
-        for (size_t i = 0; i < arrlenu(type_alias->referenced_types); i++)
+        lowlink = cycles[i]->lowlink;
+        char **message_components = NULL;
+        size_t j;
+        for (j = i; j < arrlenu(cycles) && lowlink == cycles[j]->lowlink; j++)
         {
-            if (!shget(type_alias_table, type_alias->referenced_types[i]).resolved)
-            {
-                type_alias->resolved = false;
-                break;
-            }
+            arrpush(message_components, struct_defs[cycles[j] - nodes]->name.name);
+            arrpush(message_components, ", ");
         }
-        if (!type_alias->resolved)
-            continue;
+        arrpop(message_components);
 
-        // add referencing types to candidates
-        for (size_t i = 0; i < arrlenu(type_alias->referencing_types); i++)
+        if (j == i + 1)
         {
-            arrput(candidates, type_alias->referencing_types[i]);
+            arrins(message_components, 0, "The struct ");
+            arrpush(message_components, " is recursive.");
         }
-    }
-
-    arrfree(candidates);
-
-    for (size_t i = 0; i < shlen(type_alias_table); i++)
-    {
-        pltang_verify_struct type_alias = type_alias_table[i].value;
-        if (!type_alias.resolved)
+        else
         {
-            size_t message_len = sizeof("The struct  is recursive.") + strlen(type_alias.name);
-            char *message = ptlang_malloc(message_len);
-            snprintf(message, message_len, "The struct %s is recursive.", type_alias.name);
+            arrins(message_components, 0, "The structs ");
+            arrpush(message_components, " are recursive.");
+        }
+
+        char *message = ptlang_utils_build_str(message_components);
+        arrfree(message_components);
+
+        for (; i < j; i++)
+        {
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_STRUCT_RECURSION,
-                                .pos = type_alias.pos,
+                                .pos = struct_defs[cycles[i] - nodes]->pos,
                                 .message = message,
                             }));
+            if (i < j - 1)
+                message = strdup(message);
         }
-        arrfree(type_alias.referenced_types);
-        arrfree(type_alias.referencing_types);
     }
-
-    shfree(type_alias_table);
+    arrfree(nodes);
 }
 
 static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang_error **errors)
@@ -638,166 +598,159 @@ static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang
 static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlang_context *ctx,
                                              ptlang_error **errors)
 {
+
+    // add type aliases to type_store
+
+    ptlang_utils_graph_node *nodes = NULL;
+
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
+    {
+        shput(ctx->type_scope, ast_module->type_aliases[i].name.name,
+              ((ptlang_context_type_scope_entry){.type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS,
+                                                 .value.ptlang_type = ast_module->type_aliases[i].type,
+                                                 .index = i}));
+        arrpush(nodes, (struct node_s){.index = -1});
+    }
+
     // add structs to typescope
 
     for (size_t i = 0; i < arrlenu(ast_module->struct_defs); i++)
     {
         shput(ctx->type_scope, ast_module->struct_defs[i]->name.name,
               ((ptlang_context_type_scope_entry){.type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT,
-                                                 .value.struct_def = ast_module->struct_defs[i]}));
-    }
-
-    // Type aliases
-
-    pltang_verify_type_alias_table *type_alias_table = NULL;
-
-    // pltang_verify_type_alias primitive_alias = ;
-
-    shput(type_alias_table, "",
-          ((pltang_verify_type_alias){
-              .name = "",
-              .resolved = false,
-          }));
-
-    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
-    {
-        pltang_verify_type_alias type_alias =
-            pltang_verify_type_alias_create(ast_module->type_aliases[i], ctx);
-        shput(type_alias_table, ast_module->type_aliases[i].name.name, type_alias);
+                                                 .value.struct_def = ast_module->struct_defs[i],
+                                                 .index = i}));
     }
 
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
-        pltang_verify_type_alias *type_alias =
-            &shget(type_alias_table, ast_module->type_aliases[i].name.name);
-        for (size_t j = 0; j < arrlenu(type_alias->referenced_types); j++)
+        bool is_error_type = false;
+        size_t *referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
+            ast_module->type_aliases[i].type, ctx, errors, &is_error_type);
+
+        if (is_error_type)
+            shget(ctx->type_scope, ast_module->type_aliases[i].name.name).value.ptlang_type = NULL;
+
+        for (size_t j = 0; j < arrlenu(referenced_types); j++)
         {
-            size_t index = shgeti(type_alias_table, type_alias->referenced_types[j].name);
-            if (index == -1)
-            {
-                size_t message_len =
-                    sizeof("The type  is not defined.") + strlen(type_alias->referenced_types[j].name);
-                char *message = ptlang_malloc(message_len);
-                snprintf(message, message_len, "The type %s is not defined.",
-                         type_alias->referenced_types[j].name);
-                arrput(*errors, ((ptlang_error){
-                                    .type = PTLANG_ERROR_TYPE_UNDEFINED,
-                                    .pos = type_alias->referenced_types[j].pos,
-                                    .message = message,
-                                }));
-            }
-            else
-            {
-                arrput(type_alias_table[index].value.referencing_types, type_alias);
-            }
+            arrpush(nodes[i].edges_to, &nodes[referenced_types[j]]);
+        }
+
+        arrfree(referenced_types);
+    }
+
+    ptlang_utils_graph_node **cycles = ptlang_utils_find_cycles(nodes);
+
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
+    {
+        if (nodes[i].in_cycle)
+        {
+            shget(ctx->type_scope, ast_module->type_aliases[i].name.name).value.ptlang_type = NULL;
         }
     }
 
-    pltang_verify_type_alias **candidates = NULL;
-    arrput(candidates, &type_alias_table[0].value);
-    while (arrlenu(candidates) != 0)
+    for (size_t i = 0, lowlink = 0; i < arrlenu(cycles);)
     {
-        pltang_verify_type_alias *type_alias = arrpop(candidates);
-
-        // check if resolved
-        if (type_alias->resolved)
-            continue;
-        type_alias->resolved = true;
-        for (size_t i = 0; i < arrlenu(type_alias->referenced_types); i++)
+        lowlink = cycles[i]->lowlink;
+        char **message_components = NULL;
+        size_t j;
+        for (j = i; j < arrlenu(cycles) && lowlink == cycles[j]->lowlink; j++)
         {
-            if (!shget(type_alias_table, type_alias->referenced_types[i].name).resolved)
-            {
-                type_alias->resolved = false;
-                break;
-            }
+            arrpush(message_components, ast_module->type_aliases[cycles[j] - nodes].name.name);
+            arrpush(message_components, ", ");
         }
-        if (!type_alias->resolved)
-            continue;
+        arrpop(message_components);
 
-        // add type to type scope
-        if (*type_alias->name != '\0')
+        if (j == i + 1)
         {
-            shput(ctx->type_scope, type_alias->name,
-                  ((ptlang_context_type_scope_entry){
-                      //   .type = pltang_verify_type(type_alias->type, ctx),
-                      .type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS,
-                      .value.ptlang_type = ptlang_context_unname_type(type_alias->type, ctx->type_scope),
-                  }));
+            arrins(message_components, 0, "The type alias ");
+            arrpush(message_components, " contains a self reference.");
+        }
+        else
+        {
+            arrins(message_components, 0, "The type aliases ");
+            arrpush(message_components, " form a circular definition.");
         }
 
-        // add referencing types to candidates
-        for (size_t i = 0; i < arrlenu(type_alias->referencing_types); i++)
-        {
-            arrput(candidates, type_alias->referencing_types[i]);
-        }
-    }
+        char *message = ptlang_utils_build_str(message_components);
+        arrfree(message_components);
 
-    arrfree(candidates);
-
-    for (size_t i = 0; i < arrlenu(ast_module->type_aliases) + 1; i++)
-    {
-        pltang_verify_type_alias type_alias = type_alias_table[i].value;
-        if (!type_alias.resolved)
+        for(; i < j; i++)
         {
-            size_t message_len = sizeof("The type  could not be resolved.") + strlen(type_alias.name);
-            char *message = ptlang_malloc(message_len);
-            snprintf(message, message_len, "The type %s could not be resolved.", type_alias.name);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNRESOLVABLE,
-                                .pos = type_alias.pos,
+                                .pos = ast_module->type_aliases[cycles[i] - nodes].pos,
                                 .message = message,
                             }));
-            shput(ctx->type_scope, type_alias.name,
-                  ((ptlang_context_type_scope_entry){
-                      //   .type = pltang_verify_type(type_alias->type, ctx),
-                      .type = PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS,
-                      .value.ptlang_type = NULL,
-                  }));
+            if (i < j - 1)
+                message = strdup(message);
         }
-        arrfree(type_alias.referenced_types);
-        arrfree(type_alias.referencing_types);
     }
 
-    shfree(type_alias_table);
+    arrfree(nodes);
+
+    for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
+    {
+        shget(ctx->type_scope, ast_module->type_aliases[i].name.name).value.ptlang_type =
+            ptlang_context_unname_type(ast_module->type_aliases[i].type, ctx->type_scope);
+    }
+
 }
 
-static ptlang_ast_ident *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
-                                                                                     ptlang_context *ctx)
+/**
+ * @param has_error is set to true if an undefined type is referenced
+ * @return ptrdiff_t* returns the indices of all referenced type aliases in the type_alias_table
+ */
+static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
+                                                                           ptlang_context *ctx,
+                                                                           ptlang_error **errors,
+                                                                           bool *has_error)
 {
-    ptlang_ast_ident *referenced_types = NULL;
+    size_t *referenced_types = NULL;
     switch (ast_type->type)
     {
     case PTLANG_AST_TYPE_VOID:
-        abort();
+        abort(); // syntax error
         break;
     case PTLANG_AST_TYPE_INTEGER:
     case PTLANG_AST_TYPE_FLOAT:
-        arrput(referenced_types, ((ptlang_ast_ident){.name = "", .pos = ((ptlang_ast_code_position){0})}));
         break;
     case PTLANG_AST_TYPE_ARRAY:
-        return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.array.type, ctx);
+        return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.array.type, ctx,
+                                                                           errors, has_error);
     case PTLANG_AST_TYPE_HEAP_ARRAY:
         return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.heap_array.type,
-                                                                           ctx);
+                                                                           ctx, errors, has_error);
     case PTLANG_AST_TYPE_REFERENCE:
         return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.reference.type,
-                                                                           ctx);
+                                                                           ctx, errors, has_error);
     case PTLANG_AST_TYPE_NAMED:
-        if (shgeti(ctx->type_scope, ast_type->content.name) == -1)
-            arrput(referenced_types,
-                   ((ptlang_ast_ident){.name = ast_type->content.name, .pos = ast_type->pos}));
+        ptrdiff_t index = shgeti(ctx->type_scope, ast_type->content.name);
+        if (index != -1)
+        {
+            if (ctx->type_scope[index].value.type == PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS)
+                arrput(referenced_types, ctx->type_scope[index].value.index);
+        }
         else
-            arrput(referenced_types,
-                   ((ptlang_ast_ident){.name = "", .pos = ((ptlang_ast_code_position){0})}));
+        {
+            size_t message_len = sizeof("The type  is not defined.") + strlen(ast_type->content.name);
+            char *message = ptlang_malloc(message_len);
+            snprintf(message, message_len, "The type %s is not defined.", ast_type->content.name);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE_UNDEFINED,
+                                .pos = ast_type->pos,
+                                .message = message,
+                            }));
+            *has_error = true;
+        }
         break;
     case PTLANG_AST_TYPE_FUNCTION:
         referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
-            ast_type->content.function.return_type, ctx);
+            ast_type->content.function.return_type, ctx, errors, has_error);
         for (size_t i = 0; i < arrlenu(ast_type->content.function.parameters); i++)
         {
-            ptlang_ast_ident *param_referenced_types =
-                pltang_verify_type_alias_get_referenced_types_from_ast_type(
-                    ast_type->content.function.parameters[i], ctx);
+            size_t *param_referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
+                ast_type->content.function.parameters[i], ctx, errors, has_error);
             for (size_t j = 0; j < arrlenu(param_referenced_types); j++)
             {
                 arrput(referenced_types, param_referenced_types[j]);
@@ -807,23 +760,6 @@ static ptlang_ast_ident *pltang_verify_type_alias_get_referenced_types_from_ast_
         break;
     }
     return referenced_types;
-}
-
-static pltang_verify_type_alias
-pltang_verify_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias, ptlang_context *ctx)
-{
-    // pltang_verify_type_alias type_alias = ptlang_malloc(sizeof(struct pltang_verify_type_alias_s));
-
-    return (struct pltang_verify_type_alias_s){
-        .name = ast_type_alias.name.name,
-        .pos = ast_type_alias.pos,
-        .type = ast_type_alias.type,
-        .referenced_types =
-            pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type_alias.type, ctx),
-        .referencing_types = NULL,
-        .resolved = false,
-    };
-    // return type_alias;
 }
 
 static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
@@ -838,7 +774,7 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
         if (!ptlang_verify_type(type, ctx, errors))
             continue;
         type = ptlang_context_unname_type(type, ctx->type_scope);
-        while (type->type == PTLANG_AST_TYPE_ARRAY)
+        while (type != NULL && type->type == PTLANG_AST_TYPE_ARRAY)
         {
             type = type->content.array.type;
             type = ptlang_context_unname_type(type, ctx->type_scope);
