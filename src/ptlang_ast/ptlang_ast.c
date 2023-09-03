@@ -101,6 +101,8 @@ void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init) { decl-
 
 void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->export = export; }
 
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool export) { func->export = export; }
+
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 // {
 //     ptlang_ast_decl_list decl_list = ptlang_malloc(sizeof(struct ptlang_ast_decl_list_s));

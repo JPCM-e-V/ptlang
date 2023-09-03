@@ -4,7 +4,8 @@
 
 %{
     #include "ptlang_parser_impl.h"
-    #include "stb_ds.h"
+    #include "ptlang_utils.h"
+    // #include "stb_ds.h"
 
     #define ppcp ptlang_parser_code_position
     #define ppcpft ptlang_parser_code_position_from_to
@@ -27,7 +28,7 @@
     ptlang_ast_struct_member_list struct_member_list;
     enum ptlang_ast_type_float_size float_size;
     ptlang_ast_ident ident;
-    struct {ptlang_ast_type type, ptlang_ast_ident ident} ident_and_type;
+    struct {ptlang_ast_type type; ptlang_ast_ident ident;} type_and_ident;
 }
 
 %define api.pure true
@@ -102,7 +103,7 @@
 %type <struct_member_list> members one_or_more_members
 %type <ident> ident
 %type <struct_def> struct_def
-%type <ident_and_type> ident_and_type
+%type <type_and_ident> type_and_ident
 
 %precedence single_if
 %precedence ELSE
@@ -130,10 +131,10 @@
 %%
 
 module:
-      | declaration { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $1); }
-      | function { ptlang_ast_module_add_function(*ptlang_parser_module_out, $1); }
-      | struct_def { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, $1); }
-      | TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $2, $3, ppcpft(&@2, &@$)); }
+      | module declaration { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $2); }
+      | module function { ptlang_ast_module_add_function(*ptlang_parser_module_out, $2); }
+      | module struct_def { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, $2); }
+      | module TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $3, $4, ppcpft(&@2, &@$)); }
 
 declaration: module_decl SEMICOLON { $$ = $1; }
 
@@ -150,7 +151,7 @@ struct_members: { $$ = NULL; }
 one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-func: ident_and_type OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new(($1)->ident, ($1)->type, $3, $5, false); }
+func: type_and_ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($1.ident, $1.type, $3, $5, false); }
     | void ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($2, $1, $4, $6, false);}
 
 
@@ -161,9 +162,9 @@ params: { $$ = NULL; }
 one_or_more_params: non_const_decl { $$ = NULL; arrput($$, $1); }
                   | one_or_more_params COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-non_const_decl: ident_and_type { $$ = ptlang_ast_decl_new($1.type, $1.ident, true, ppcp(&@$)); }
+non_const_decl: type_and_ident { $$ = ptlang_ast_decl_new($1.type, $1.ident, true, ppcp(&@$)); }
 
-ident_and_type: type ident { $$.ident = $1; $$.type = $2; }
+type_and_ident: type ident { $$.type = $1; $$.ident = $2; }
 
 const_decl: CONST type ident { $$ = ptlang_ast_decl_new($2, $3, false, ppcp(&@$));}
 

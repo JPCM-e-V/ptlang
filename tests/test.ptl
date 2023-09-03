@@ -1,8 +1,8 @@
-export a() {
+export void a() {
     c();
 }
 
-export b() {
+export void b() {
 }
 
 u8 c(){
@@ -33,16 +33,16 @@ export []u20 setlen20([]u20 arr, u64 len){
 }
 
 export [4]u8 fff(){
-    retval [4]u8[]{1,2,3};
+    retval []u8{1,2,3,4};
 }
 
-export breakinfloop(){
+export void breakinfloop(){
     while(1){
         break;
     }
 }
 
-export continueinfloop(){
+export void continueinfloop(){
     while(1){
         continue;
     }

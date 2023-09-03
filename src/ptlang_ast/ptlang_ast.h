@@ -59,6 +59,8 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name,
                                     ptlang_ast_code_position pos);
 void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init);
 void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export);
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool export);
+
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void);
 // void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
