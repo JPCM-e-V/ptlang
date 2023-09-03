@@ -9,9 +9,20 @@ set(PTLANG_PARSER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_parser)
 set(PTLANG_MAIN_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_main)
 set(PTLANG_IR_BUILDER_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ir_builder)
 set(PTLANG_VERIFY_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_verify)
+set(PTLANG_UTILS_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_utils)
 
 set(PTLANG_THIRD_PARTY_DIR ${PROJECT_SOURCE_DIR}/third-party)
 set(PTLANG_STB_DIR ${PTLANG_THIRD_PARTY_DIR}/stb)
+
+
+add_library(ptlang_utils OBJECT
+                           ${PTLANG_UTILS_SRC_DIR}/ptlang_utils.c)
+
+set_property(TARGET ptlang_utils PROPERTY C_STANDARD 17)
+
+
+target_include_directories(ptlang_utils
+                           PUBLIC ${PTLANG_STB_DIR})
 
 
 add_library(ptlang_ast OBJECT
@@ -21,7 +32,9 @@ set_property(TARGET ptlang_ast PROPERTY C_STANDARD 17)
 
 target_include_directories(ptlang_ast
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
-                           PUBLIC ${PTLANG_STB_DIR})
+                           PRIVATE ${PTLANG_UTILS_SRC_DIR}
+                           PUBLIC ${PTLANG_STB_DIR}
+                           )
 
 find_package(BISON 3.7.4 REQUIRED)
 find_package(FLEX 2.6.4 REQUIRED)
@@ -67,6 +80,7 @@ target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
+                           PRIVATE ${PTLANG_UTILS_SRC_DIR}
                            PUBLIC ${PTLANG_STB_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
@@ -76,8 +90,10 @@ add_library(ptlang_ir_builder OBJECT
 target_include_directories(ptlang_ir_builder
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
+                           PRIVATE ${PTLANG_UTILS_SRC_DIR}
                            PUBLIC ${PTLANG_LLVM_INCLUDEDIR}
-                           PUBLIC ${PTLANG_STB_DIR})
+                           PUBLIC ${PTLANG_STB_DIR}
+                           )
 
 add_library(ptlang_verify OBJECT
                            ${PTLANG_VERIFY_SRC_DIR}/ptlang_verify.c)
@@ -85,7 +101,9 @@ add_library(ptlang_verify OBJECT
 target_include_directories(ptlang_verify
                             PRIVATE ${PTLANG_AST_SRC_DIR}
                             PRIVATE ${PTLANG_MAIN_SRC_DIR}
-                            PUBLIC ${PTLANG_STB_DIR})
+                            PRIVATE ${PTLANG_UTILS_SRC_DIR}
+                            PUBLIC ${PTLANG_STB_DIR}
+                            )
 
 # llvm_map_components_to_libnames(llvm_libs support core irreader)
 
@@ -105,13 +123,14 @@ add_executable(ptlang
 
 target_include_directories(ptlang
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
+                           PRIVATE ${PTLANG_UTILS_SRC_DIR}
                            PRIVATE ${PTLANG_PARSER_SRC_DIR}
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                            PRIVATE ${PTLANG_VERIFY_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
-target_link_libraries(ptlang ptlang_ast ptlang_parser ptlang_ir_builder ptlang_verify)
+target_link_libraries(ptlang ptlang_utils ptlang_ast ptlang_parser ptlang_ir_builder ptlang_verify)
 
 
 # get_cmake_property(_variableNames VARIABLES)
