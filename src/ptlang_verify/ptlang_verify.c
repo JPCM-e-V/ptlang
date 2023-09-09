@@ -117,7 +117,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
                 condition->ast_type->type != PTLANG_AST_TYPE_FLOAT)
             {
                 arrput(*errors, ((ptlang_error){
-                                    .type = PTLANG_ERROR_TYPE_MISMATCH,
+                                    .type = PTLANG_ERROR_TYPE,
                                     .pos = condition->pos,
                                     .message = "Control flow condition must be a float or an int.",
                                 }));
@@ -257,9 +257,14 @@ static bool ptlang_verify_exp_is_mutable(ptlang_ast_exp exp, ptlang_context *ctx
     {
         return ptlang_verify_exp_is_mutable(exp->content.array_element.array, ctx);
     }
+    case PTLANG_AST_EXP_LENGTH:
+    {
+        return ptlang_verify_exp_is_mutable(exp->content.unary_operator, ctx);
+    }
     case PTLANG_AST_EXP_DEREFERENCE:
     {
-        return exp->content.unary_operator->ast_type->content.reference.writable;
+        return exp->content.unary_operator->ast_type == NULL ||
+               exp->content.unary_operator->ast_type->content.reference.writable;
     }
     default:
         return false;
@@ -321,8 +326,9 @@ static bool ptlang_verify_child_exp(ptlang_ast_exp left, ptlang_ast_exp right, p
 }
 
 // returns true if the expression is correct
-static bool ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors)
+static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors)
 {
+    ptlang_ast_exp unary = exp->content.unary_operator;
     ptlang_ast_exp left = exp->content.binary_operator.left_value;
     ptlang_ast_exp right = exp->content.binary_operator.right_value;
 
@@ -347,7 +353,7 @@ static bool ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 
         exp->ast_type = ptlang_ast_type_copy(left->ast_type);
         ptlang_verify_check_cast(right->ast_type, left->ast_type, exp->pos, ctx, errors);
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_ADDITION:
     case PTLANG_AST_EXP_SUBTRACTION:
@@ -365,128 +371,285 @@ static bool ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             char *message = ptlang_malloc(message_len);
             memcpy(message, "Operation arguments are incompatible.", message_len);
             arrput(*errors, ((ptlang_error){
-                                .type = PTLANG_ERROR_TYPE_MISMATCH,
+                                .type = PTLANG_ERROR_TYPE,
                                 .pos = exp->pos,
                                 .message = message,
                             }));
         }
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_NEGATION:
     {
-        return false;
+        ptlang_verify_exp(unary, ctx, errors);
+
+        if (unary->ast_type == NULL)
+        {
+            break;
+        }
+
+        if (unary->ast_type->type == PTLANG_AST_TYPE_INTEGER ||
+            unary->ast_type->type == PTLANG_AST_TYPE_FLOAT)
+        {
+            exp->ast_type = ptlang_ast_type_copy(unary->ast_type);
+        }
+        else
+        {
+            size_t message_len = sizeof("Bad operant type for negation.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for negation.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+        break;
     }
     case PTLANG_AST_EXP_EQUAL:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_NOT_EQUAL:
     {
-        return false;
+        ptlang_verify_exp(left, ctx, errors);
+        ptlang_verify_exp(right, ctx, errors);
+
+        if ((left->ast_type != NULL && left->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             left->ast_type->type != PTLANG_AST_TYPE_FLOAT &&
+             left->ast_type->type != PTLANG_AST_TYPE_REFERENCE) ||
+            (right->ast_type != NULL && right->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             right->ast_type->type != PTLANG_AST_TYPE_FLOAT &&
+             right->ast_type->type != PTLANG_AST_TYPE_REFERENCE))
+        {
+            size_t message_len = sizeof("The operant types must be numbers or references.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "The operant types must be numbers or references.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+        else if (left->ast_type != NULL && right->ast_type != NULL &&
+                 (left->ast_type->type == PTLANG_AST_TYPE_REFERENCE) ==
+                     (right->ast_type->type == PTLANG_AST_TYPE_REFERENCE))
+        {
+            size_t message_len = sizeof("The operant types must either be both numbers or both references.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "The operant types must either be both numbers or both references.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        break;
     }
     case PTLANG_AST_EXP_GREATER:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_GREATER_EQUAL:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_LESS:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_LESS_EQUAL:
     {
-        return false;
+        ptlang_verify_exp(left, ctx, errors);
+        ptlang_verify_exp(right, ctx, errors);
+
+        if ((left->ast_type != NULL && left->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             left->ast_type->type != PTLANG_AST_TYPE_FLOAT) ||
+            (right->ast_type != NULL && right->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             right->ast_type->type != PTLANG_AST_TYPE_FLOAT))
+        {
+            size_t message_len = sizeof("Bad operant type for comparison.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for comparison.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        break;
     }
     case PTLANG_AST_EXP_LEFT_SHIFT:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_RIGHT_SHIFT:
     {
-        return false;
+        ptlang_verify_exp(left, ctx, errors);
+        ptlang_verify_exp(right, ctx, errors);
+
+        if ((left->ast_type != NULL && left->ast_type->type != PTLANG_AST_TYPE_INTEGER) ||
+            (right->ast_type != NULL && right->ast_type->type != PTLANG_AST_TYPE_INTEGER))
+        {
+            size_t message_len = sizeof("Bad operant type for shift.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for shift.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        exp->ast_type = ptlang_ast_type_copy(left->ast_type);
+        break;
     }
     case PTLANG_AST_EXP_AND:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_OR:
     {
-        return false;
+        ptlang_verify_exp(left, ctx, errors);
+        ptlang_verify_exp(right, ctx, errors);
+
+        if ((left->ast_type != NULL && left->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             left->ast_type->type != PTLANG_AST_TYPE_FLOAT) ||
+            (right->ast_type != NULL && right->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+             right->ast_type->type != PTLANG_AST_TYPE_FLOAT))
+        {
+            size_t message_len = sizeof("Bad operant type for boolean operation.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for boolean operation.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        break;
     }
     case PTLANG_AST_EXP_NOT:
     {
-        return false;
+        ptlang_verify_exp(unary, ctx, errors);
+
+        if (unary->ast_type != NULL && unary->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+            unary->ast_type->type != PTLANG_AST_TYPE_FLOAT)
+        {
+            size_t message_len = sizeof("Bad operant type for boolean operation.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for boolean operation.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        break;
     }
     case PTLANG_AST_EXP_BITWISE_AND:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_BITWISE_OR:
-    {
-        return false;
-    }
     case PTLANG_AST_EXP_BITWISE_XOR:
     {
-        return false;
+        ptlang_verify_exp(left, ctx, errors);
+        ptlang_verify_exp(right, ctx, errors);
+
+        if ((left->ast_type != NULL && left->ast_type->type != PTLANG_AST_TYPE_INTEGER) ||
+            (right->ast_type != NULL && right->ast_type->type != PTLANG_AST_TYPE_INTEGER))
+        {
+            size_t message_len = sizeof("Bad operant type for bitwise operation.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for bitwise operation.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        ptlang_verify_child_exp(left, right, &exp->ast_type);
+
+        break;
     }
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_LENGTH:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_VARIABLE:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_INTEGER:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_FLOAT:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_STRUCT:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_ARRAY:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_TERNARY:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_CAST:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
-        return false;
+        break;
     }
     case PTLANG_AST_EXP_REFERENCE:
     {
-        return false;
+        ptlang_verify_exp(exp->content.reference.value, ctx, errors);
+        if (exp->content.reference.writable &&
+            !ptlang_verify_exp_is_mutable(exp->content.reference.value, ctx))
+        {
+            char *message = alloc(sizeof("Can not create a writable reference of an unmutable expression."));
+            memcpy(message, "Can not create a writable reference of an unmutable expression.",
+                   sizeof("Can not create a writable reference of an unmutable expression."));
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_EXP_UNWRITABLE,
+                                .pos = exp->content.reference.value->pos,
+                                .message = message,
+                            }));
+        }
+        break;
     }
     case PTLANG_AST_EXP_DEREFERENCE:
     {
-        return false;
+        ptlang_verify_exp(unary, ctx, errors);
+        if (unary->ast_type != NULL)
+        {
+            size_t type_str_size = ptlang_ast_type_to_string(unary->ast_type, NULL);
+            char *message = alloc(sizeof("Dereferenced expression must be a reference, but is a ") - 1 +
+                                  type_str_size - 1 + sizeof("."));
+            char *message_ptr = message;
+            memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
+                   sizeof("Dereferenced expression must be a reference, but is a ") - 1);
+            message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
+            ptlang_ast_type_to_string(unary->ast_type, *message_ptr);
+            *message_ptr += type_str_size;
+            memcpy(message_ptr, ".", 2);
+            {
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_TYPE,
+                                    .pos = unary->pos,
+                                    .message = message,
+                                }));
+                break;
+            }
+            exp->ast_type = unary->ast_type->content.reference.type;
+        }
+        break;
     }
     }
 }
@@ -535,7 +698,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
             arrpush(message_components, " are recursive.");
         }
 
-        char *message = ptlang_utils_build_str(message_components);
+        char *message = ptlang_utils_build_str_from_stb_arr(message_components);
         arrfree(message_components);
 
         for (; i < j; i++)
@@ -549,7 +712,8 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
                 message = strdup(message);
         }
     }
-    arrfree(nodes);
+    ptlang_utils_graph_free(nodes);
+    arrfree(cycles);
 }
 
 static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang_error **errors)
@@ -672,10 +836,10 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
             arrpush(message_components, " form a circular definition.");
         }
 
-        char *message = ptlang_utils_build_str(message_components);
+        char *message = ptlang_utils_build_str_from_stb_arr(message_components);
         arrfree(message_components);
 
-        for(; i < j; i++)
+        for (; i < j; i++)
         {
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNRESOLVABLE,
@@ -687,14 +851,14 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
         }
     }
 
-    arrfree(nodes);
+    ptlang_utils_graph_free(nodes);
+    arrfree(cycles);
 
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
         shget(ctx->type_scope, ast_module->type_aliases[i].name.name).value.ptlang_type =
             ptlang_context_unname_type(ast_module->type_aliases[i].type, ctx->type_scope);
     }
-
 }
 
 /**
@@ -725,6 +889,7 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
         return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.reference.type,
                                                                            ctx, errors, has_error);
     case PTLANG_AST_TYPE_NAMED:
+    {
         ptrdiff_t index = shgeti(ctx->type_scope, ast_type->content.name);
         if (index != -1)
         {
@@ -744,6 +909,7 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
             *has_error = true;
         }
         break;
+    }
     case PTLANG_AST_TYPE_FUNCTION:
         referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
             ast_type->content.function.return_type, ctx, errors, has_error);
@@ -789,20 +955,20 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
     return referenced_types;
 }
 
-static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
-                                                        ptlang_context *ctx, ptlang_error **errors)
-{
+// static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
+//                                                         ptlang_context *ctx, ptlang_error **errors)
+// {
 
-    return (struct pltang_verify_struct_s){
-        .name = ast_struct_def->name.name,
-        .pos = ast_struct_def->pos,
-        .referenced_types =
-            pltang_verify_struct_get_referenced_types_from_struct_def(ast_struct_def, ctx, errors),
-        .referencing_types = NULL,
-        .resolved = false,
-    };
-    // return type_alias;
-}
+//     return (struct pltang_verify_struct_s){
+//         .name = ast_struct_def->name.name,
+//         .pos = ast_struct_def->pos,
+//         .referenced_types =
+//             pltang_verify_struct_get_referenced_types_from_struct_def(ast_struct_def, ctx, errors),
+//         .referencing_types = NULL,
+//         .resolved = false,
+//     };
+//     // return type_alias;
+// }
 
 static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
 {
@@ -851,7 +1017,7 @@ static void ptlang_verify_check_cast(ptlang_ast_type from, ptlang_ast_type to, p
 
         // Add the error to the errors array
         arrput(*errors, ((ptlang_error){
-                            .type = PTLANG_ERROR_TYPE_MISMATCH,
+                            .type = PTLANG_ERROR_TYPE,
                             .pos = pos,
                             .message = message,
                         }));

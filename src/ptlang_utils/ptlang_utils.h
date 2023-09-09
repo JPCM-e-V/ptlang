@@ -8,6 +8,12 @@
 #define ptlang_free(ptr) free(ptr)
 #define ptlang_realloc(ptr, size) size == 0 ? (free(ptr), NULL) : realloc(ptr, size)
 
+#ifdef NDEBUG
+#    define ptlang_assert(val) ((void)val)
+#else
+#    define ptlang_assert(val) size == 0 ? (free(ptr), NULL) : realloc(ptr, size)
+#endif
+
 typedef struct node_s ptlang_utils_graph_node;
 
 struct node_s
@@ -21,6 +27,10 @@ struct node_s
 
 ptlang_utils_graph_node **ptlang_utils_find_cycles(ptlang_utils_graph_node *graph);
 
-char *ptlang_utils_build_str(char **components);
+char *ptlang_utils_build_str_from_stb_arr(char **components);
+
+char *ptlang_utils_build_str_from_arr(char *components[]);
+
+void ptlang_utils_graph_free(ptlang_utils_graph_node *graph);
 
 #endif

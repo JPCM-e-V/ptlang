@@ -74,16 +74,24 @@ ptlang_utils_graph_node **ptlang_utils_find_cycles(ptlang_utils_graph_node *grap
     return cycles;
 }
 
-char *ptlang_utils_build_str(char **components)
-{
+
+
+void ptlang_utils_graph_free(ptlang_utils_graph_node *graph){
+    for (size_t i = 0; i < arrlenu(graph); i++){
+        arrfree(graph[i].edges_to);
+    }
+    arrfree(graph);
+}
+
+static char *ptlang_utils_build_str(char** components, size_t components_len) {
     size_t str_len = 0;
-    for (size_t i = 0; i < arrlenu(components); i++)
+    for (size_t i = 0; i < components_len; i++)
     {
         str_len += strlen(components[i]);
     }
     char *str = malloc(str_len + 1);
     char *str_ptr = str;
-    for (size_t i = 0; i < arrlenu(components); i++)
+    for (size_t i = 0; i < components_len; i++)
     {
         size_t component_len = strlen(components[i]);
         memcpy(str_ptr, components[i], component_len);
@@ -91,4 +99,14 @@ char *ptlang_utils_build_str(char **components)
     }
     *str_ptr = '\0';
     return str;
+}
+
+char *ptlang_utils_build_str_from_stb_arr(char **components)
+{
+    return ptlang_utils_build_str(components, arrlenu(components));
+}
+
+char *ptlang_utils_build_str_from_arr(char* components[]) {
+    return ptlang_utils_build_str(components, sizeof(components) / sizeof(char*));
+
 }

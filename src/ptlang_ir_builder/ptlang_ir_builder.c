@@ -433,7 +433,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         {
             uint32_t size = type->content.integer.size;
             ptlang_ast_type_destroy(type);
-            return ptlang_ast_type_integer(true, size, EMPTY_POS);
+            return ptlang_ast_type_integer(type->content.integer.is_signed, size, EMPTY_POS);
         }
         return type;
     }
