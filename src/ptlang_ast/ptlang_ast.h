@@ -12,7 +12,9 @@ typedef struct ptlang_ast_code_position_s
     uint64_t from_column;
     uint64_t to_line;
     uint64_t to_column;
-} ptlang_ast_code_position;
+} ptlang_ast_code_position_s;
+
+typedef struct ptlang_ast_code_position_s *ptlang_ast_code_position;
 
 typedef struct ptlang_ast_ident_s
 {
@@ -188,8 +190,8 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list);
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
 void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list);
 
-bool ptlang_ast_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2);
-
 size_t ptlang_ast_type_to_string(ptlang_ast_type type, char *out);
+
+ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name);
 
 #endif

@@ -14,7 +14,7 @@ void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, char const *message)
 
     arrput(syntax_errors, ((ptlang_error){
                               .type = PTLANG_ERROR_SYNTAX,
-                              .pos = ptlang_parser_code_position(yylloc),
+                              .pos = *ptlang_parser_code_position(yylloc),
                               .message = message_n,
                           }));
 
@@ -24,22 +24,26 @@ void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, char const *message)
 ptlang_ast_code_position ptlang_parser_code_position_from_to(const PTLANG_YYLTYPE *from,
                                                              const PTLANG_YYLTYPE *to)
 {
-    return ((ptlang_ast_code_position){
+    ptlang_ast_code_position pos = ptlang_malloc(sizeof(*pos));
+    *pos = ((ptlang_ast_code_position_s){
         .from_line = from->first_line,
         .from_column = from->first_column,
         .to_line = to->last_line,
         .to_column = to->last_column,
     });
+    return pos;
 }
 
 ptlang_ast_code_position ptlang_parser_code_position(const PTLANG_YYLTYPE *yylloc)
 {
-    return ((ptlang_ast_code_position){
+    ptlang_ast_code_position pos = ptlang_malloc(sizeof(*pos));
+    *pos = ((ptlang_ast_code_position_s){
         .from_line = yylloc->first_line,
         .from_column = yylloc->first_column,
         .to_line = yylloc->last_line,
         .to_column = yylloc->last_column,
     });
+    return pos;
 }
 
 ptlang_error *ptlang_parser_parse(FILE *file, ptlang_ast_module *out)

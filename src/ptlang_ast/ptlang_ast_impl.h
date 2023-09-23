@@ -298,6 +298,4 @@ struct ptlang_ast_func_s
     ptlang_ast_code_position pos;
 };
 
-void ptlang_ast_type_destroy_content(ptlang_ast_type type);
-
 #endif

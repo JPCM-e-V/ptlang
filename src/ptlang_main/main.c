@@ -27,8 +27,24 @@ void handle_errors(ptlang_error *errors)
 
 int main(void)
 {
-    ptlang_context ctx = {0};
     ptlang_ast_module mod;
+
+    char *triple = LLVMGetDefaultTargetTriple();
+
+    LLVMInitializeNativeTarget();
+
+    LLVMTargetRef target;
+    LLVMGetTargetFromTriple(triple, &target, NULL);
+
+    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
+        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+
+    // LLVMCreateTargetDataLayout
+    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
+
+    ptlang_context ctx = {
+        .target_data_layout = target_data_layout,
+    };
     ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
     if (arrlenu(syntax_errors) != 0)
     {
@@ -45,19 +61,6 @@ int main(void)
     }
 
     pltang_context_destory(&ctx);
-
-    char *triple = LLVMGetDefaultTargetTriple();
-
-    LLVMInitializeNativeTarget();
-
-    LLVMTargetRef target;
-    LLVMGetTargetFromTriple(triple, &target, NULL);
-
-    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
-        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
-
-    // LLVMCreateTargetDataLayout
-    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
 
     LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
     LLVMDumpModule(llvmmod);

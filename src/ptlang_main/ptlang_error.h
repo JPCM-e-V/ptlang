@@ -34,7 +34,7 @@ typedef struct ptlang_error_s
 {
     ptlang_error_type type;
     char *message;
-    ptlang_ast_code_position pos;
+    ptlang_ast_code_position_s pos;
 } ptlang_error;
 
 #endif

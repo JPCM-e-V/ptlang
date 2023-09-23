@@ -20,8 +20,6 @@
         }                                                                                                    \
     }
 
-#define EMPTY_POS ((ptlang_ast_code_position){0})
-
 typedef struct ptlang_ir_builder_scope_entry_value_s
 {
     LLVMValueRef value;
@@ -277,21 +275,21 @@ static ptlang_ast_type ptlang_ir_builder_combine_types(ptlang_ast_type a, ptlang
                                        a->content.integer.size > b->content.integer.size
                                            ? a->content.integer.size
                                            : b->content.integer.size,
-                                       EMPTY_POS);
+                                       NULL);
     }
     else if (a->type == PTLANG_AST_TYPE_INTEGER)
     {
-        return ptlang_ast_type_float(b->content.float_size, EMPTY_POS);
+        return ptlang_ast_type_float(b->content.float_size, NULL);
     }
     else if (b->type == PTLANG_AST_TYPE_INTEGER)
     {
-        return ptlang_ast_type_float(a->content.float_size, EMPTY_POS);
+        return ptlang_ast_type_float(a->content.float_size, NULL);
     }
     else
     {
         return ptlang_ast_type_float(a->content.float_size > b->content.float_size ? a->content.float_size
                                                                                    : b->content.float_size,
-                                     EMPTY_POS);
+                                     NULL);
     }
 }
 
@@ -433,7 +431,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         {
             uint32_t size = type->content.integer.size;
             ptlang_ast_type_destroy(type);
-            return ptlang_ast_type_integer(type->content.integer.is_signed, size, EMPTY_POS);
+            return ptlang_ast_type_integer(type->content.integer.is_signed, size, NULL);
         }
         return type;
     }
@@ -446,7 +444,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     case PTLANG_AST_EXP_AND:
     case PTLANG_AST_EXP_OR:
     case PTLANG_AST_EXP_NOT:
-        return ptlang_ast_type_integer(false, 1, EMPTY_POS);
+        return ptlang_ast_type_integer(false, 1, NULL);
     case PTLANG_AST_EXP_LEFT_SHIFT:
     case PTLANG_AST_EXP_RIGHT_SHIFT:
     {
@@ -479,7 +477,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         return orig;
     }
     case PTLANG_AST_EXP_LENGTH:
-        return ptlang_ast_type_integer(false, LLVMPointerSize(ctx->target_info) * 8, EMPTY_POS);
+        return ptlang_ast_type_integer(false, LLVMPointerSize(ctx->target_info) * 8, NULL);
     case PTLANG_AST_EXP_FUNCTION_CALL:
     { // ptlang_ir_builder_scope_get()
         ptlang_ast_type function = ptlang_ir_builder_exp_type(exp->content.function_call.function, ctx);
@@ -512,7 +510,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
         {
             size = strtoul(size_str + 1, NULL, 10);
         }
-        return ptlang_ast_type_integer(is_signed, size, EMPTY_POS);
+        return ptlang_ast_type_integer(is_signed, size, NULL);
     }
     case PTLANG_AST_EXP_FLOAT:
     {
@@ -542,14 +540,14 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
             }
         }
 
-        return ptlang_ast_type_float(float_size, EMPTY_POS);
+        return ptlang_ast_type_float(float_size, NULL);
     }
     case PTLANG_AST_EXP_STRUCT:
     {
         size_t name_len = strlen(exp->content.struct_.type.name) + 1;
         char *name = ptlang_malloc(name_len);
         memcpy(name, exp->content.struct_.type.name, name_len);
-        return ptlang_ast_type_named(name, EMPTY_POS);
+        return ptlang_ast_type_named(name, NULL);
     }
     case PTLANG_AST_EXP_ARRAY:
         return ptlang_ir_builder_type_copy_and_unname(exp->content.array.type, ctx);
@@ -598,7 +596,7 @@ static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_
     }
     case PTLANG_AST_EXP_REFERENCE:
         return ptlang_ast_type_reference(ptlang_ir_builder_exp_type(exp->content.reference.value, ctx),
-                                         exp->content.reference.writable, EMPTY_POS);
+                                         exp->content.reference.writable, NULL);
     case PTLANG_AST_EXP_DEREFERENCE:
     {
         ptlang_ast_type exp_type = ptlang_ir_builder_exp_type(exp->content.unary_operator, ctx);
@@ -2013,7 +2011,7 @@ LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetD
         }
 
         function_types[i] = ptlang_ast_type_function(
-            ptlang_ast_type_copy(ast_module->functions[i]->return_type), param_type_list, EMPTY_POS);
+            ptlang_ast_type_copy(ast_module->functions[i]->return_type), param_type_list, NULL);
 
         ptlang_ir_builder_scope_add(&global_scope, ast_module->functions[i]->name.name, functions[i],
                                     function_types[i], true);

@@ -106,8 +106,3 @@ char *ptlang_utils_build_str_from_stb_arr(char **components)
 {
     return ptlang_utils_build_str(components, arrlenu(components));
 }
-
-char *ptlang_utils_build_str_from_arr(char *components[])
-{
-    return ptlang_utils_build_str(components, sizeof(components) / sizeof(char *));
-}

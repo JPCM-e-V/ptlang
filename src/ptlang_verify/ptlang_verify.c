@@ -83,7 +83,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
             {
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_CODE_UNREACHABLE,
-                                    .pos = statement->content.block.stmts[i]->pos,
+                                    .pos = *statement->content.block.stmts[i]->pos,
                                     .message = "Dead code detected.",
                                 }));
                 *is_unreachable = false;
@@ -111,17 +111,15 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
         ptlang_ast_exp condition = statement->type == PTLANG_AST_STMT_IF_ELSE
                                        ? statement->content.control_flow2.condition
                                        : statement->content.control_flow.condition;
-        if (ptlang_verify_exp(condition, ctx, errors))
+        ptlang_verify_exp(condition, ctx, errors);
+        if (condition != NULL && condition->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
+            condition->ast_type->type != PTLANG_AST_TYPE_FLOAT)
         {
-            if (condition->ast_type->type != PTLANG_AST_TYPE_INTEGER &&
-                condition->ast_type->type != PTLANG_AST_TYPE_FLOAT)
-            {
-                arrput(*errors, ((ptlang_error){
-                                    .type = PTLANG_ERROR_TYPE,
-                                    .pos = condition->pos,
-                                    .message = "Control flow condition must be a float or an int.",
-                                }));
-            }
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = *condition->pos,
+                                .message = "Control flow condition must be a float or an int.",
+                            }));
         }
 
         if (statement->type != PTLANG_AST_STMT_IF_ELSE)
@@ -156,15 +154,12 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
         *is_unreachable = true;
     case PTLANG_AST_STMT_RET_VAL:
         *has_return_value = false;
-        bool expression_correct = ptlang_verify_exp(statement->content.exp, ctx, errors);
+        ptlang_verify_exp(statement->content.exp, ctx, errors);
         if (validate_return_type)
         {
-            if (expression_correct)
-            {
-                ptlang_ast_type return_type = statement->content.exp->ast_type;
-                ptlang_verify_check_cast(return_type, wanted_return_type, statement->content.exp->pos, ctx,
-                                         errors);
-            }
+            ptlang_ast_type return_type = statement->content.exp->ast_type;
+            ptlang_verify_check_implicit_cast(return_type, wanted_return_type, statement->content.exp->pos,
+                                              ctx, errors);
         }
         break;
     case PTLANG_AST_STMT_BREAK:
@@ -175,7 +170,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
         {
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE,
-                                .pos = statement->pos,
+                                .pos = *statement->pos,
                                 .message = "Nesting level must be a positive integer.",
                             }));
         }
@@ -189,7 +184,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
                      statement->content.nesting_level, nesting_level);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_NESTING_LEVEL_OUT_OF_RANGE,
-                                .pos = statement->pos,
+                                .pos = *statement->pos,
                                 .message = message,
                             }));
         }
@@ -219,7 +214,7 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
                      decl->name.name);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
-                                .pos = decl->pos,
+                                .pos = *decl->pos,
                                 .message = message,
                             }));
             correct = false;
@@ -289,7 +284,7 @@ static bool ptlang_verify_child_exp(ptlang_ast_exp left, ptlang_ast_exp right, p
                 left->ast_type->content.integer.size > right->ast_type->content.integer.size
                     ? left->ast_type->content.integer.size
                     : right->ast_type->content.integer.size,
-                (ptlang_ast_code_position){0});
+                NULL);
         }
         else
         {
@@ -318,7 +313,7 @@ static bool ptlang_verify_child_exp(ptlang_ast_exp left, ptlang_ast_exp right, p
             {
                 float_size = PTLANG_AST_TYPE_FLOAT_128;
             }
-            *out = ptlang_ast_type_float(float_size, (ptlang_ast_code_position){0});
+            *out = ptlang_ast_type_float(float_size, NULL);
         }
         return true;
     }
@@ -346,13 +341,13 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Writing to unwritable expression.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_EXP_UNWRITABLE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
 
         exp->ast_type = ptlang_ast_type_copy(left->ast_type);
-        ptlang_verify_check_cast(right->ast_type, left->ast_type, exp->pos, ctx, errors);
+        ptlang_verify_check_implicit_cast(right->ast_type, left->ast_type, exp->pos, ctx, errors);
         break;
     }
     case PTLANG_AST_EXP_ADDITION:
@@ -372,7 +367,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Operation arguments are incompatible.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
@@ -399,7 +394,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for negation.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
@@ -423,7 +418,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "The operant types must be numbers or references.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
@@ -436,12 +431,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "The operant types must either be both numbers or both references.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        exp->ast_type = ptlang_ast_type_integer(false, 1, NULL);
         break;
     }
     case PTLANG_AST_EXP_GREATER:
@@ -462,11 +457,11 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for comparison.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
-        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        exp->ast_type = ptlang_ast_type_integer(false, 1, NULL);
         break;
     }
     case PTLANG_AST_EXP_LEFT_SHIFT:
@@ -483,7 +478,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for shift.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
@@ -507,12 +502,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for boolean operation.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        exp->ast_type = ptlang_ast_type_integer(false, 1, NULL);
         break;
     }
     case PTLANG_AST_EXP_NOT:
@@ -527,12 +522,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for boolean operation.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_integer(false, 1, (ptlang_ast_code_position){0});
+        exp->ast_type = ptlang_ast_type_integer(false, 1, NULL);
         break;
     }
     case PTLANG_AST_EXP_BITWISE_AND:
@@ -550,7 +545,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             memcpy(message, "Bad operant type for bitwise operation.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
-                                .pos = exp->pos,
+                                .pos = *exp->pos,
                                 .message = message,
                             }));
         }
@@ -561,14 +556,107 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     {
+        ptlang_verify_exp(unary, ctx, errors);
+        if (unary->ast_type != NULL && unary->ast_type->type != PTLANG_AST_TYPE_INTEGER)
+        {
+            size_t message_len = sizeof("Bad operant type for bitwise operation.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Bad operant type for bitwise operation.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_TYPE,
+                                .pos = *exp->pos,
+                                .message = message,
+                            }));
+        }
+
+        exp->ast_type = ptlang_ast_type_copy(unary->ast_type);
         break;
     }
     case PTLANG_AST_EXP_LENGTH:
     {
+        ptlang_verify_exp(unary, ctx, errors);
+        exp->ast_type = ptlang_ast_type_integer(true, LLVMPointerSize(ctx->target_data_layout), NULL);
         break;
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
     {
+        ptlang_verify_exp(exp->content.function_call.function, ctx, errors);
+        for (size_t i = 0; i < arrlen(exp->content.function_call.parameters); i++)
+        {
+            ptlang_verify_exp(exp->content.function_call.parameters[i], ctx, errors);
+        }
+        if (exp->content.function_call.function->ast_type != NULL)
+        {
+            if (exp->content.function_call.function->ast_type->type != PTLANG_AST_TYPE_FUNCTION)
+            {
+                size_t message_len = sizeof("Function call is not a function.");
+                char *message = ptlang_malloc(message_len);
+                memcpy(message, "Function call is not a function.", message_len);
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_TYPE,
+                                    .pos = *exp->pos,
+                                    .message = message,
+                                }));
+            }
+            else
+            {
+                exp->ast_type = ptlang_ast_type_copy(
+                    exp->content.function_call.function->ast_type->content.function.return_type);
+                if (arrlenu(exp->content.function_call.parameters) >
+                    arrlenu(exp->content.function_call.function->ast_type->content.function.parameters))
+                {
+                    size_t message_len = sizeof("These parameters are to many.");
+                    char *message = ptlang_malloc(message_len);
+                    memcpy(message, "These parameters are to many.", message_len);
+                    arrput(
+                        *errors,
+                        ((ptlang_error){
+                            .type = PTLANG_ERROR_TYPE,
+                            .pos.from_line =
+                                exp->content.function_call
+                                    .parameters[arrlenu(exp->content.function_call.function->ast_type->content
+                                                            .function.parameters)]
+                                    ->pos->from_line,
+                            .pos.from_column =
+                                exp->content.function_call
+                                    .parameters[arrlenu(exp->content.function_call.function->ast_type->content
+                                                            .function.parameters)]
+                                    ->pos->from_column,
+                            .pos.to_line = arrlast(exp->content.function_call.parameters)->pos->to_line,
+                            .pos.to_column = arrlast(exp->content.function_call.parameters)->pos->to_column,
+                            .message = message,
+                        }));
+                }
+                else if (arrlenu(exp->content.function_call.parameters) <
+                         arrlenu(exp->content.function_call.function->ast_type->content.function.parameters))
+                {
+                    size_t message_len = sizeof("These parameters are to many.");
+                    char *message = ptlang_malloc(message_len);
+                    memcpy(message, "These parameters are to many.", message_len);
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_TYPE,
+                                        .pos = *exp->pos,
+                                        .message = message,
+                                    }));
+                }
+
+                for (size_t i = 0; i < arrlen(exp->content.function_call.parameters); i++)
+                {
+                    if (i >=
+                        arrlenu(exp->content.function_call.function->ast_type->content.function.parameters))
+                    {
+                        size_t message_len = sizeof("Too many .");
+                        char *message = ptlang_malloc(message_len);
+                        memcpy(message, "Too many .", message_len);
+                        arrput(*errors, ((ptlang_error){
+                                            .type = PTLANG_ERROR_TYPE,
+                                            .pos = *exp->pos,
+                                            .message = message,
+                                        }));
+                    }
+                }
+            }
+        }
         break;
     }
     case PTLANG_AST_EXP_VARIABLE:
@@ -597,31 +685,106 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_CAST:
     {
+        ptlang_ast_type to = exp->content.cast.type;
+        exp->ast_type = to;
+        ptlang_verify_exp(exp->content.cast.value, ctx, errors);
+        ptlang_ast_type from = exp->content.cast.value->ast_type;
+        if (! ptlang_verify_implicit_cast(from, to, ctx))
+        {
+            // todo
+        }
         break;
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
+        ptlang_verify_exp(exp->content.struct_member.struct_, ctx, errors);
+        ptlang_ast_type struct_exp_type = exp->content.struct_member.struct_->ast_type;
+        if (struct_exp_type != NULL)
+        {
+            if (struct_exp_type->type != PTLANG_AST_TYPE_NAMED)
+            {
+                // throw type error
+            }
+            else
+            {
+                ptlang_context_type_scope_entry struct_type_entry =
+                    shget(ctx->type_scope, struct_exp_type->content.name);
+                if (struct_type_entry.type != PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
+                {
+                    // throw type error
+                }
+                else
+                {
+                    ptlang_ast_decl member =
+                        ptlang_decl_list_find_last(ctx->scope, exp->content.struct_member.member_name.name);
+                    if (member == NULL)
+                    {
+                        // throw member not found error
+                    }
+                    else
+                    {
+                        exp->ast_type = ptlang_ast_type_copy(member->type);
+                    }
+                }
+            }
+        }
         break;
     }
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
-        break;
+        ptlang_verify_exp(exp->content.array_element.index, ctx, errors);
+        ptlang_verify_exp(exp->content.array_element.array, ctx, errors);
+
+        ptlang_ast_type index_type = exp->content.array_element.index->ast_type;
+        if (index_type != NULL && index_type->type != PTLANG_AST_TYPE_INTEGER &&
+            !index_type->content.integer.is_signed)
+        {
+            // throw type error
+        }
+
+        ptlang_ast_type array_type = exp->content.array_element.array->ast_type;
+        if (array_type != NULL)
+        {
+            if (array_type->type == PTLANG_AST_TYPE_ARRAY)
+            {
+                exp->ast_type = ptlang_ast_type_copy(array_type->content.array.type);
+            }
+            else if (array_type->type == PTLANG_AST_TYPE_HEAP_ARRAY)
+            {
+                exp->ast_type = ptlang_ast_type_copy(array_type->content.heap_array.type);
+            }
+            else
+            {
+                // throw type error
+            }
+        };
     }
+
+    break;
+
     case PTLANG_AST_EXP_REFERENCE:
     {
         ptlang_verify_exp(exp->content.reference.value, ctx, errors);
         if (exp->content.reference.writable &&
             !ptlang_verify_exp_is_mutable(exp->content.reference.value, ctx))
         {
-            char *message = alloc(sizeof("Can not create a writable reference of an unmutable expression."));
+            char *message =
+                ptlang_malloc(sizeof("Can not create a writable reference of an unmutable expression."));
             memcpy(message, "Can not create a writable reference of an unmutable expression.",
                    sizeof("Can not create a writable reference of an unmutable expression."));
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_EXP_UNWRITABLE,
-                                .pos = exp->content.reference.value->pos,
+                                .pos = *exp->content.reference.value->pos,
                                 .message = message,
                             }));
         }
+
+        ptlang_ast_type referenced_type = exp->content.reference.value->ast_type;
+        if (referenced_type != NULL)
+        {
+            exp->ast_type = ptlang_ast_type_reference(referenced_type, exp->content.reference.writable, NULL);
+        }
+
         break;
     }
     case PTLANG_AST_EXP_DEREFERENCE:
@@ -630,24 +793,24 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         if (unary->ast_type != NULL)
         {
             size_t type_str_size = ptlang_ast_type_to_string(unary->ast_type, NULL);
-            char *message = alloc(sizeof("Dereferenced expression must be a reference, but is a ") - 1 +
-                                  type_str_size - 1 + sizeof("."));
+            char *message = ptlang_malloc(sizeof("Dereferenced expression must be a reference, but is a ") -
+                                          1 + type_str_size - 1 + sizeof("."));
             char *message_ptr = message;
             memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
                    sizeof("Dereferenced expression must be a reference, but is a ") - 1);
             message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
-            ptlang_ast_type_to_string(unary->ast_type, *message_ptr);
+            ptlang_ast_type_to_string(unary->ast_type, message_ptr);
             *message_ptr += type_str_size;
             memcpy(message_ptr, ".", 2);
             {
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_TYPE,
-                                    .pos = unary->pos,
+                                    .pos = *unary->pos,
                                     .message = message,
                                 }));
                 break;
             }
-            exp->ast_type = unary->ast_type->content.reference.type;
+            exp->ast_type = ptlang_ast_type_copy(unary->ast_type->content.reference.type);
         }
         break;
     }
@@ -705,7 +868,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
         {
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_STRUCT_RECURSION,
-                                .pos = struct_defs[cycles[i] - nodes]->pos,
+                                .pos = *struct_defs[cycles[i] - nodes]->pos,
                                 .message = message,
                             }));
             if (i < j - 1)
@@ -745,7 +908,7 @@ static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang
             snprintf(message, message_len, "The type %s is not defined.", type->content.name);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNDEFINED,
-                                .pos = type->pos,
+                                .pos = *type->pos,
                                 .message = message,
                             }));
             return false;
@@ -843,7 +1006,7 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
         {
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNRESOLVABLE,
-                                .pos = ast_module->type_aliases[cycles[i] - nodes].pos,
+                                .pos = *ast_module->type_aliases[cycles[i] - nodes].pos,
                                 .message = message,
                             }));
             if (i < j - 1)
@@ -903,7 +1066,7 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
             snprintf(message, message_len, "The type %s is not defined.", ast_type->content.name);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE_UNDEFINED,
-                                .pos = ast_type->pos,
+                                .pos = *ast_type->pos,
                                 .message = message,
                             }));
             *has_error = true;
@@ -970,7 +1133,7 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
 //     // return type_alias;
 // }
 
-static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
+static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
 {
     if (from == NULL || to == NULL)
     {
@@ -978,24 +1141,31 @@ static bool ptlang_verify_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_
     }
     to = ptlang_context_unname_type(to, ctx->type_scope);
     from = ptlang_context_unname_type(from, ctx->type_scope);
-    if ((to->type == PTLANG_AST_TYPE_FLOAT || to->type == PTLANG_AST_TYPE_INTEGER) &&
-        (from->type == PTLANG_AST_TYPE_FLOAT || from->type == PTLANG_AST_TYPE_INTEGER))
+    if ((from->type == PTLANG_AST_TYPE_FLOAT && to->type == PTLANG_AST_TYPE_FLOAT) ||
+        (from->type == PTLANG_AST_TYPE_INTEGER &&
+         (to->type == PTLANG_AST_TYPE_FLOAT || to->type == PTLANG_AST_TYPE_INTEGER)))
     {
+        if (to->type == PTLANG_AST_EXP_INTEGER)
+            return (to->content.integer.size >= from->content.integer.size &&
+                    to->content.integer.is_signed == from->content.integer.is_signed) ||
+                   (to->content.integer.size > from->content.integer.size && to->content.integer.is_signed);
         return true;
     }
     if (to->type == PTLANG_AST_TYPE_REFERENCE && from->type == PTLANG_AST_TYPE_REFERENCE)
     {
-        if (ptlang_ast_type_equals(to->content.reference.type, from->content.reference.type) &&
+        if (ptlang_context_type_equals(to->content.reference.type, from->content.reference.type,
+                                       ctx->type_scope) &&
             !to->content.reference.writable)
             return true;
     }
-    return ptlang_ast_type_equals(to, from);
+    return ptlang_context_type_equals(to, from, ctx->type_scope);
 }
 
-static void ptlang_verify_check_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_ast_code_position pos,
-                                     ptlang_context *ctx, ptlang_error **errors)
+static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_type to,
+                                              ptlang_ast_code_position pos, ptlang_context *ctx,
+                                              ptlang_error **errors)
 {
-    if (!ptlang_verify_cast(from, to, ctx))
+    if (!ptlang_verify_implicit_cast(from, to, ctx))
     {
         // Calculate the message length
         size_t to_len = ptlang_ast_type_to_string(to, NULL);
@@ -1018,7 +1188,7 @@ static void ptlang_verify_check_cast(ptlang_ast_type from, ptlang_ast_type to, p
         // Add the error to the errors array
         arrput(*errors, ((ptlang_error){
                             .type = PTLANG_ERROR_TYPE,
-                            .pos = pos,
+                            .pos = *pos,
                             .message = message,
                         }));
     }
