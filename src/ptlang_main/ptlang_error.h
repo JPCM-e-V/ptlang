@@ -15,6 +15,9 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_VARIABLE_NAME_DUPLICATION,
     PTLANG_ERROR_CODE_UNREACHABLE,
     PTLANG_ERROR_EXP_UNWRITABLE,
+    PTLANG_ERROR_PARAMETER_COUNT,
+    PTLANG_ERROR_UNKNOWN_VARIABLE_NAME,
+    PTLANG_ERROR_VALUE_COUNT,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -28,6 +31,9 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_VARIABLE_NAME_DUPLICATION  ? "Variable Name Duplication"                    \
     : error_type == PTLANG_ERROR_CODE_UNREACHABLE           ? "Code Unreachable"                             \
     : error_type == PTLANG_ERROR_EXP_UNWRITABLE             ? "Expression Unwritable Error"                  \
+    : error_type == PTLANG_ERROR_PARAMETER_COUNT            ? "Invalid Parameter Count Error"                \
+    : error_type == PTLANG_ERROR_UNKNOWN_VARIABLE_NAME      ? "Unknown variable name"                        \
+    : error_type == PTLANG_ERROR_VALUE_COUNT                ? "Invalid Value Count Error"                    \
                                                             : "Unkown Error"
 
 typedef struct ptlang_error_s

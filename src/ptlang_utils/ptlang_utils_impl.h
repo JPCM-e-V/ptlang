@@ -3,5 +3,6 @@
 
 #include "ptlang_utils.h"
 #include "stb_ds.h"
+#include <stdint.h>
 
 #endif

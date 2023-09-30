@@ -18,6 +18,11 @@ ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_
     return type;
 }
 
+ptlang_ast_type ptlang_context_copy_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope){
+    return ptlang_ast_type_copy(ptlang_context_unname_type(type, type_scope));
+}
+
+
 bool ptlang_context_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2, ptlang_context_type_scope *type_scope)
 {
     type_1 = ptlang_context_unname_type(type_1, type_scope);

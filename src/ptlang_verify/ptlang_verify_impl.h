@@ -6,6 +6,7 @@
 #include "ptlang_verify.h"
 #include <inttypes.h>
 #include <stdio.h>
+#include <stdbool.h>
 
 #include "stb_ds.h"
 
@@ -69,8 +70,9 @@ static void ptlang_verify_exp(ptlang_ast_exp expression, ptlang_context *ctx, pt
 
 static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx);
 
-static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_ast_code_position pos,
-                                     ptlang_context *ctx, ptlang_error **errors);
+static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_type to,
+                                              ptlang_ast_code_position pos, ptlang_context *ctx,
+                                              ptlang_error **errors);
 
 static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors);
 

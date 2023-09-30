@@ -346,7 +346,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_copy(left->ast_type);
+        exp->ast_type = ptlang_context_copy_unname_type(left->ast_type, ctx->type_scope);
         ptlang_verify_check_implicit_cast(right->ast_type, left->ast_type, exp->pos, ctx, errors);
         break;
     }
@@ -385,7 +385,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         if (unary->ast_type->type == PTLANG_AST_TYPE_INTEGER ||
             unary->ast_type->type == PTLANG_AST_TYPE_FLOAT)
         {
-            exp->ast_type = ptlang_ast_type_copy(unary->ast_type);
+            exp->ast_type = ptlang_context_copy_unname_type(unary->ast_type, ctx->type_scope);
         }
         else
         {
@@ -483,7 +483,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_copy(left->ast_type);
+        exp->ast_type = ptlang_context_copy_unname_type(left->ast_type, ctx->type_scope);
         break;
     }
     case PTLANG_AST_EXP_AND:
@@ -569,7 +569,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                             }));
         }
 
-        exp->ast_type = ptlang_ast_type_copy(unary->ast_type);
+        exp->ast_type = ptlang_context_copy_unname_type(unary->ast_type, ctx->type_scope);
         break;
     }
     case PTLANG_AST_EXP_LENGTH:
@@ -593,7 +593,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                 char *message = ptlang_malloc(message_len);
                 memcpy(message, "Function call is not a function.", message_len);
                 arrput(*errors, ((ptlang_error){
-                                    .type = PTLANG_ERROR_TYPE,
+                                    .type = PTLANG_ERROR_PARAMETER_COUNT,
                                     .pos = *exp->pos,
                                     .message = message,
                                 }));
@@ -611,7 +611,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                     arrput(
                         *errors,
                         ((ptlang_error){
-                            .type = PTLANG_ERROR_TYPE,
+                            .type = PTLANG_ERROR_PARAMETER_COUNT,
                             .pos.from_line =
                                 exp->content.function_call
                                     .parameters[arrlenu(exp->content.function_call.function->ast_type->content
@@ -630,30 +630,28 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                 else if (arrlenu(exp->content.function_call.parameters) <
                          arrlenu(exp->content.function_call.function->ast_type->content.function.parameters))
                 {
-                    size_t message_len = sizeof("These parameters are to many.");
+                    size_t message_len = sizeof("To few parameters.");
                     char *message = ptlang_malloc(message_len);
-                    memcpy(message, "These parameters are to many.", message_len);
+                    memcpy(message, "To few parameters.", message_len);
                     arrput(*errors, ((ptlang_error){
-                                        .type = PTLANG_ERROR_TYPE,
+                                        .type = PTLANG_ERROR_PARAMETER_COUNT,
                                         .pos = *exp->pos,
                                         .message = message,
                                     }));
                 }
 
-                for (size_t i = 0; i < arrlen(exp->content.function_call.parameters); i++)
+                size_t checkable_parameters =
+                    arrlenu(exp->content.function_call.function->ast_type->content.function.parameters) <
+                            arrlenu(exp->content.function_call.parameters)
+                        ? arrlenu(exp->content.function_call.function->ast_type->content.function.parameters)
+                        : arrlenu(exp->content.function_call.parameters);
+
+                for (size_t i = 0; i < checkable_parameters; i++)
                 {
-                    if (i >=
-                        arrlenu(exp->content.function_call.function->ast_type->content.function.parameters))
-                    {
-                        size_t message_len = sizeof("Too many .");
-                        char *message = ptlang_malloc(message_len);
-                        memcpy(message, "Too many .", message_len);
-                        arrput(*errors, ((ptlang_error){
-                                            .type = PTLANG_ERROR_TYPE,
-                                            .pos = *exp->pos,
-                                            .message = message,
-                                        }));
-                    }
+                    ptlang_verify_check_implicit_cast(
+                        exp->content.function_call.parameters[i]->ast_type,
+                        exp->content.function_call.function->ast_type->content.function.parameters[i],
+                        exp->content.function_call.parameters[i]->pos, ctx, errors);
                 }
             }
         }
@@ -661,10 +659,33 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_VARIABLE:
     {
+        ptlang_ast_decl decl = ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation);
+        if (decl == NULL)
+        {
+            size_t message_len = sizeof("Unknown variable.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Unknown variable.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_UNKNOWN_VARIABLE_NAME,
+                                .pos = *exp->pos,
+                                .message = message,
+                            }));
+        }
+        else
+        {
+            exp->ast_type = decl->type;
+        }
         break;
     }
     case PTLANG_AST_EXP_INTEGER:
     {
+        char *suffix_begin = strchr(exp->content.str_prepresentation, 'u');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 'U');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 's');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 'S');
         break;
     }
     case PTLANG_AST_EXP_FLOAT:
@@ -677,21 +698,93 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_ARRAY:
     {
+        ptlang_ast_type array_type = ptlang_context_unname_type(exp->content.array.type, ctx->type_scope);
+        ptlang_ast_type member_type = NULL;
+
+        if (array_type != NULL)
+        {
+            if (array_type->type != PTLANG_AST_TYPE_ARRAY)
+            {
+                // throw error
+            }
+            else
+            {
+                exp->ast_type = ptlang_context_copy_unname_type(array_type, ctx->type_scope);
+                member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
+            }
+        }
+
+        ptlang_error *too_many_values_error = NULL;
+        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+        {
+            ptlang_verify_exp(exp->content.array.values[i], ctx, errors);
+            ptlang_verify_check_implicit_cast(exp->content.array.values[i]->ast_type, member_type,
+                                              exp->content.array.values[i]->pos, ctx, errors);
+            if (i >= array_type->content.array.len)
+            {
+                if (too_many_values_error == NULL)
+                {
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_VALUE_COUNT,
+                                        .pos = exp->content.array.values[i]->pos,
+                                        // .message = TODO
+                                    }));
+                    too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
+                }
+                else
+                {
+                    too_many_values_error->pos.to_column = exp->content.array.values[i]->pos->to_column;
+                    too_many_values_error->pos.to_line = exp->content.array.values[i]->pos->to_line;
+                }
+            }
+        }
         break;
     }
     case PTLANG_AST_EXP_TERNARY:
     {
+        ptlang_ast_exp condition = exp->content.ternary_operator.condition;
+        ptlang_ast_exp if_value = exp->content.ternary_operator.if_value;
+        ptlang_ast_exp else_value = exp->content.ternary_operator.else_value;
+
+        ptlang_verify_exp(condition, ctx, errors);
+        ptlang_verify_exp(if_value, ctx, errors);
+        ptlang_verify_exp(else_value, ctx, errors);
+
+        ptlang_ast_type condition_type = ptlang_context_unname_type(condition->ast_type, ctx->type_scope);
+        if (condition_type->type != PTLANG_AST_TYPE_INTEGER || condition_type->content.integer.size != 1 ||
+            condition_type->content.integer.is_signed)
+        {
+            // TODO throw error
+        }
+
+        if (ptlang_verify_implicit_cast(if_value->ast_type, else_value->ast_type, ctx))
+        {
+            exp->ast_type = ptlang_context_copy_unname_type(else_value->ast_type, ctx->type_scope);
+        }
+        if (ptlang_verify_implicit_cast(else_value->ast_type, if_value->ast_type, ctx))
+        {
+            exp->ast_type = ptlang_context_copy_unname_type(if_value->ast_type, ctx->type_scope);
+        }
+        else
+        {
+            // TODO throw error
+        }
+
         break;
     }
     case PTLANG_AST_EXP_CAST:
     {
-        ptlang_ast_type to = exp->content.cast.type;
+        ptlang_ast_type to = ptlang_context_copy_unname_type(exp->content.cast.type, ctx->type_scope);
         exp->ast_type = to;
         ptlang_verify_exp(exp->content.cast.value, ctx, errors);
-        ptlang_ast_type from = exp->content.cast.value->ast_type;
-        if (! ptlang_verify_implicit_cast(from, to, ctx))
+        ptlang_ast_type from = ptlang_context_unname_type(exp->content.cast.value->ast_type, ctx->type_scope);
+        if (!ptlang_verify_implicit_cast(from, to, ctx))
         {
-            // todo
+            if (!((to->type == PTLANG_AST_TYPE_INTEGER || to->type == PTLANG_AST_TYPE_FLOAT) &&
+                  (from->type == PTLANG_AST_TYPE_INTEGER || from->type == PTLANG_AST_TYPE_FLOAT)))
+            {
+                // TODO throw error
+            }
         }
         break;
     }
@@ -703,7 +796,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         {
             if (struct_exp_type->type != PTLANG_AST_TYPE_NAMED)
             {
-                // throw type error
+                // TODO throw type error
             }
             else
             {
@@ -711,7 +804,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                     shget(ctx->type_scope, struct_exp_type->content.name);
                 if (struct_type_entry.type != PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
                 {
-                    // throw type error
+                    // TODO throw type error
                 }
                 else
                 {
@@ -719,11 +812,11 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                         ptlang_decl_list_find_last(ctx->scope, exp->content.struct_member.member_name.name);
                     if (member == NULL)
                     {
-                        // throw member not found error
+                        // TODO throw member not found error
                     }
                     else
                     {
-                        exp->ast_type = ptlang_ast_type_copy(member->type);
+                        exp->ast_type = ptlang_context_copy_unname_type(member->type, ctx->type_scope);
                     }
                 }
             }
@@ -739,7 +832,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         if (index_type != NULL && index_type->type != PTLANG_AST_TYPE_INTEGER &&
             !index_type->content.integer.is_signed)
         {
-            // throw type error
+            // TODO throw type error
         }
 
         ptlang_ast_type array_type = exp->content.array_element.array->ast_type;
@@ -747,15 +840,17 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         {
             if (array_type->type == PTLANG_AST_TYPE_ARRAY)
             {
-                exp->ast_type = ptlang_ast_type_copy(array_type->content.array.type);
+                exp->ast_type =
+                    ptlang_context_copy_unname_type(array_type->content.array.type, ctx->type_scope);
             }
             else if (array_type->type == PTLANG_AST_TYPE_HEAP_ARRAY)
             {
-                exp->ast_type = ptlang_ast_type_copy(array_type->content.heap_array.type);
+                exp->ast_type =
+                    ptlang_context_copy_unname_type(array_type->content.heap_array.type, ctx->type_scope);
             }
             else
             {
-                // throw type error
+                // TODO throw type error
             }
         };
     }
@@ -810,7 +905,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                                 }));
                 break;
             }
-            exp->ast_type = ptlang_ast_type_copy(unary->ast_type->content.reference.type);
+            exp->ast_type =
+                ptlang_context_copy_unname_type(unary->ast_type->content.reference.type, ctx->type_scope);
         }
         break;
     }
