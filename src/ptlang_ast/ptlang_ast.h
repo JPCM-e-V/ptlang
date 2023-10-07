@@ -190,8 +190,6 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list);
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
 void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list);
 
-size_t ptlang_ast_type_to_string(ptlang_ast_type type, char *out);
-
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name);
 
 #endif

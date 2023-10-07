@@ -40,8 +40,10 @@ ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_
 
 ptlang_ast_type ptlang_context_copy_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope);
 
-// unnames types and ignores pos 
-bool ptlang_context_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2, ptlang_context_type_scope *type_scope);
+// unnames types and ignores pos
+bool ptlang_context_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2,
+                                ptlang_context_type_scope *type_scope);
 
+size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_context_type_scope *type_scope);
 
 #endif

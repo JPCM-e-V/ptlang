@@ -673,27 +673,142 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
         else
         {
-            exp->ast_type = decl->type;
+            exp->ast_type = ptlang_ast_type_copy(decl->type);
         }
         break;
     }
     case PTLANG_AST_EXP_INTEGER:
     {
-        char *suffix_begin = strchr(exp->content.str_prepresentation, 'u');
-        if (suffix_begin == NULL)
-            suffix_begin = strchr(exp->content.str_prepresentation, 'U');
-        if (suffix_begin == NULL)
-            suffix_begin = strchr(exp->content.str_prepresentation, 's');
-        if (suffix_begin == NULL)
-            suffix_begin = strchr(exp->content.str_prepresentation, 'S');
+        errno = 0;
+        char *suffix_begin;
+        uint64_t number = strtoull(exp->content.str_prepresentation, &suffix_begin, 10);
+        bool overflow = errno == ERANGE;
+
+        uint32_t bits = 64;
+        bool is_signed = true;
+
+        if ((*suffix_begin) != '\0')
+        {
+            bits = strtoul(suffix_begin + 1, NULL, 10);
+            if (bits > (1 << 23))
+            {
+                size_t message_len = sizeof("Integer type is too big.");
+                char *message = ptlang_malloc(message_len);
+                memcpy(message, "Integer type is too big.", message_len);
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_INTEGER_SIZE,
+                                    .pos = *exp->pos,
+                                    .message = message,
+                                }));
+                break;
+            }
+            is_signed = (*suffix_begin) == 's' || (*suffix_begin) == 'S';
+        }
+
+        exp->ast_type = ptlang_ast_type_integer(is_signed, bits, NULL);
+
+        if (bits < 64)
+        {
+            uint8_t usable_bits = bits - (is_signed ? 1 : 0);
+            uint64_t to_big = 1 << usable_bits;
+            overflow = number >= to_big;
+        }
+
+        if (overflow)
+        {
+            size_t message_len = sizeof("Integer is too big.");
+            char *message = ptlang_malloc(message_len);
+            memcpy(message, "Integer is too big.", message_len);
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_INTEGER_SIZE,
+                                .pos = *exp->pos,
+                                .message = message,
+                            }));
+        }
         break;
     }
     case PTLANG_AST_EXP_FLOAT:
     {
+        char *suffix_begin = strchr(exp->content.str_prepresentation, 'f');
+        if (suffix_begin == NULL)
+            suffix_begin = strchr(exp->content.str_prepresentation, 'F');
+
+        enum ptlang_ast_type_float_size float_size = PTLANG_AST_TYPE_FLOAT_64;
+
+        if (suffix_begin != NULL)
+        {
+            if (strcmp(suffix_begin + 1, "16") == 0)
+            {
+                float_size = PTLANG_AST_TYPE_FLOAT_16;
+            }
+            else if (strcmp(suffix_begin + 1, "32") == 0)
+            {
+                float_size = PTLANG_AST_TYPE_FLOAT_32;
+            }
+            else if (strcmp(suffix_begin + 1, "128") == 0)
+            {
+                float_size = PTLANG_AST_TYPE_FLOAT_128;
+            }
+        }
+        exp->ast_type = ptlang_ast_type_float(float_size, NULL);
+
         break;
     }
     case PTLANG_AST_EXP_STRUCT:
     {
+        // ptlang_context_type_scope *entry = shgetp_null(ctx->type_scope, exp->content.struct_.type.name);
+        // if (entry == NULL)
+        // {
+        //     size_t message_len = sizeof("Unknown struct type.");
+        //     char *message = ptlang_malloc(message_len);
+        //     memcpy(message, "Unknown struct type.", message_len);
+        //     arrput(*errors, ((ptlang_error){
+        //                         .type = PTLANG_ERROR_TYPE,
+        //                         .pos = *exp->pos,
+        //                         .message = message,
+        //                     }));
+        //     break;
+        // }
+        // ptlang_ast_type struct_type = ptlang_context_unname_type(entry->value, ctx->type_scope);
+        // ptlang_ast_type member_type = NULL;
+
+        // if (array_type != NULL)
+        // {
+        //     if (array_type->type != PTLANG_AST_TYPE_ARRAY)
+        //     {
+        //         // throw error
+        //     }
+        //     else
+        //     {
+        //         exp->ast_type = ptlang_context_copy_unname_type(array_type, ctx->type_scope);
+        //         member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
+        //     }
+        // }
+
+        // ptlang_error *too_many_values_error = NULL;
+        // for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+        // {
+        //     ptlang_verify_exp(exp->content.array.values[i], ctx, errors);
+        //     ptlang_verify_check_implicit_cast(exp->content.array.values[i]->ast_type, member_type,
+        //                                       exp->content.array.values[i]->pos, ctx, errors);
+        //     if (i >= array_type->content.array.len)
+        //     {
+        //         if (too_many_values_error == NULL)
+        //         {
+        //             arrput(*errors,
+        //                    ((ptlang_error){
+        //                        .type = PTLANG_ERROR_VALUE_COUNT, .pos = *exp->content.array.values[i]->pos,
+        //                        // .message = TODO
+        //                    }));
+        //             too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
+        //         }
+        //         else
+        //         {
+        //             too_many_values_error->pos.to_column = exp->content.array.values[i]->pos->to_column;
+        //             too_many_values_error->pos.to_line = exp->content.array.values[i]->pos->to_line;
+        //         }
+        //     }
+        // }
         break;
     }
     case PTLANG_AST_EXP_ARRAY:
@@ -724,11 +839,11 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             {
                 if (too_many_values_error == NULL)
                 {
-                    arrput(*errors, ((ptlang_error){
-                                        .type = PTLANG_ERROR_VALUE_COUNT,
-                                        .pos = exp->content.array.values[i]->pos,
-                                        // .message = TODO
-                                    }));
+                    arrput(*errors,
+                           ((ptlang_error){
+                               .type = PTLANG_ERROR_VALUE_COUNT, .pos = *exp->content.array.values[i]->pos,
+                               // .message = TODO
+                           }));
                     too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
                 }
                 else
@@ -751,8 +866,9 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         ptlang_verify_exp(else_value, ctx, errors);
 
         ptlang_ast_type condition_type = ptlang_context_unname_type(condition->ast_type, ctx->type_scope);
-        if (condition_type->type != PTLANG_AST_TYPE_INTEGER || condition_type->content.integer.size != 1 ||
-            condition_type->content.integer.is_signed)
+        if (condition_type != NULL &&
+            (condition_type->type != PTLANG_AST_TYPE_INTEGER || condition_type->content.integer.size != 1 ||
+             condition_type->content.integer.is_signed))
         {
             // TODO throw error
         }
@@ -783,7 +899,21 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             if (!((to->type == PTLANG_AST_TYPE_INTEGER || to->type == PTLANG_AST_TYPE_FLOAT) &&
                   (from->type == PTLANG_AST_TYPE_INTEGER || from->type == PTLANG_AST_TYPE_FLOAT)))
             {
-                // TODO throw error
+                char **msg_comps = NULL;
+                arrpush(msg_comps, "A value of type ");
+                char *to_free1 = ptlang_verify_type_to_string(from, ctx->type_scope);
+                arrpush(msg_comps, to_free1);
+                arrpush(msg_comps, " can not be casted to a ");
+                char *to_free2 = ptlang_verify_type_to_string(to, ctx->type_scope);
+                arrpush(msg_comps, to_free2);
+                arrpush(msg_comps, ".");
+
+                arrput(*errors, ((ptlang_error){.type = PTLANG_ERROR_CAST_ILLEGAL,
+                                                .pos = *exp->pos,
+                                                .message = ptlang_utils_build_str_from_stb_arr(msg_comps)}));
+
+                ptlang_free(to_free1);
+                arrfree(msg_comps);
             }
         }
         break;
@@ -791,33 +921,44 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
         ptlang_verify_exp(exp->content.struct_member.struct_, ctx, errors);
-        ptlang_ast_type struct_exp_type = exp->content.struct_member.struct_->ast_type;
+        ptlang_ast_type struct_exp_type = exp->content.struct_member.struct_->ast_type; // TODO unname type 
         if (struct_exp_type != NULL)
         {
-            if (struct_exp_type->type != PTLANG_AST_TYPE_NAMED)
+            if (struct_exp_type->type != PTLANG_AST_TYPE_NAMED ||
+                shget(ctx->type_scope, struct_exp_type->content.name).type !=
+                    PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
             {
-                // TODO throw type error
+                arrput(*errors, ptlang_verify_generate_type_error(
+                                    "Only structs can have members. You can not access a member of a ",
+                                    exp->content.struct_member.struct_, ".", ctx->type_scope));
             }
             else
             {
-                ptlang_context_type_scope_entry struct_type_entry =
-                    shget(ctx->type_scope, struct_exp_type->content.name);
-                if (struct_type_entry.type != PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
+
+                ptlang_ast_decl member =
+                    ptlang_decl_list_find_last(ctx->scope, exp->content.struct_member.member_name.name);
+                if (member == NULL)
                 {
-                    // TODO throw type error
+                    char **msg_comps = NULL;
+                    arrpush(msg_comps, "The struct ");
+                    char *to_free = ptlang_verify_type_to_string(exp->content.struct_member.struct_->ast_type,
+                                                                 ctx->type_scope);
+                    arrpush(msg_comps, to_free);
+                    arrpush(msg_comps, " doesn't have the member ");
+                    arrpush(msg_comps, exp->content.struct_member.member_name.name);
+                    arrpush(msg_comps, ".");
+
+                    arrput(*errors,
+                           ((ptlang_error){.type = PTLANG_ERROR_UNKNOWN_MEMBER,
+                                           .pos = *exp->pos,
+                                           .message = ptlang_utils_build_str_from_stb_arr(msg_comps)}));
+
+                    ptlang_free(to_free);
+                    arrfree(msg_comps);
                 }
                 else
                 {
-                    ptlang_ast_decl member =
-                        ptlang_decl_list_find_last(ctx->scope, exp->content.struct_member.member_name.name);
-                    if (member == NULL)
-                    {
-                        // TODO throw member not found error
-                    }
-                    else
-                    {
-                        exp->ast_type = ptlang_context_copy_unname_type(member->type, ctx->type_scope);
-                    }
+                    exp->ast_type = ptlang_context_copy_unname_type(member->type, ctx->type_scope);
                 }
             }
         }
@@ -829,10 +970,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         ptlang_verify_exp(exp->content.array_element.array, ctx, errors);
 
         ptlang_ast_type index_type = exp->content.array_element.index->ast_type;
-        if (index_type != NULL && index_type->type != PTLANG_AST_TYPE_INTEGER &&
-            !index_type->content.integer.is_signed)
+        if (index_type != NULL &&
+            (index_type->type != PTLANG_AST_TYPE_INTEGER || index_type->content.integer.is_signed))
         {
-            // TODO throw type error
+            arrput(*errors, ptlang_verify_generate_type_error(
+                                "Array index must have be a unsigned integer, but is of type ",
+                                exp->content.array_element.index, ".", ctx->type_scope));
         }
 
         ptlang_ast_type array_type = exp->content.array_element.array->ast_type;
@@ -850,7 +993,10 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             }
             else
             {
-                // TODO throw type error
+                arrput(*errors,
+                       ptlang_verify_generate_type_error(
+                           "Subscripted expression must have array or heap array type, but is of type ",
+                           exp->content.array_element.array, ".", ctx->type_scope));
             }
         };
     }
@@ -887,14 +1033,14 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         ptlang_verify_exp(unary, ctx, errors);
         if (unary->ast_type != NULL)
         {
-            size_t type_str_size = ptlang_ast_type_to_string(unary->ast_type, NULL);
+            size_t type_str_size = ptlang_context_type_to_string(unary->ast_type, NULL, ctx->type_scope);
             char *message = ptlang_malloc(sizeof("Dereferenced expression must be a reference, but is a ") -
                                           1 + type_str_size - 1 + sizeof("."));
             char *message_ptr = message;
             memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
                    sizeof("Dereferenced expression must be a reference, but is a ") - 1);
             message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
-            ptlang_ast_type_to_string(unary->ast_type, message_ptr);
+            ptlang_context_type_to_string(unary->ast_type, message_ptr, ctx->type_scope);
             *message_ptr += type_str_size;
             memcpy(message_ptr, ".", 2);
             {
@@ -1231,12 +1377,12 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
 
 static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
 {
+    to = ptlang_context_unname_type(to, ctx->type_scope);
+    from = ptlang_context_unname_type(from, ctx->type_scope);
     if (from == NULL || to == NULL)
     {
         return true;
     }
-    to = ptlang_context_unname_type(to, ctx->type_scope);
-    from = ptlang_context_unname_type(from, ctx->type_scope);
     if ((from->type == PTLANG_AST_TYPE_FLOAT && to->type == PTLANG_AST_TYPE_FLOAT) ||
         (from->type == PTLANG_AST_TYPE_INTEGER &&
          (to->type == PTLANG_AST_TYPE_FLOAT || to->type == PTLANG_AST_TYPE_INTEGER)))
@@ -1264,8 +1410,8 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
     if (!ptlang_verify_implicit_cast(from, to, ctx))
     {
         // Calculate the message length
-        size_t to_len = ptlang_ast_type_to_string(to, NULL);
-        size_t from_len = ptlang_ast_type_to_string(from, NULL);
+        size_t to_len = ptlang_context_type_to_string(to, NULL, ctx->type_scope);
+        size_t from_len = ptlang_context_type_to_string(from, NULL, ctx->type_scope);
 
         size_t message_len = to_len + from_len + sizeof(" cannot be casted to the expected type .");
 
@@ -1274,11 +1420,11 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
         char *message_ptr = message;
 
         // Generate the message
-        message_ptr += ptlang_ast_type_to_string(to, message_ptr);
+        message_ptr += ptlang_context_type_to_string(to, message_ptr, ctx->type_scope);
         memcpy(message_ptr, " cannot be casted to the expected type ",
                sizeof(" cannot be casted to the expected type ") - 1);
         message_ptr += sizeof(" cannot be casted to the expected type ") - 1;
-        message_ptr += ptlang_ast_type_to_string(from, message_ptr);
+        message_ptr += ptlang_context_type_to_string(from, message_ptr, ctx->type_scope);
         *message_ptr = '.';
 
         // Add the error to the errors array
@@ -1288,4 +1434,29 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
                             .message = message,
                         }));
     }
+}
+
+// Warning return value has to be freed
+static char *ptlang_verify_type_to_string(ptlang_ast_type type, ptlang_context_type_scope *type_scope)
+{
+    size_t str_size = ptlang_context_type_to_string(type, NULL, type_scope);
+    char *type_str = ptlang_malloc(str_size);
+    ptlang_context_type_to_string(type, type_str, type_scope);
+    return type_str;
+}
+
+static ptlang_error ptlang_verify_generate_type_error(char *before, ptlang_ast_exp exp, char *after,
+                                                      ptlang_context_type_scope *type_scope)
+{
+    char **msg_comps = NULL;
+    char *to_free = NULL;
+    arrpush(msg_comps, before);
+    arrpush(msg_comps, ptlang_verify_type_to_string(exp->ast_type, type_scope));
+    arrpush(msg_comps, after);
+    ptlang_error error = (ptlang_error){.type = PTLANG_ERROR_TYPE,
+                                        .pos = *exp->pos,
+                                        .message = ptlang_utils_build_str_from_stb_arr(msg_comps)};
+    ptlang_free(to_free);
+    arrfree(msg_comps);
+    return error;
 }

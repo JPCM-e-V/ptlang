@@ -18,6 +18,9 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_PARAMETER_COUNT,
     PTLANG_ERROR_UNKNOWN_VARIABLE_NAME,
     PTLANG_ERROR_VALUE_COUNT,
+    PTLANG_ERROR_INTEGER_SIZE,
+    PTLANG_ERROR_UNKNOWN_MEMBER,
+    PTLANG_ERROR_CAST_ILLEGAL,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -34,6 +37,10 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_PARAMETER_COUNT            ? "Invalid Parameter Count Error"                \
     : error_type == PTLANG_ERROR_UNKNOWN_VARIABLE_NAME      ? "Unknown variable name"                        \
     : error_type == PTLANG_ERROR_VALUE_COUNT                ? "Invalid Value Count Error"                    \
+    : error_type == PTLANG_ERROR_INTEGER_SIZE               ? "Integer Size Error"                           \
+    : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
+    : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
+    : error_type == PTLANG_ERROR_CAST_ILLEGAL               ? "Illegal Cast Error" \
                                                             : "Unkown Error"
 
 typedef struct ptlang_error_s
