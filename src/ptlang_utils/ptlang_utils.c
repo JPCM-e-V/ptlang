@@ -83,14 +83,14 @@ void ptlang_utils_graph_free(ptlang_utils_graph_node *graph)
     arrfree(graph);
 }
 
-static char *ptlang_utils_build_str(char **components, size_t components_len)
+static char *ptlang_utils_build_str_from_components(char **components, size_t components_len)
 {
     size_t str_len = 0;
     for (size_t i = 0; i < components_len; i++)
     {
         str_len += strlen(components[i]);
     }
-    char *str = malloc(str_len + 1);
+    char *str = ptlang_malloc(str_len + 1);
     char *str_ptr = str;
     for (size_t i = 0; i < components_len; i++)
     {
@@ -104,5 +104,36 @@ static char *ptlang_utils_build_str(char **components, size_t components_len)
 
 char *ptlang_utils_build_str_from_stb_arr(char **components)
 {
-    return ptlang_utils_build_str(components, arrlenu(components));
+    return ptlang_utils_build_str_from_components(components, arrlenu(components));
+}
+
+ptlang_utils_str ptlang_utils_sprintf_alloc(const char *fmt, ...)
+{
+
+    /* Determine required size. */
+
+    va_list ap;
+    va_start(ap, fmt);
+    int n = vsnprintf(NULL, 0, fmt, ap);
+    va_end(ap);
+
+    if (n < 0)
+        return CONST_STR(NULL);
+
+    size_t size = (size_t)n + 1; /* One extra byte for '\0' */
+    ptlang_utils_str str = ALLOCATED_STR(ptlang_malloc(size));
+    if (str.str == NULL)
+        return CONST_STR(NULL);
+
+    va_start(ap, fmt);
+    n = vsnprintf(str.str, size, fmt, ap);
+    va_end(ap);
+
+    if (n < 0)
+    {
+        ptlang_free(str.str);
+        return CONST_STR(NULL);
+    }
+
+    return str;
 }

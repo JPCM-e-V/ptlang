@@ -213,7 +213,7 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
             snprintf(message, message_len, "The variable name '%s' is already used in the current scope.",
                      decl->name.name);
             arrput(*errors, ((ptlang_error){
-                                .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
+                                .type = PTLANG_ERROR_VARIABLE_NAME_DUPLICATION,
                                 .pos = *decl->pos,
                                 .message = message,
                             }));
@@ -756,19 +756,56 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_STRUCT:
     {
-        // ptlang_context_type_scope *entry = shgetp_null(ctx->type_scope, exp->content.struct_.type.name);
-        // if (entry == NULL)
-        // {
-        //     size_t message_len = sizeof("Unknown struct type.");
-        //     char *message = ptlang_malloc(message_len);
-        //     memcpy(message, "Unknown struct type.", message_len);
-        //     arrput(*errors, ((ptlang_error){
-        //                         .type = PTLANG_ERROR_TYPE,
-        //                         .pos = *exp->pos,
-        //                         .message = message,
-        //                     }));
-        //     break;
-        // }
+        char *name = exp->content.struct_.type.name;
+
+        ptlang_ast_struct_def struct_def = NULL;
+        while (struct_def == NULL)
+        {
+            ptlang_context_type_scope *entry = shgetp_null(ctx->type_scope, name);
+            if (entry == NULL)
+            {
+                size_t message_len = sizeof("Unknown struct type.");
+                char *message = ptlang_malloc(message_len);
+                memcpy(message, "Unknown struct type.", message_len);
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_TYPE,
+                                    .pos = *exp->pos,
+                                    .message = message,
+                                }));
+                break;
+            }
+            else if (entry->value.type == PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_TYPEALIAS)
+            {
+                if (entry->value.value.ptlang_type->type != PTLANG_AST_TYPE_NAMED)
+                {
+                    size_t message_len = sizeof("Type is not a struct.");
+                    char *message = ptlang_malloc(message_len);
+                    memcpy(message, "Type is not a struct.", message_len);
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_TYPE,
+                                        .pos = *exp->pos,
+                                        .message = message,
+                                    }));
+                    break;
+                }
+                else
+                {
+                    name = entry->value.value.ptlang_type->content.name;
+                }
+            }
+            else if (entry->value.type == PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
+            {
+                struct_def = entry->value.value.struct_def;
+            }
+        }
+
+        if (struct_def == NULL)
+        {
+            break;
+        }
+
+        exp->ast_type = ptlang_ast_type_named(name, NULL);
+
         // ptlang_ast_type struct_type = ptlang_context_unname_type(entry->value, ctx->type_scope);
         // ptlang_ast_type member_type = NULL;
 
@@ -784,6 +821,60 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         //         member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
         //     }
         // }
+
+        for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
+        {
+
+            for (size_t j = 0; j < arrlenu(exp->content.struct_.members); j++)
+            {
+                if (i == j)
+                {
+                    continue;
+                }
+                if (strcmp(exp->content.struct_.members[i].str.name,
+                           exp->content.struct_.members[j].str.name) == 0)
+                {
+                    size_t message_len = sizeof("Duplicate member name.");
+                    char *message = ptlang_malloc(message_len);
+                    memcpy(message, "Duplicate member name.", message_len);
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_TYPE,
+                                        .pos = *exp->content.struct_.members[i].pos,
+                                        .message = message,
+                                    }));
+                    break;
+                }
+            }
+
+            ptlang_ast_type member_type_in_struct_def = NULL;
+            bool found = false;
+            for (size_t j = 0; j < arrlenu(struct_def->members); j++)
+            {
+                if (strcmp(exp->content.struct_.members[i].str.name, struct_def->members[j]->name.name) == 0)
+                {
+                    member_type_in_struct_def = struct_def->members[j]->type;
+                    found = true;
+                    break;
+                }
+            }
+            if (!found)
+            {
+                size_t message_len = sizeof("Unknown member name.");
+                char *message = ptlang_malloc(message_len);
+                memcpy(message, "Unknown member name.", message_len);
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_TYPE,
+                                    .pos = *exp->content.struct_.members[i].pos,
+                                    .message = message,
+                                }));
+                continue;
+            }
+
+            ptlang_verify_exp(exp->content.struct_.members[i].exp, ctx, errors);
+            ptlang_verify_check_implicit_cast(exp->content.struct_.members[i].exp->ast_type,
+                                              member_type_in_struct_def, exp->content.struct_.members[i].pos,
+                                              ctx, errors);
+        }
 
         // ptlang_error *too_many_values_error = NULL;
         // for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
@@ -839,11 +930,17 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             {
                 if (too_many_values_error == NULL)
                 {
-                    arrput(*errors,
-                           ((ptlang_error){
-                               .type = PTLANG_ERROR_VALUE_COUNT, .pos = *exp->content.array.values[i]->pos,
-                               // .message = TODO
-                           }));
+                    char *message = NULL;
+                    ptlang_utils_build_str(message, CONST_STR("An array of type "),
+                                           ptlang_verify_type_to_string(array_type, ctx->type_scope),
+                                           CONST_STR(" may not have more than "),
+                                           ptlang_utils_sprintf_alloc("%zu", array_type->content.array.len),
+                                           CONST_STR(" values."));
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_VALUE_COUNT,
+                                        .pos = *exp->content.array.values[i]->pos,
+                                        .message = message,
+                                    }));
                     too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
                 }
                 else
@@ -870,9 +967,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             (condition_type->type != PTLANG_AST_TYPE_INTEGER || condition_type->content.integer.size != 1 ||
              condition_type->content.integer.is_signed))
         {
-            // TODO throw error
+            arrpush(*errors,
+                    ptlang_verify_generate_type_error("Ternary condition must be a u1, but is of type",
+                                                      condition, ".", ctx->type_scope));
         }
 
+        // TODO use ptlang_verify_check_type_unification instead
         if (ptlang_verify_implicit_cast(if_value->ast_type, else_value->ast_type, ctx))
         {
             exp->ast_type = ptlang_context_copy_unname_type(else_value->ast_type, ctx->type_scope);
@@ -883,7 +983,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
         else
         {
-            // TODO throw error
+            char *message = NULL;
+            ptlang_utils_build_str(message, CONST_STR("Couldn't unify the types "),
+                                   ptlang_verify_type_to_string(if_value->ast_type, ctx->type_scope),
+                                   CONST_STR(" and "),
+                                   ptlang_verify_type_to_string(else_value->ast_type, ctx->type_scope),
+                                   CONST_STR(" in ternary expression."))
         }
 
         break;
@@ -899,21 +1004,17 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             if (!((to->type == PTLANG_AST_TYPE_INTEGER || to->type == PTLANG_AST_TYPE_FLOAT) &&
                   (from->type == PTLANG_AST_TYPE_INTEGER || from->type == PTLANG_AST_TYPE_FLOAT)))
             {
-                char **msg_comps = NULL;
-                arrpush(msg_comps, "A value of type ");
-                char *to_free1 = ptlang_verify_type_to_string(from, ctx->type_scope);
-                arrpush(msg_comps, to_free1);
-                arrpush(msg_comps, " can not be casted to a ");
-                char *to_free2 = ptlang_verify_type_to_string(to, ctx->type_scope);
-                arrpush(msg_comps, to_free2);
-                arrpush(msg_comps, ".");
+                char *message = NULL;
+                ptlang_utils_build_str(message, CONST_STR("A value of type"),
+                                       ptlang_verify_type_to_string(from, ctx->type_scope),
+                                       CONST_STR(" can not be casted to a "),
+                                       ptlang_verify_type_to_string(to, ctx->type_scope), CONST_STR("."));
 
-                arrput(*errors, ((ptlang_error){.type = PTLANG_ERROR_CAST_ILLEGAL,
-                                                .pos = *exp->pos,
-                                                .message = ptlang_utils_build_str_from_stb_arr(msg_comps)}));
-
-                ptlang_free(to_free1);
-                arrfree(msg_comps);
+                arrput(*errors, ((ptlang_error){
+                                    .type = PTLANG_ERROR_CAST_ILLEGAL,
+                                    .pos = *exp->pos,
+                                    .message = message,
+                                }));
             }
         }
         break;
@@ -921,7 +1022,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
         ptlang_verify_exp(exp->content.struct_member.struct_, ctx, errors);
-        ptlang_ast_type struct_exp_type = exp->content.struct_member.struct_->ast_type; // TODO unname type 
+        ptlang_ast_type struct_exp_type =
+            ptlang_context_unname_type(exp->content.struct_member.struct_->ast_type, ctx->type_scope);
         if (struct_exp_type != NULL)
         {
             if (struct_exp_type->type != PTLANG_AST_TYPE_NAMED ||
@@ -939,22 +1041,18 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                     ptlang_decl_list_find_last(ctx->scope, exp->content.struct_member.member_name.name);
                 if (member == NULL)
                 {
-                    char **msg_comps = NULL;
-                    arrpush(msg_comps, "The struct ");
-                    char *to_free = ptlang_verify_type_to_string(exp->content.struct_member.struct_->ast_type,
-                                                                 ctx->type_scope);
-                    arrpush(msg_comps, to_free);
-                    arrpush(msg_comps, " doesn't have the member ");
-                    arrpush(msg_comps, exp->content.struct_member.member_name.name);
-                    arrpush(msg_comps, ".");
-
-                    arrput(*errors,
-                           ((ptlang_error){.type = PTLANG_ERROR_UNKNOWN_MEMBER,
-                                           .pos = *exp->pos,
-                                           .message = ptlang_utils_build_str_from_stb_arr(msg_comps)}));
-
-                    ptlang_free(to_free);
-                    arrfree(msg_comps);
+                    char *message = NULL;
+                    ptlang_utils_build_str(message, CONST_STR("The struct"),
+                                           ptlang_verify_type_to_string(
+                                               exp->content.struct_member.struct_->ast_type, ctx->type_scope),
+                                           CONST_STR(" doesn't have the member "),
+                                           CONST_STR(exp->content.struct_member.member_name.name),
+                                           CONST_STR("."));
+                    arrput(*errors, ((ptlang_error){
+                                        .type = PTLANG_ERROR_UNKNOWN_MEMBER,
+                                        .pos = *exp->pos,
+                                        .message = message,
+                                    }));
                 }
                 else
                 {
@@ -1062,6 +1160,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang_context *ctx,
                                       ptlang_error **errors)
 {
+    // TODO check member duplication
     ptlang_utils_graph_node *nodes = NULL;
     for (size_t i = 0; i < arrlenu(struct_defs); i++)
     {
@@ -1104,6 +1203,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
         }
 
         char *message = ptlang_utils_build_str_from_stb_arr(message_components);
+        size_t message_size = strlen(message) + 1;
         arrfree(message_components);
 
         for (; i < j; i++)
@@ -1114,7 +1214,11 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
                                 .message = message,
                             }));
             if (i < j - 1)
-                message = strdup(message);
+            {
+                char *new_message = ptlang_malloc(message_size);
+                memcpy(new_message, message, message_size);
+                message = new_message;
+            }
         }
     }
     ptlang_utils_graph_free(nodes);
@@ -1242,6 +1346,7 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
         }
 
         char *message = ptlang_utils_build_str_from_stb_arr(message_components);
+        size_t message_size = strlen(message) + 1;
         arrfree(message_components);
 
         for (; i < j; i++)
@@ -1252,7 +1357,11 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
                                 .message = message,
                             }));
             if (i < j - 1)
-                message = strdup(message);
+            {
+                char *new_message = ptlang_malloc(message_size);
+                memcpy(new_message, message, message_size);
+                message = new_message;
+            }
         }
     }
 
@@ -1375,6 +1484,28 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
 //     // return type_alias;
 // }
 
+static ptlang_ast_type ptlang_verify_check_type_unification(ptlang_ast_type type1, ptlang_ast_type type2,
+                                                            ptlang_context *ctx, ptlang_error **errors)
+{
+    type1 = ptlang_context_unname_type(type1, ctx->type_scope);
+    type2 = ptlang_context_unname_type(type2, ctx->type_scope);
+
+    if (type1 == NULL)
+        return ptlang_ast_type_copy(type2);
+    if (type2 == NULL)
+        return ptlang_ast_type_copy(type1);
+
+    if (type1->type == PTLANG_AST_TYPE_REFERENCE && type2->type == PTLANG_AST_TYPE_REFERENCE)
+    {
+        if (ptlang_context_type_equals(type1->content.reference.type, type2->content.reference.type,
+                                       ctx->type_scope))
+        {
+            return ptlang_ast_type_reference(type1->content.reference.type, type1->content.reference.writable &&type2->content.reference.writable, NULL);
+        }
+    }
+    // TODO implement
+}
+
 static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
 {
     to = ptlang_context_unname_type(to, ctx->type_scope);
@@ -1436,27 +1567,22 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
     }
 }
 
-// Warning return value has to be freed
-static char *ptlang_verify_type_to_string(ptlang_ast_type type, ptlang_context_type_scope *type_scope)
+static ptlang_utils_str ptlang_verify_type_to_string(ptlang_ast_type type,
+                                                     ptlang_context_type_scope *type_scope)
 {
     size_t str_size = ptlang_context_type_to_string(type, NULL, type_scope);
     char *type_str = ptlang_malloc(str_size);
     ptlang_context_type_to_string(type, type_str, type_scope);
-    return type_str;
+    return ALLOCATED_STR(type_str);
 }
 
 static ptlang_error ptlang_verify_generate_type_error(char *before, ptlang_ast_exp exp, char *after,
                                                       ptlang_context_type_scope *type_scope)
 {
-    char **msg_comps = NULL;
-    char *to_free = NULL;
-    arrpush(msg_comps, before);
-    arrpush(msg_comps, ptlang_verify_type_to_string(exp->ast_type, type_scope));
-    arrpush(msg_comps, after);
-    ptlang_error error = (ptlang_error){.type = PTLANG_ERROR_TYPE,
-                                        .pos = *exp->pos,
-                                        .message = ptlang_utils_build_str_from_stb_arr(msg_comps)};
-    ptlang_free(to_free);
-    arrfree(msg_comps);
+    char *message = NULL;
+    ptlang_utils_build_str(message, CONST_STR(before),
+                           ptlang_verify_type_to_string(exp->ast_type, type_scope), CONST_STR(after));
+
+    ptlang_error error = (ptlang_error){.type = PTLANG_ERROR_TYPE, .pos = *exp->pos, .message = message};
     return error;
 }

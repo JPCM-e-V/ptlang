@@ -86,7 +86,7 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
                                                                         ptlang_context *ctx,
                                                                         ptlang_error **errors);
 
-static char *ptlang_verify_type_to_string(ptlang_ast_type type,  ptlang_context_type_scope *type_scope);
+static ptlang_utils_str ptlang_verify_type_to_string(ptlang_ast_type type,  ptlang_context_type_scope *type_scope);
 
 static ptlang_error ptlang_verify_generate_type_error(char *before, ptlang_ast_exp exp, char *after,  ptlang_context_type_scope *type_scope);
 
