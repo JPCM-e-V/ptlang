@@ -88,11 +88,11 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
                                 }));
                 *is_unreachable = false;
             }
-            bool *child_node_has_return_value = false;
+            bool child_node_has_return_value = false;
             ptlang_verify_statement(statement->content.block.stmts[i], nesting_level, validate_return_type,
-                                    wanted_return_type, new_scope_offset, child_node_has_return_value,
+                                    wanted_return_type, new_scope_offset, &child_node_has_return_value,
                                     is_unreachable, ctx, errors);
-            *has_return_value |= *child_node_has_return_value;
+            *has_return_value |= child_node_has_return_value;
         }
         arrsetlen(ctx->scope, new_scope_offset);
         break;
@@ -197,7 +197,20 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
     }
 }
 
-static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+// static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+//                                ptlang_error **errors)
+// {
+//     ptlang_verify_decl_header()
+// }
+// u64 2_HOCH_11 = ${ 2<<11 };
+//
+// void a(){ ... }
+// ():void fptr = a;
+// u64 b = 1;
+// u64 bb = 2;
+// &u64 c = ${irgendeinmacrowaszurcompilezeiteinevoonmehrerenmoeglichenvariablenreferenciert()};
+// u64 d = *c;
+static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
                                ptlang_error **errors)
 {
 
@@ -972,24 +985,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                                                       condition, ".", ctx->type_scope));
         }
 
-        // TODO use ptlang_verify_check_type_unification instead
-        if (ptlang_verify_implicit_cast(if_value->ast_type, else_value->ast_type, ctx))
-        {
-            exp->ast_type = ptlang_context_copy_unname_type(else_value->ast_type, ctx->type_scope);
-        }
-        if (ptlang_verify_implicit_cast(else_value->ast_type, if_value->ast_type, ctx))
-        {
-            exp->ast_type = ptlang_context_copy_unname_type(if_value->ast_type, ctx->type_scope);
-        }
-        else
-        {
-            char *message = NULL;
-            ptlang_utils_build_str(message, CONST_STR("Couldn't unify the types "),
-                                   ptlang_verify_type_to_string(if_value->ast_type, ctx->type_scope),
-                                   CONST_STR(" and "),
-                                   ptlang_verify_type_to_string(else_value->ast_type, ctx->type_scope),
-                                   CONST_STR(" in ternary expression."))
-        }
+        exp->ast_type = ptlang_verify_unify_types(if_value->ast_type, else_value->ast_type, ctx);
 
         break;
     }
@@ -1484,8 +1480,8 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
 //     // return type_alias;
 // }
 
-static ptlang_ast_type ptlang_verify_check_type_unification(ptlang_ast_type type1, ptlang_ast_type type2,
-                                                            ptlang_context *ctx, ptlang_error **errors)
+static ptlang_ast_type ptlang_verify_unify_types(ptlang_ast_type type1, ptlang_ast_type type2,
+                                                 ptlang_context *ctx)
 {
     type1 = ptlang_context_unname_type(type1, ctx->type_scope);
     type2 = ptlang_context_unname_type(type2, ctx->type_scope);
@@ -1495,15 +1491,43 @@ static ptlang_ast_type ptlang_verify_check_type_unification(ptlang_ast_type type
     if (type2 == NULL)
         return ptlang_ast_type_copy(type1);
 
+    if (ptlang_context_type_equals(type1, type2, ctx->type_scope))
+        return type1;
+
     if (type1->type == PTLANG_AST_TYPE_REFERENCE && type2->type == PTLANG_AST_TYPE_REFERENCE)
     {
         if (ptlang_context_type_equals(type1->content.reference.type, type2->content.reference.type,
                                        ctx->type_scope))
         {
-            return ptlang_ast_type_reference(type1->content.reference.type, type1->content.reference.writable &&type2->content.reference.writable, NULL);
+            return ptlang_ast_type_reference(
+                type1->content.reference.type,
+                type1->content.reference.writable && type2->content.reference.writable, NULL);
         }
     }
-    // TODO implement
+    else if (type1->type == PTLANG_AST_TYPE_FLOAT && type2->type == PTLANG_AST_TYPE_FLOAT)
+    {
+        return ptlang_ast_type_float(type1->content.float_size >= type2->content.float_size
+                                         ? type1->content.float_size
+                                         : type2->content.float_size,
+                                     NULL);
+    }
+    else if (type1->type == PTLANG_AST_TYPE_FLOAT && type2->type == PTLANG_AST_TYPE_INTEGER)
+    {
+        return ptlang_ast_type_copy(type1);
+    }
+    else if (type1->type == PTLANG_AST_TYPE_INTEGER && type2->type == PTLANG_AST_TYPE_FLOAT)
+    {
+        return ptlang_ast_type_copy(type2);
+    }
+    else if (type1->type == PTLANG_AST_TYPE_INTEGER && type2->type == PTLANG_AST_TYPE_INTEGER)
+    {
+        return ptlang_ast_type_integer(type1->content.integer.is_signed || type2->content.integer.is_signed,
+                                       type1->content.integer.size > type2->content.integer.size
+                                           ? type1->content.integer.size
+                                           : type2->content.integer.size,
+                                       NULL);
+    }
+    return ptlang_ast_type_void(NULL);
 }
 
 static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to, ptlang_context *ctx)
@@ -1519,9 +1543,7 @@ static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to
          (to->type == PTLANG_AST_TYPE_FLOAT || to->type == PTLANG_AST_TYPE_INTEGER)))
     {
         if (to->type == PTLANG_AST_EXP_INTEGER)
-            return (to->content.integer.size >= from->content.integer.size &&
-                    to->content.integer.is_signed == from->content.integer.is_signed) ||
-                   (to->content.integer.size > from->content.integer.size && to->content.integer.is_signed);
+            return (to->content.integer.size >= from->content.integer.size);
         return true;
     }
     if (to->type == PTLANG_AST_TYPE_REFERENCE && from->type == PTLANG_AST_TYPE_REFERENCE)

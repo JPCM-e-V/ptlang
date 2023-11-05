@@ -178,6 +178,7 @@ declaration_without_export: decl EQ const_exp { $$ = $1; ptlang_ast_decl_set_ini
                          | non_const_decl { $$ = $1; }
 
 module_decl: declaration_without_export { $$ = $1; }
+           | EXPORT declaration_without_export { $$ = $2; ptlang_ast_decl_set_export($$, true); }
 
 struct_def: STRUCT_DEF ident OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
            { $$ = ptlang_ast_struct_def_new($2, $4, ppcpft(&@2, &@$)); }

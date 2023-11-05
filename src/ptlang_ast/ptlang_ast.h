@@ -192,4 +192,7 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name);
 
+ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos);
+
+
 #endif

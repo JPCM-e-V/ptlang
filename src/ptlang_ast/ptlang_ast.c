@@ -634,30 +634,32 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
     switch (type->type)
     {
     case PTLANG_AST_TYPE_VOID:
-        return ptlang_ast_type_void(type->pos);
+        return ptlang_ast_type_void(ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_INTEGER:
         return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
-                                       type->pos);
+                                       ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_FLOAT:
-        return ptlang_ast_type_float(type->content.float_size, type->pos);
+        return ptlang_ast_type_float(type->content.float_size, ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_FUNCTION:
         return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type),
                                         ptlang_ast_type_list_copy(type->content.function.parameters),
-                                        type->pos);
+                                        ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type), type->pos);
+        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type),
+                                          ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_ARRAY:
         return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len,
-                                     type->pos);
+                                     ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_REFERENCE:
         return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type),
-                                         type->content.reference.writable, type->pos);
+                                         type->content.reference.writable,
+                                         ptlang_ast_code_position_copy(type->pos));
     case PTLANG_AST_TYPE_NAMED:
     {
         size_t name_len = strlen(type->content.name) + 1;
         char *name = ptlang_malloc(name_len);
         memcpy(name, type->content.name, name_len);
-        return ptlang_ast_type_named(name, type->pos);
+        return ptlang_ast_type_named(name, ptlang_ast_code_position_copy(type->pos));
     }
     }
     abort();
@@ -694,6 +696,12 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
 //         types[i] = module->type_aliases[i].type;
 //     }
 // }
+
+void ptlang_ast_ident_destroy(ptlang_ast_ident ident)
+{
+    ptlang_free(ident.name);
+    ptlang_free(ident.pos);
+}
 
 void ptlang_ast_type_destroy(ptlang_ast_type type)
 {
@@ -780,7 +788,7 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
     arrfree(module->struct_defs);
     for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
-        ptlang_free(module->type_aliases[i].name.name);
+        ptlang_ast_ident_destroy(module->type_aliases[i].name);
         ptlang_ast_type_destroy(module->type_aliases[i].type);
     }
     arrfree(module->type_aliases);
@@ -790,7 +798,7 @@ void ptlang_ast_module_destroy(ptlang_ast_module module)
 
 void ptlang_ast_func_destroy(ptlang_ast_func func)
 {
-    ptlang_free(func->name.name);
+    ptlang_ast_ident_destroy(func->name);
     ptlang_free(func->pos);
     ptlang_ast_type_destroy(func->return_type);
     ptlang_ast_decl_list_destroy(func->parameters);
@@ -802,6 +810,7 @@ void ptlang_ast_func_destroy(ptlang_ast_func func)
 void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
 {
     ptlang_free(exp->pos);
+    ptlang_ast_type_destroy(exp->ast_type);
     switch (exp->type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
@@ -844,7 +853,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         ptlang_free(exp->content.str_prepresentation);
         break;
     case PTLANG_AST_EXP_STRUCT:
-        ptlang_free(exp->content.struct_.type.name);
+        ptlang_ast_ident_destroy(exp->content.struct_.type);
         ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
@@ -862,7 +871,7 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         break;
     case PTLANG_AST_EXP_STRUCT_MEMBER:
         ptlang_ast_exp_destroy(exp->content.struct_member.struct_);
-        ptlang_free(exp->content.struct_member.member_name.name);
+        ptlang_ast_ident_destroy(exp->content.struct_member.member_name);
         break;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
         ptlang_ast_exp_destroy(exp->content.array_element.array);
@@ -884,7 +893,7 @@ void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
     {
         ptlang_ast_exp_destroy(decl->init);
     }
-    ptlang_free(decl->name.name);
+    ptlang_ast_ident_destroy(decl->name);
 
     ptlang_free(decl);
 }
@@ -892,7 +901,7 @@ void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
 void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
 {
     ptlang_free(struct_def->pos);
-    ptlang_free(struct_def->name.name);
+    ptlang_ast_ident_destroy(struct_def->name);
     ptlang_ast_decl_list_destroy(struct_def->members);
 
     ptlang_free(struct_def);
@@ -930,7 +939,7 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 {
     for (size_t i = 0; i < arrlenu(member_list); i++)
     {
-        ptlang_free(member_list[i].str.name);
+        ptlang_ast_ident_destroy(member_list[i].str);
         ptlang_ast_exp_destroy(member_list[i].exp);
     }
     arrfree(member_list);
@@ -938,12 +947,28 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name)
 {
-    for (size_t i = arrlenu(decl_list) - 1; i >= 0; i--)
+    for (size_t i = arrlenu(decl_list); i > 0; i--)
     {
-        if (0 == strcmp(decl_list[i]->name.name, name)){
-            return decl_list[i];
+        if (0 == strcmp(decl_list[i - 1]->name.name, name))
+        {
+            return decl_list[i - 1];
         }
     }
     return NULL;
 }
 
+ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos)
+{
+    if (pos == NULL)
+    {
+        return NULL;
+    }
+    ptlang_ast_code_position new_pos = ptlang_malloc(sizeof(*new_pos));
+    *new_pos = ((ptlang_ast_code_position_s){
+        .from_line = pos->from_line,
+        .from_column = pos->from_column,
+        .to_line = pos->to_line,
+        .to_column = pos->to_column,
+    });
+    return new_pos;
+}
