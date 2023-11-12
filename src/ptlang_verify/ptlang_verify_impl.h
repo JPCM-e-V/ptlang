@@ -95,4 +95,6 @@ static ptlang_error ptlang_verify_generate_type_error(char *before, ptlang_ast_e
 static ptlang_ast_type ptlang_verify_unify_types(ptlang_ast_type type1, ptlang_ast_type type2,
                                                  ptlang_context *ctx);
 
+static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors);
+
 #endif

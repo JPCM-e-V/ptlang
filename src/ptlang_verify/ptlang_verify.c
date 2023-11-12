@@ -197,11 +197,16 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
     }
 }
 
-// static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
-//                                ptlang_error **errors)
-// {
-//     ptlang_verify_decl_header()
-// }
+static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+                               ptlang_error **errors)
+{
+    ptlang_verify_decl_header(decl, scope_offset, ctx, errors);
+    if (decl->init != NULL)
+    {
+        ptlang_verify_exp(decl->init, ctx, errors);
+        ptlang_verify_check_implicit_cast(decl->init->ast_type, decl->type, decl->pos, ctx, errors);
+    }
+}
 // u64 2_HOCH_11 = ${ 2<<11 };
 //
 // void a(){ ... }
@@ -211,7 +216,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
 // &u64 c = ${irgendeinmacrowaszurcompilezeiteinevoonmehrerenmoeglichenvariablenreferenciert()};
 // u64 d = *c;
 static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
-                               ptlang_error **errors)
+                                      ptlang_error **errors)
 {
 
     bool correct = ptlang_verify_type(decl->type, ctx, errors);
@@ -1607,4 +1612,117 @@ static ptlang_error ptlang_verify_generate_type_error(char *before, ptlang_ast_e
 
     ptlang_error error = (ptlang_error){.type = PTLANG_ERROR_TYPE, .pos = *exp->pos, .message = message};
     return error;
+}
+
+static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors)
+{
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    {
+        arrpfut(*errors, ((ptlang_error){
+                             .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
+                             .pos = *exp->pos,
+                             .message = "Assignments may not be used in global initiators.",
+                         }));
+        break;
+    }
+
+    case PTLANG_AST_EXP_ADDITION:
+    case PTLANG_AST_EXP_SUBTRACTION:
+    case PTLANG_AST_EXP_MULTIPLICATION:
+    case PTLANG_AST_EXP_DIVISION:
+    case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
+    case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_NOT_EQUAL:
+    case PTLANG_AST_EXP_GREATER:
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+    case PTLANG_AST_EXP_LESS:
+    case PTLANG_AST_EXP_LESS_EQUAL:
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+    case PTLANG_AST_EXP_AND:
+    case PTLANG_AST_EXP_OR:
+    case PTLANG_AST_EXP_BITWISE_AND:
+    case PTLANG_AST_EXP_BITWISE_OR:
+    case PTLANG_AST_EXP_BITWISE_XOR:
+    {
+        ptlang_verify_exp_check_const(exp->content.binary_operator.left_value, ctx, errors);
+        ptlang_verify_exp_check_const(exp->content.binary_operator.right_value, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_NEGATION:
+    case PTLANG_AST_EXP_NOT:
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_LENGTH:
+    case PTLANG_AST_EXP_DEREFERENCE:
+    {
+        ptlang_verify_exp_check_const(exp->content.unary_operator, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+    {
+        arrpfut(*errors, ((ptlang_error){
+                             .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
+                             .pos = *exp->pos,
+                             .message = "Function calls may not be used in global initiators.",
+                         }));
+        break;
+    }
+    case PTLANG_AST_EXP_VARIABLE:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_INTEGER:
+    case PTLANG_AST_EXP_FLOAT:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT:
+    {
+        for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
+        {
+            ptlang_verify_exp_check_const(exp->content.struct_.members[i].exp, ctx, errors);
+        }
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY:
+    {
+        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+        {
+            ptlang_verify_exp_check_const(exp->content.array.values[i], ctx, errors);
+        }
+        break;
+    }
+    case PTLANG_AST_EXP_TERNARY:
+    {
+
+        ptlang_verify_exp_check_const(exp->content.ternary_operator.condition, ctx, errors);
+        ptlang_verify_exp_check_const(exp->content.ternary_operator.if_value, ctx, errors);
+        ptlang_verify_exp_check_const(exp->content.ternary_operator.else_value, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_CAST:
+    {
+        ptlang_verify_exp_check_const(exp->content.cast.value, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT_MEMBER:
+    {
+        ptlang_verify_exp_check_const(exp->content.struct_member.struct_, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY_ELEMENT:
+    {
+        ptlang_verify_exp_check_const(exp->content.array_element.array, ctx, errors);
+        ptlang_verify_exp_check_const(exp->content.array_element.index, ctx, errors);
+        break;
+    }
+    case PTLANG_AST_EXP_REFERENCE:
+    {
+        ptlang_verify_exp_check_const(exp->content.reference.value, ctx, errors);
+        break;
+    }
+    }
 }

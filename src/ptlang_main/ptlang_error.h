@@ -21,6 +21,7 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_INTEGER_SIZE,
     PTLANG_ERROR_UNKNOWN_MEMBER,
     PTLANG_ERROR_CAST_ILLEGAL,
+    PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -40,7 +41,8 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_INTEGER_SIZE               ? "Integer Size Error"                           \
     : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
     : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
-    : error_type == PTLANG_ERROR_CAST_ILLEGAL               ? "Illegal Cast Error" \
+    : error_type == PTLANG_ERROR_CAST_ILLEGAL               ? "Illegal Cast Error"                           \
+    : error_type == PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR ? "Non-Const Global Initiator Error"             \
                                                             : "Unkown Error"
 
 typedef struct ptlang_error_s
