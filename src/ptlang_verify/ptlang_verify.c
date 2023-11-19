@@ -24,7 +24,7 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
     ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
+        // ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
     }
     ptlang_verify_functions(module->functions, ctx, &errors);
     return errors;
@@ -207,6 +207,22 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
         ptlang_verify_check_implicit_cast(decl->init->ast_type, decl->type, decl->pos, ctx, errors);
     }
 }
+
+
+// Algo to init global vars:
+// * Create nodes: one node for each global var and each (recursive) element / member of a global var
+// 1 Parse references to create edges
+// * Tarjan's algorithm (if cycle found, error)
+// 2 Pick a Leaf
+// * Eval the Leaf Initaliser
+// * If Leaf is used as array index, substitute the Leaf as the index
+// * Go to  2
+// * If any array index was substituted, got to 1
+
+
+
+// ----
+
 // u64 2_HOCH_11 = ${ 2<<11 };
 //
 // void a(){ ... }
