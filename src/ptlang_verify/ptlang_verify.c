@@ -208,7 +208,6 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
     }
 }
 
-
 // Algo to init global vars:
 // * Create nodes: one node for each global var and each (recursive) element / member of a global var
 // 1 Parse references to create edges
@@ -218,8 +217,6 @@ static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang
 // * If Leaf is used as array index, substitute the Leaf as the index
 // * Go to  2
 // * If any array index was substituted, got to 1
-
-
 
 // ----
 
@@ -1741,4 +1738,100 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
         break;
     }
     }
+}
+
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx)
+{
+    ptlang_ast_exp substituted = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));;
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ADDITION:
+    case PTLANG_AST_EXP_SUBTRACTION:
+    case PTLANG_AST_EXP_MULTIPLICATION:
+    case PTLANG_AST_EXP_DIVISION:
+    case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
+    case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_NOT_EQUAL:
+    case PTLANG_AST_EXP_GREATER:
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+    case PTLANG_AST_EXP_LESS:
+    case PTLANG_AST_EXP_LESS_EQUAL:
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+    case PTLANG_AST_EXP_AND:
+    case PTLANG_AST_EXP_OR:
+    case PTLANG_AST_EXP_BITWISE_AND:
+    case PTLANG_AST_EXP_BITWISE_OR:
+    case PTLANG_AST_EXP_BITWISE_XOR:
+    {
+        ptlang_ast_exp left_value = ptlang_verify_eval(exp->content.binary_operator.left_value, ctx);
+        ptlang_ast_exp right_value = ptlang_verify_eval(exp->content.binary_operator.right_value, ctx);
+        *substituted = (struct ptlang_ast_exp_s){
+            .type = exp->type,
+            .content.binary_operator =
+                {
+                    .left_value = left_value,
+                    .right_value = right_value,
+                },
+            .pos = exp->pos,
+        };
+    }
+    case PTLANG_AST_EXP_NEGATION:
+    case PTLANG_AST_EXP_NOT:
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_LENGTH:
+    case PTLANG_AST_EXP_DEREFERENCE:
+    {
+        ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, ctx);
+        *substituted = (struct ptlang_ast_exp_s){
+            .type = exp->type,
+            .content.unary_operator = operand,
+        };
+    }
+    // TODO
+    case PTLANG_AST_EXP_VARIABLE:
+    {
+        // assumes that global variable was already initialized
+        substituted = ptlang_verify_eval(ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation)->init, ctx);
+        break;
+    }
+    case PTLANG_AST_EXP_INTEGER:
+    case PTLANG_AST_EXP_FLOAT:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_TERNARY:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_CAST:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT_MEMBER:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY_ELEMENT:
+    {
+        break;
+    }
+    case PTLANG_AST_EXP_REFERENCE:
+    {
+        break;
+    }
+    }
+
+    ptlang_ast_exp evaluated = ptlang_eval_const_exp(substituted);
+    ptlang_free(substituted);
+    return evaluated;
 }

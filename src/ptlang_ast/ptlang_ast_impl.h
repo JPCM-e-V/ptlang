@@ -214,6 +214,7 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_ARRAY_ELEMENT,
         PTLANG_AST_EXP_REFERENCE,
         PTLANG_AST_EXP_DEREFERENCE,
+        PTLANG_AST_EXP_BINARY,
     } type;
     union
     {
@@ -228,6 +229,7 @@ struct ptlang_ast_exp_s
         struct ptlang_ast_exp_struct_member_s struct_member;
         struct ptlang_ast_exp_array_element_s array_element;
         struct ptlang_ast_exp_reference_s reference;
+        uint8_t *binary;
     } content;
     ptlang_ast_code_position pos;
     ptlang_ast_type ast_type; // use only after verify

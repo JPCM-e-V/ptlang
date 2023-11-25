@@ -97,4 +97,6 @@ static ptlang_ast_type ptlang_verify_unify_types(ptlang_ast_type type1, ptlang_a
 
 static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors);
 
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx);
+
 #endif
