@@ -153,6 +153,7 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
 ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value,
                                             ptlang_ast_code_position pos);
 ptlang_ast_exp ptlang_ast_exp_dereference_new(ptlang_ast_exp value, ptlang_ast_code_position pos);
+ptlang_ast_exp ptlang_ast_exp_binary_new(uint8_t* binary, ptlang_ast_exp prev);
 
 ptlang_ast_stmt ptlang_ast_stmt_block_new(ptlang_ast_code_position pos);
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt);

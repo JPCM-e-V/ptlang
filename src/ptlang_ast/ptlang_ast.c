@@ -482,6 +482,18 @@ ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value,
 
 UNARY_OP(dereference, DEREFERENCE)
 
+ptlang_ast_exp ptlang_ast_exp_binary_new(uint8_t *binary, ptlang_ast_exp prev)
+{
+    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
+    *exp = (struct ptlang_ast_exp_s){
+        .type = PTLANG_AST_EXP_BINARY,
+        .content.binary = binary,
+        .pos = prev->pos,
+        .ast_type = prev->ast_type,
+    };
+    return exp;
+}
+
 ptlang_ast_stmt ptlang_ast_stmt_block_new(ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
@@ -971,4 +983,15 @@ ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position 
         .to_column = pos->to_column,
     });
     return new_pos;
+}
+
+ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
+{
+    size_t name_len = strlen(ident.name) + 1;
+    ptlang_ast_ident new_ident = {
+        .name = ptlang_malloc(name_len),
+        .pos = ptlang_ast_code_position_copy(ident.pos),
+    };
+    memcpy(new_ident.name, ident.name, name_len);
+    return new_ident;
 }
