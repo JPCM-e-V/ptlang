@@ -1677,9 +1677,29 @@ LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_c
     }
     case PTLANG_AST_EXP_BINARY:
     {
-        size_t bytes = arrlenu(exp->content.binary);
 
-        // TODO create array of LLVMValueRefs of bytes, bytecast to LLVMValueRef of ast_type
+        uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER
+                                ? exp->ast_type->content.integer.size
+                                : exp->ast_type->content.float_size;
+        uint32_t byte_size = (bit_size - 1) / 8 + 1;
+
+        LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
+
+        LLVMTypeRef byte = LLVMInt8Type();
+
+        for (uint32_t i = 0; i < byte_size; i++)
+        {
+            bytes[i] = LLVMConstInt(byte, exp->content.binary[i], false);
+        }
+
+        LLVMValueRef as_array = LLVMConstArray(LLVMArrayType(byte, byte_size), bytes, byte_size);
+
+        LLVMValueRef as_int = LLVMConstBitCast(as_array, LLVMIntType(byte_size * 8));
+        if (bit_size != byte_size * 8)
+        {
+            as_int = LLVMConstTrunc(as_int, LLVMIntType(bit_size));
+        }
+        return as_int;
     }
     }
     abort();

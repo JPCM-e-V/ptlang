@@ -46,4 +46,6 @@ bool ptlang_context_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2,
 
 size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_context_type_scope *type_scope);
 
+ptlang_ast_struct_def ptlang_context_get_struct_def(char *name, ptlang_context_type_scope *type_scope);
+
 #endif

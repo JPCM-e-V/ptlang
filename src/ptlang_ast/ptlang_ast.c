@@ -892,6 +892,9 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_REFERENCE:
         ptlang_ast_exp_destroy(exp->content.reference.value);
         break;
+    case PTLANG_AST_EXP_BINARY:
+        ptlang_free(exp->content.binary);
+        break;
     }
 
     ptlang_free(exp);
@@ -994,4 +997,126 @@ ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
     };
     memcpy(new_ident.name, ident.name, name_len);
     return new_ident;
+}
+
+ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
+{
+    ptlang_ast_exp copy = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
+    copy->ast_type = ptlang_ast_type_copy(exp->ast_type);
+    copy->type = exp->type;
+    copy->pos = ptlang_ast_code_position_copy(exp->pos);
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    case PTLANG_AST_EXP_ADDITION:
+    case PTLANG_AST_EXP_SUBTRACTION:
+    case PTLANG_AST_EXP_MULTIPLICATION:
+    case PTLANG_AST_EXP_DIVISION:
+    case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
+    case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_NOT_EQUAL:
+    case PTLANG_AST_EXP_GREATER:
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+    case PTLANG_AST_EXP_LESS:
+    case PTLANG_AST_EXP_LESS_EQUAL:
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+    case PTLANG_AST_EXP_AND:
+    case PTLANG_AST_EXP_OR:
+    case PTLANG_AST_EXP_BITWISE_AND:
+    case PTLANG_AST_EXP_BITWISE_OR:
+    case PTLANG_AST_EXP_BITWISE_XOR:
+    {
+        copy->content.binary_operator.left_value =
+            ptlang_ast_exp_copy(exp->content.binary_operator.left_value);
+        copy->content.binary_operator.right_value =
+            ptlang_ast_exp_copy(exp->content.binary_operator.right_value);
+        break;
+    }
+    case PTLANG_AST_EXP_NEGATION:
+    case PTLANG_AST_EXP_NOT:
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_LENGTH:
+    case PTLANG_AST_EXP_DEREFERENCE:
+    {
+        copy->content.unary_operator = ptlang_ast_exp_copy(exp->content.unary_operator);
+        break;
+    }
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+    {
+        copy->content.function_call.function = ptlang_ast_exp_copy(copy->content.function_call.function);
+        copy->content.function_call.parameters = NULL;
+        for (size_t i = 0; i < arrlenu(exp->content.function_call.parameters); i++)
+        {
+            arrpush(copy->content.function_call.parameters,
+                    ptlang_ast_exp_copy(exp->content.function_call.parameters[i]));
+        }
+        break;
+    }
+    case PTLANG_AST_EXP_VARIABLE:
+    case PTLANG_AST_EXP_INTEGER:
+    case PTLANG_AST_EXP_FLOAT:
+    {
+        size_t str_size = strlen(exp->content.str_prepresentation) + 1;
+        copy->content.str_prepresentation = ptlang_malloc(str_size);
+        memcpy(copy->content.str_prepresentation, exp->content.str_prepresentation, str_size);
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT:
+    {
+        copy->content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type);
+        for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
+        {
+            arrpush(copy->content.struct_.members,
+                    ((struct ptlang_ast_struct_member_s){
+                        .exp = ptlang_ast_exp_copy(exp->content.struct_.members[i].exp),
+                        .pos = ptlang_ast_code_position_copy(exp->content.struct_.members[i].pos),
+                        .str = ptlang_ast_ident_copy(exp->content.struct_.members[i].str)}));
+        }
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY:
+    {
+        copy->content.array.type = ptlang_ast_type_copy(exp->content.array.type);
+        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+        {
+            arrpush(copy->content.array.values, ptlang_ast_exp_copy(exp->content.array.values[i]));
+        }
+        break;
+    }
+    case PTLANG_AST_EXP_TERNARY:
+        copy->content.ternary_operator.condition =
+            ptlang_ast_exp_copy(copy->content.ternary_operator.condition);
+        copy->content.ternary_operator.if_value = ptlang_ast_exp_copy(exp->content.ternary_operator.if_value);
+        copy->content.ternary_operator.else_value =
+            ptlang_ast_exp_copy(exp->content.ternary_operator.else_value);
+        break;
+    case PTLANG_AST_EXP_CAST:
+        copy->content.cast.type = ptlang_ast_type_copy(exp->content.cast.type);
+        copy->content.cast.value = ptlang_ast_exp_copy(exp->content.cast.value);
+        break;
+    case PTLANG_AST_EXP_STRUCT_MEMBER:
+        copy->content.struct_member.struct_ = ptlang_ast_exp_copy(exp->content.struct_member.struct_);
+        copy->content.struct_member.member_name =
+            ptlang_ast_ident_copy(exp->content.struct_member.member_name);
+        break;
+    case PTLANG_AST_EXP_ARRAY_ELEMENT:
+        copy->content.array_element.array = ptlang_ast_exp_copy(exp->content.array_element.array);
+        copy->content.array_element.index = ptlang_ast_exp_copy(exp->content.array_element.index);
+        break;
+    case PTLANG_AST_EXP_REFERENCE:
+        copy->content.reference.value = ptlang_ast_exp_copy(exp->content.reference.value);
+        copy->content.reference.writable = exp->content.reference.writable;
+        break;
+    case PTLANG_AST_EXP_BINARY:
+    {
+        uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER
+                                ? exp->ast_type->content.integer.size
+                                : exp->ast_type->content.float_size;
+        uint32_t byte_size = (bit_size - 1) / 8 + 1;
+        memcpy(copy->content.binary, exp->content.binary, byte_size);
+    }
+    }
+    return copy;
 }

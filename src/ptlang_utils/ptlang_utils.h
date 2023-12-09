@@ -5,10 +5,10 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#define ptlang_malloc(size) size == 0 ? NULL : malloc(size)
-#define ptlang_malloc_zero(size) size == 0 ? NULL : memset(ptlang_malloc(size), 0, size)
+#define ptlang_malloc(size) (size) == 0 ? NULL : malloc(size)
+#define ptlang_malloc_zero(size) (size) == 0 ? NULL : memset(ptlang_malloc(size), 0, (size))
 #define ptlang_free(ptr) free(ptr)
-#define ptlang_realloc(ptr, size) size == 0 ? (free(ptr), NULL) : realloc(ptr, size)
+#define ptlang_realloc(ptr, size) (size) == 0 ? (free(ptr), NULL) : realloc(ptr, (size))
 
 #ifdef NDEBUG
 #    define ptlang_assert(val) ((void)val)

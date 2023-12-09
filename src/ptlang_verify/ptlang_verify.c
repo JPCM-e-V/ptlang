@@ -1778,15 +1778,16 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
                                                      },
                                                  .pos = ptlang_ast_code_position_copy(exp->pos),
                                                  .ast_type = ptlang_ast_type_copy(exp->ast_type)};
+        break;
     }
     case PTLANG_AST_EXP_LENGTH:
     {
         // TODO
+        break;
     }
     case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
-    case PTLANG_AST_EXP_DEREFERENCE: // TODO
     {
         ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, ctx);
         *substituted = (struct ptlang_ast_exp_s){
@@ -1795,6 +1796,13 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
             .pos = exp->pos,
             .ast_type = exp->ast_type,
         };
+        break;
+    }
+    case PTLANG_AST_EXP_DEREFERENCE:
+    {
+        ptlang_ast_exp reference = ptlang_verify_eval(exp->content.unary_operator, ctx);
+        evaluated = reference->content.reference.value;
+        break;
     }
     case PTLANG_AST_EXP_VARIABLE:
     {
@@ -1806,55 +1814,44 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     case PTLANG_AST_EXP_INTEGER:
     case PTLANG_AST_EXP_FLOAT:
     {
-        evaluated = exp;
+        evaluated = ptlang_ast_exp_copy(exp);
         break;
     }
     case PTLANG_AST_EXP_STRUCT:
     {
-        // TODO fill with defaults vals
-        evaluated = exp;
-        // ptlang_ast_struct_member_list struct_members = NULL;
-        // for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
-        // {
+        ptlang_ast_struct_def struct_def =
+            ptlang_context_get_struct_def(exp->content.struct_.type.name, ctx->type_scope);
+        ptlang_ast_struct_member_list struct_members = NULL;
+        for (size_t i = 0; i < arrlenu(struct_def->members); i++)
+        {
+            size_t j;
+            for (j = 0; j < arrlenu(exp->content.struct_.members); j++)
+            {
+                if (0 == strcmp(exp->content.struct_.members[j].str.name, struct_def->members[i]->name.name))
+                    break;
+            }
+            struct ptlang_ast_struct_member_s member = (struct ptlang_ast_struct_member_s){
+                .exp = j < arrlenu(exp->content.struct_.members)
+                           ? ptlang_verify_eval(exp->content.struct_.members[j].exp, ctx)
+                           : ptlang_verify_get_default_value(struct_def->members[i]->type, ctx),
+                .str = ptlang_ast_ident_copy(struct_def->members[i]->name),
+                .pos = NULL,
+            };
 
-        //     arrpush(struct_members, ((struct ptlang_ast_struct_member_s){
-        //                                 .pos = exp->content.struct_.members[i].pos,
-        //                                 .str = exp->content.struct_.members[i].str,
-        //                                 .exp = ptlang_verify_eval(exp->content.struct_.members[i].exp,
-        //                                 ctx),
-        //                             }));
-        // }
-        // struct ptlang_ast_exp_struct_s struct_content = (struct ptlang_ast_exp_struct_s){
-        //     .type = exp->content.struct_.type,
-        //     .members = struct_members,
-        // };
-        // *substituted = (struct ptlang_ast_exp_s){
-        //     .type = exp->type,
-        //     .content.struct_ = struct_content,
-        //     .pos = exp->pos,
-        //     .ast_type = exp->ast_type,
-        // };
+            arrpush(struct_members, member);
+        }
+        *evaluated = (struct ptlang_ast_exp_s){
+            .type = PTLANG_AST_EXP_STRUCT,
+            .content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type),
+            .content.struct_.members = struct_members,
+        };
+
         break;
     }
     case PTLANG_AST_EXP_ARRAY:
     {
         // TODO fill with defaults vals
         evaluated = exp;
-        // ptlang_ast_exp *array_values = NULL;
-        // for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
-        // {
-        //     arrpush(array_values, ptlang_verify_eval(exp->content.array.values[i], ctx));
-        // }
-        // struct ptlang_ast_exp_array_s array_content = (struct ptlang_ast_exp_array_s){
-        //     .type = exp->content.array.values,
-        //     .values = array_values,
-        // };
-        // *substituted = (struct ptlang_ast_exp_s){
-        //     .type = exp->type,
-        //     .content.array = array_content,
-        //     .pos = exp->pos,
-        //     .ast_type = exp->ast_type,
-        // };
         break;
     }
     case PTLANG_AST_EXP_TERNARY:
@@ -1890,8 +1887,11 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     {
         ptlang_ast_exp struct_ = ptlang_verify_eval(exp->content.struct_member.struct_, ctx);
         // cycles should already have been checked
-        for (size_t i = 0; i < arrlenu(struct_->content.struct_.members); i++){
-            if (0 == strcmp(struct_->content.struct_.members[i].str.name, exp->content.struct_member.member_name.name)){
+        for (size_t i = 0; i < arrlenu(struct_->content.struct_.members); i++)
+        {
+            if (0 == strcmp(struct_->content.struct_.members[i].str.name,
+                            exp->content.struct_member.member_name.name))
+            {
                 evaluated = ptlang_verify_eval(struct_->content.struct_.members[i].exp, ctx);
             }
         }
@@ -1962,18 +1962,7 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
     case PTLANG_AST_TYPE_NAMED:
     {
         // Get struct def
-        char *name = type->content.name;
-        ptlang_ast_struct_def struct_def = NULL;
-        while (true)
-        {
-            ptlang_context_type_scope_entry entry = shget(ctx->type_scope, name);
-            if (entry.type == PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
-            {
-                struct_def = entry.value.struct_def;
-                break;
-            }
-            name = entry.value.ptlang_type->content.name;
-        }
+        ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(type->content.name, ctx->type_scope);
 
         // Init members
         ptlang_ast_struct_member_list struct_members = NULL;
@@ -1987,13 +1976,20 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
 
             arrpush(struct_members, member_default);
         }
+
         *default_value = (struct ptlang_ast_exp_s){
             .type = PTLANG_AST_EXP_STRUCT,
-            .content.struct_.type = ptlang_context_copy_unname_type(type, ctx->type_scope),
+            .content.struct_.type.name = NULL,
+            .content.struct_.type.pos = NULL,
             .content.struct_.members = struct_members,
         };
+
+        size_t str_size = strlen(type->content.name) + 1;
+        default_value->content.struct_.type.name = ptlang_malloc(str_size);
+        memcpy(default_value->content.struct_.type.name, type->content.name, str_size);
+        break;
     }
-    // TODO other types
+        // TODO other types
     }
     default_value->ast_type = type;
     default_value->pos = NULL;

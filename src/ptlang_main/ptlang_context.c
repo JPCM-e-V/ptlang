@@ -120,8 +120,8 @@ size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_con
                ptlang_context_type_to_string(type->content.function.return_type, NULL, type_scope);
         for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
         {
-            size +=
-                ptlang_context_type_to_string(type->content.function.parameters[i], NULL, type_scope) - 1 + sizeof(", ") - 1;
+            size += ptlang_context_type_to_string(type->content.function.parameters[i], NULL, type_scope) -
+                    1 + sizeof(", ") - 1;
         }
         if (arrlenu(type->content.function.parameters) != 0)
         {
@@ -134,7 +134,8 @@ size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_con
             out++;
             for (size_t i = 0; i < arrlenu(type->content.function.parameters); i++)
             {
-                out += ptlang_context_type_to_string(type->content.function.parameters[i], out, type_scope) - 1;
+                out +=
+                    ptlang_context_type_to_string(type->content.function.parameters[i], out, type_scope) - 1;
                 if (i < arrlenu(type->content.function.parameters) - 1)
                 {
                     *out = ',';
@@ -217,4 +218,21 @@ size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_con
     }
     }
     return size;
+}
+
+ptlang_ast_struct_def ptlang_context_get_struct_def(char *name, ptlang_context_type_scope *type_scope)
+{
+
+    ptlang_ast_struct_def struct_def = NULL;
+    while (true)
+    {
+        ptlang_context_type_scope_entry entry = shget(type_scope, name);
+        if (entry.type == PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
+        {
+            struct_def = entry.value.struct_def;
+            break;
+        }
+        name = entry.value.ptlang_type->content.name;
+    }
+    return struct_def;
 }

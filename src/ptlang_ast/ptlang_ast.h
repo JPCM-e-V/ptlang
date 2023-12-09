@@ -195,5 +195,7 @@ ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *nam
 
 ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos);
 
+ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
+
 
 #endif

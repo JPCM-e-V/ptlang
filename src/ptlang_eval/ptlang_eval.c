@@ -12,17 +12,7 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
 
     LLVMValueRef function = LLVMAddFunction(M, "main", func_type);
 
-    LLVMTypeRef size_func_type = LLVMFunctionType(LLVMInt64TypeInContext(C), NULL, 0, false);
-
-    LLVMValueRef size_func = LLVMAddFunction(M, "size", size_func_type);
-
     LLVMBuilderRef B = LLVMCreateBuilderInContext(C);
-
-    LLVMBasicBlockRef size_entry = LLVMAppendBasicBlockInContext(C, size_func, "size_entry");
-
-    LLVMPositionBuilderAtEnd(B, size_entry);
-    LLVMValueRef size_value = LLVMSizeOf(type);
-    LLVMBuildRet(B, size_value);
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(C, function, "entry");
 
@@ -41,12 +31,12 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
     LLVMExecutionEngineRef ee;
     LLVMCreateExecutionEngineForModule(&ee, M, NULL);
 
-    LLVMGenericValueRef in_llvm_size = LLVMRunFunction(ee, size_func, 0, NULL);
-    unsigned long long size = LLVMGenericValueToInt(in_llvm_size, false);
+    uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER ? exp->ast_type->content.integer.size
+                                                                       : exp->ast_type->content.float_size;
 
-    uint8_t *binary = NULL;
+    uint8_t *binary = ptlang_malloc((bit_size - 1) / 8 + 1);
 
-    arrsetlen(binary, size);
+    // arrsetlen(binary, size);
 
     LLVMGenericValueRef in_llvm_binary = LLVMCreateGenericValueOfPointer(binary);
     LLVMRunFunction(ee, function, 1, &in_llvm_binary);
