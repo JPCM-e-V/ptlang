@@ -197,5 +197,7 @@ ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position 
 
 ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
 
+ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
+
 
 #endif

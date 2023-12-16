@@ -4,6 +4,7 @@
 #include "ptlang_ast_impl.h"
 #include "ptlang_utils.h"
 #include "ptlang_verify.h"
+#include "ptlang_eval.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -97,6 +98,11 @@ static ptlang_ast_type ptlang_verify_unify_types(ptlang_ast_type type1, ptlang_a
 
 static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors);
 
-static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx);
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, ptlang_context *ctx);
+
+static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+                                      ptlang_error **errors);
+
+ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_context *ctx);
 
 #endif

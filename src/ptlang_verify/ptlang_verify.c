@@ -1170,6 +1170,10 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
         break;
     }
+    case PTLANG_AST_EXP_BINARY:
+    {
+        abort();
+    }
     }
 }
 
@@ -1635,11 +1639,11 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
     {
-        arrpfut(*errors, ((ptlang_error){
-                             .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
-                             .pos = *exp->pos,
-                             .message = "Assignments may not be used in global initiators.",
-                         }));
+        arrput(*errors, ((ptlang_error){
+                            .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
+                            .pos = *exp->pos,
+                            .message = "Assignments may not be used in global initiators.",
+                        }));
         break;
     }
 
@@ -1678,11 +1682,11 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
     {
-        arrpfut(*errors, ((ptlang_error){
-                             .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
-                             .pos = *exp->pos,
-                             .message = "Function calls may not be used in global initiators.",
-                         }));
+        arrput(*errors, ((ptlang_error){
+                            .type = PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
+                            .pos = *exp->pos,
+                            .message = "Function calls may not be used in global initiators.",
+                        }));
         break;
     }
     case PTLANG_AST_EXP_VARIABLE:
@@ -1742,7 +1746,7 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
     }
 }
 
-static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx)
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, ptlang_context *ctx)
 {
     ptlang_ast_exp substituted = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     ptlang_ast_exp evaluated = NULL;
@@ -1768,28 +1772,44 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
     {
-        ptlang_ast_exp left_value = ptlang_verify_eval(exp->content.binary_operator.left_value, ctx);
-        ptlang_ast_exp right_value = ptlang_verify_eval(exp->content.binary_operator.right_value, ctx);
-        *substituted = (struct ptlang_ast_exp_s){.type = exp->type,
-                                                 .content.binary_operator =
-                                                     {
-                                                         .left_value = left_value,
-                                                         .right_value = right_value,
-                                                     },
-                                                 .pos = ptlang_ast_code_position_copy(exp->pos),
-                                                 .ast_type = ptlang_ast_type_copy(exp->ast_type)};
+        ptlang_ast_exp left_value = ptlang_verify_eval(exp->content.binary_operator.left_value, true, ctx);
+        ptlang_ast_exp right_value = ptlang_verify_eval(exp->content.binary_operator.right_value, true, ctx);
+        *substituted = (struct ptlang_ast_exp_s){
+            .type = exp->type,
+            .content.binary_operator =
+                {
+                    .left_value = left_value,
+                    .right_value = right_value,
+                },
+            .pos = ptlang_ast_code_position_copy(exp->pos),
+            .ast_type = ptlang_ast_type_copy(exp->ast_type),
+        };
         break;
     }
     case PTLANG_AST_EXP_LENGTH:
     {
-        // TODO
-        break;
+        unsigned pointer_size_in_bytes = LLVMPointerSize(ctx->target_data_layout);
+        uint8_t *binary = ptlang_malloc_zero(pointer_size_in_bytes);
+
+        if (exp->content.unary_operator->ast_type->type == PTLANG_AST_TYPE_ARRAY)
+        {
+            uint8_t bytes =
+                pointer_size_in_bytes < sizeof(exp->content.unary_operator->ast_type->content.array.len)
+                    ? pointer_size_in_bytes
+                    : sizeof(exp->content.unary_operator->ast_type->content.array.len);
+            for (uint8_t i = 0; i < pointer_size_in_bytes; i++)
+            {
+                binary[i] = exp->content.unary_operator->ast_type->content.array.len >> (i << 3);
+            }
+        }
+
+        evaluated = ptlang_ast_exp_binary_new(binary, exp);
     }
     case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     {
-        ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, ctx);
+        ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, true, ctx);
         *substituted = (struct ptlang_ast_exp_s){
             .type = exp->type,
             .content.unary_operator = operand,
@@ -1800,7 +1820,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     }
     case PTLANG_AST_EXP_DEREFERENCE:
     {
-        ptlang_ast_exp reference = ptlang_verify_eval(exp->content.unary_operator, ctx);
+        ptlang_ast_exp reference = ptlang_verify_eval(exp->content.unary_operator, eval_fully, ctx);
         evaluated = reference->content.reference.value;
         break;
     }
@@ -1808,7 +1828,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     {
         // assumes that global variable was already initialized
         evaluated = ptlang_verify_eval(
-            ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation)->init, ctx);
+            ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation)->init, eval_fully, ctx);
         break;
     }
     case PTLANG_AST_EXP_INTEGER:
@@ -1832,7 +1852,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
             }
             struct ptlang_ast_struct_member_s member = (struct ptlang_ast_struct_member_s){
                 .exp = j < arrlenu(exp->content.struct_.members)
-                           ? ptlang_verify_eval(exp->content.struct_.members[j].exp, ctx)
+                           ? (eval_fully ? ptlang_verify_eval(exp->content.struct_.members[j].exp, true, ctx)
+                                         : ptlang_ast_exp_copy(exp->content.struct_.members[j].exp))
                            : ptlang_verify_get_default_value(struct_def->members[i]->type, ctx),
                 .str = ptlang_ast_ident_copy(struct_def->members[i]->name),
                 .pos = NULL,
@@ -1840,32 +1861,42 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
 
             arrpush(struct_members, member);
         }
-        *evaluated = (struct ptlang_ast_exp_s){
-            .type = PTLANG_AST_EXP_STRUCT,
-            .content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type),
-            .content.struct_.members = struct_members,
-        };
+        evaluated = ptlang_ast_exp_struct_new(ptlang_ast_ident_copy(exp->content.struct_.type),
+                                              struct_members, ptlang_ast_code_position_copy(exp->pos));
 
         break;
     }
     case PTLANG_AST_EXP_ARRAY:
     {
-        // TODO fill with defaults vals
-        evaluated = exp;
+        ptlang_ast_exp *array_values = NULL;
+        for (size_t i = 0; i < exp->content.array.type->content.array.len; i++)
+        {
+            if (i < arrlenu(exp->content.array.values))
+                arrpush(array_values, eval_fully ? ptlang_verify_eval(exp->content.array.values[i], true, ctx)
+                                                 : ptlang_ast_exp_copy(exp->content.array.values[i]));
+            else
+                arrpush(array_values,
+                        ptlang_verify_get_default_value(exp->content.array.type->content.array.type, ctx));
+        }
+        evaluated = ptlang_ast_exp_array_new(
+            ptlang_context_copy_unname_type(exp->content.array.type, ctx->type_scope), array_values,
+            ptlang_ast_code_position_copy(exp->pos));
         break;
     }
     case PTLANG_AST_EXP_TERNARY:
     {
-        ptlang_ast_exp condition = ptlang_verify_eval(exp->content.ternary_operator.condition, ctx);
+        ptlang_ast_exp condition = ptlang_verify_eval(exp->content.ternary_operator.condition, true, ctx);
         // TODO recheck cycles
         if (condition->content.binary[0] == 0)
         {
-            ptlang_ast_exp else_value = ptlang_verify_eval(exp->content.ternary_operator.else_value, ctx);
+            ptlang_ast_exp else_value =
+                ptlang_verify_eval(exp->content.ternary_operator.else_value, eval_fully, ctx);
             evaluated = else_value;
         }
         else
         {
-            ptlang_ast_exp if_value = ptlang_verify_eval(exp->content.ternary_operator.if_value, ctx);
+            ptlang_ast_exp if_value =
+                ptlang_verify_eval(exp->content.ternary_operator.if_value, eval_fully, ctx);
             evaluated = if_value;
         }
 
@@ -1873,7 +1904,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     }
     case PTLANG_AST_EXP_CAST:
     {
-        ptlang_ast_exp value = ptlang_verify_eval(exp->content.cast.value, ctx);
+        ptlang_ast_exp value = ptlang_verify_eval(exp->content.cast.value, eval_fully, ctx);
         *substituted = (struct ptlang_ast_exp_s){
             .type = exp->type,
             .content.cast.type = exp->content.cast.type,
@@ -1885,14 +1916,14 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
-        ptlang_ast_exp struct_ = ptlang_verify_eval(exp->content.struct_member.struct_, ctx);
+        ptlang_ast_exp struct_ = ptlang_verify_eval(exp->content.struct_member.struct_, false, ctx);
         // cycles should already have been checked
         for (size_t i = 0; i < arrlenu(struct_->content.struct_.members); i++)
         {
             if (0 == strcmp(struct_->content.struct_.members[i].str.name,
                             exp->content.struct_member.member_name.name))
             {
-                evaluated = ptlang_verify_eval(struct_->content.struct_.members[i].exp, ctx);
+                evaluated = ptlang_verify_eval(struct_->content.struct_.members[i].exp, eval_fully, ctx);
             }
         }
         break;
@@ -1900,10 +1931,39 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, ptlang_context *ctx
     // TODO other types
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
-        break;
+        ptlang_ast_exp index = ptlang_verify_eval(exp->content.array_element.index, true, ctx);
+        // TODO: recheck cycles
+        enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);
+        size_t index_num = 0;
+        uint8_t signum = 0;
+        if (index->ast_type->content.integer.is_signed &&
+            (index->content.binary[byteOrdering == LLVMBigEndian ? 0 : arrlenu(index->content.binary) - 1] &
+             0x80))
+            signum = 0xFF;
+
+        for (int i = sizeof(size_t) - 1; i >= 0; i--)
+        {
+            index_num <<= 8;
+            if (i < arrlenu(index->content.binary))
+                index_num +=
+                    index->content
+                        .binary[byteOrdering == LLVMBigEndian ? arrlenu(index->content.binary) - i - 1 : i];
+            else
+                index_num += signum;
+        }
+
+        ptlang_ast_exp array = ptlang_verify_eval(exp->content.array_element.array, false, ctx);
+
+        if (signum != 0 || index_num >= arrlenu(array->content.array.values))
+        {
+            // TODO throw error
+        }
+
+        evaluated = ptlang_verify_eval(array->content.array.values[index_num], eval_fully, ctx);
     }
     case PTLANG_AST_EXP_REFERENCE:
     {
+        // TODO
         break;
     }
     }
