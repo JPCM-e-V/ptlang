@@ -2,9 +2,9 @@
 #define PTLANG_VERIFY_IMPL_H
 
 #include "ptlang_ast_impl.h"
+#include "ptlang_eval.h"
 #include "ptlang_utils.h"
 #include "ptlang_verify.h"
-#include "ptlang_eval.h"
 #include <errno.h>
 #include <inttypes.h>
 #include <stdbool.h>
@@ -28,6 +28,12 @@ typedef struct
     char *key;
     pltang_verify_type_alias value;
 } pltang_verify_type_alias_table;
+
+typedef struct ptlang_verify_node_table_s
+{
+    char *key;
+    ptlang_utils_graph_node *value;
+} *ptlang_verify_node_table;
 
 // typedef struct pltang_verify_struct_s pltang_verify_struct;
 // struct pltang_verify_struct_s
@@ -104,5 +110,7 @@ static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset,
                                       ptlang_error **errors);
 
 ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_context *ctx);
+
+static size_t ptlang_verify_calc_node_count(ptlang_ast_type type, ptlang_context_type_scope *type_scope);
 
 #endif

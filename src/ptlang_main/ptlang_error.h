@@ -40,7 +40,6 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_VALUE_COUNT                ? "Invalid Value Count Error"                    \
     : error_type == PTLANG_ERROR_INTEGER_SIZE               ? "Integer Size Error"                           \
     : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
-    : error_type == PTLANG_ERROR_UNKNOWN_MEMBER             ? "Unknown Member Error"                         \
     : error_type == PTLANG_ERROR_CAST_ILLEGAL               ? "Illegal Cast Error"                           \
     : error_type == PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR ? "Non-Const Global Initiator Error"             \
                                                             : "Unkown Error"

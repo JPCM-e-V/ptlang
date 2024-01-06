@@ -96,7 +96,8 @@ static inline LLVMValueRef ptlang_ir_builder_scope_get(ptlang_ir_builder_scope *
         }
         scope = scope->parent;
     }
-    // TODO
+    // noTODO (should be fixed by verify)
+    abort();
     fprintf(stderr, "var not found\n");
     exit(EXIT_FAILURE);
 }
