@@ -10,7 +10,6 @@ typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
 
 typedef struct ptlang_ir_builder_struct_def_s ptlang_ir_builder_struct_def;
 
-
 typedef struct ptlang_ir_builder_build_context_s
 {
     LLVMBuilderRef builder;
@@ -34,5 +33,4 @@ typedef struct ptlang_ir_builder_build_context_s
 LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build_context *ctx,
                                    LLVMContextRef C);
 
- LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx);
-
+LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx);

@@ -34,7 +34,7 @@ typedef struct ptlang_context_s
     LLVMTargetDataRef target_data_layout;
 } ptlang_context;
 
-void pltang_context_destory(ptlang_context *ctx);
+void ptlang_context_destory(ptlang_context *ctx);
 
 ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope);
 

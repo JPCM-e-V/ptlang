@@ -25,6 +25,7 @@ struct node_s
     size_t index;
     size_t lowlink;
     bool on_stack;
+    void* data;
 };
 
 typedef struct ptlang_utils_str

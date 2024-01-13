@@ -1045,7 +1045,7 @@ ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
     {
-        copy->content.function_call.function = ptlang_ast_exp_copy(copy->content.function_call.function);
+        copy->content.function_call.function = ptlang_ast_exp_copy(exp->content.function_call.function);
         copy->content.function_call.parameters = NULL;
         for (size_t i = 0; i < arrlenu(exp->content.function_call.parameters); i++)
         {
@@ -1087,7 +1087,7 @@ ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
     }
     case PTLANG_AST_EXP_TERNARY:
         copy->content.ternary_operator.condition =
-            ptlang_ast_exp_copy(copy->content.ternary_operator.condition);
+            ptlang_ast_exp_copy(exp->content.ternary_operator.condition);
         copy->content.ternary_operator.if_value = ptlang_ast_exp_copy(exp->content.ternary_operator.if_value);
         copy->content.ternary_operator.else_value =
             ptlang_ast_exp_copy(exp->content.ternary_operator.else_value);
@@ -1115,6 +1115,7 @@ ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
                                 ? exp->ast_type->content.integer.size
                                 : exp->ast_type->content.float_size;
         uint32_t byte_size = (bit_size - 1) / 8 + 1;
+        copy->content.binary = ptlang_malloc(byte_size);
         memcpy(copy->content.binary, exp->content.binary, byte_size);
     }
     }

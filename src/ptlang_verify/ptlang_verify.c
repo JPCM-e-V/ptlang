@@ -921,42 +921,43 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         {
             if (array_type->type != PTLANG_AST_TYPE_ARRAY)
             {
-                // throw error
+                // TODO : throw error
             }
             else
             {
                 exp->ast_type = ptlang_context_copy_unname_type(array_type, ctx->type_scope);
                 member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
             }
-        }
 
-        ptlang_error *too_many_values_error = NULL;
-        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
-        {
-            ptlang_verify_exp(exp->content.array.values[i], ctx, errors);
-            ptlang_verify_check_implicit_cast(exp->content.array.values[i]->ast_type, member_type,
-                                              exp->content.array.values[i]->pos, ctx, errors);
-            if (i >= array_type->content.array.len)
+            ptlang_error *too_many_values_error = NULL;
+            for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
             {
-                if (too_many_values_error == NULL)
+                ptlang_verify_exp(exp->content.array.values[i], ctx, errors);
+                ptlang_verify_check_implicit_cast(exp->content.array.values[i]->ast_type, member_type,
+                                                  exp->content.array.values[i]->pos, ctx, errors);
+                if (i >= array_type->content.array.len)
                 {
-                    char *message = NULL;
-                    ptlang_utils_build_str(message, CONST_STR("An array of type "),
-                                           ptlang_verify_type_to_string(array_type, ctx->type_scope),
-                                           CONST_STR(" may not have more than "),
-                                           ptlang_utils_sprintf_alloc("%zu", array_type->content.array.len),
-                                           CONST_STR(" values."));
-                    arrput(*errors, ((ptlang_error){
-                                        .type = PTLANG_ERROR_VALUE_COUNT,
-                                        .pos = *exp->content.array.values[i]->pos,
-                                        .message = message,
-                                    }));
-                    too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
-                }
-                else
-                {
-                    too_many_values_error->pos.to_column = exp->content.array.values[i]->pos->to_column;
-                    too_many_values_error->pos.to_line = exp->content.array.values[i]->pos->to_line;
+                    if (too_many_values_error == NULL)
+                    {
+                        char *message = NULL;
+                        ptlang_utils_build_str(
+                            message, CONST_STR("An array of type "),
+                            ptlang_verify_type_to_string(array_type, ctx->type_scope),
+                            CONST_STR(" may not have more than "),
+                            ptlang_utils_sprintf_alloc("%zu", array_type->content.array.len),
+                            CONST_STR(" values."));
+                        arrput(*errors, ((ptlang_error){
+                                            .type = PTLANG_ERROR_VALUE_COUNT,
+                                            .pos = *exp->content.array.values[i]->pos,
+                                            .message = message,
+                                        }));
+                        too_many_values_error = &((*errors)[arrlenu(*errors) - 1]);
+                    }
+                    else
+                    {
+                        too_many_values_error->pos.to_column = exp->content.array.values[i]->pos->to_column;
+                        too_many_values_error->pos.to_line = exp->content.array.values[i]->pos->to_line;
+                    }
                 }
             }
         }
@@ -1171,7 +1172,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
                        sizeof("Duplicate struct definition of ") - 1);
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
-                                    .pos = struct_defs[i]->name.pos,
+                                    .pos = *(struct_defs[i]->name.pos),
                                     .message = message,
                                 }));
             }
@@ -1186,7 +1187,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
     for (size_t i = 0; i < arrlenu(struct_defs); i++)
     {
         char **referenced_types =
-            pltang_verify_struct_get_referenced_types_from_struct_def(struct_defs[i], ctx, errors);
+            ptlang_verify_struct_get_referenced_types_from_struct_def(struct_defs[i], ctx, errors);
         for (size_t j = 0; j < arrlenu(referenced_types); j++)
         {
             arrpush(nodes[i].edges_to, &nodes[shget(ctx->type_scope, referenced_types[j]).index]);
@@ -1315,7 +1316,7 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
     for (size_t i = 0; i < arrlenu(ast_module->type_aliases); i++)
     {
         bool is_error_type = false;
-        size_t *referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
+        size_t *referenced_types = ptlang_verify_type_alias_get_referenced_types_from_ast_type(
             ast_module->type_aliases[i].type, ctx, errors, &is_error_type);
 
         if (is_error_type)
@@ -1396,7 +1397,7 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
  * @param has_error is set to true if an undefined type is referenced
  * @return ptrdiff_t* returns the indices of all referenced type aliases in the type_alias_table
  */
-static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
+static size_t *ptlang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
                                                                            ptlang_context *ctx,
                                                                            ptlang_error **errors,
                                                                            bool *has_error)
@@ -1411,13 +1412,13 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
     case PTLANG_AST_TYPE_FLOAT:
         break;
     case PTLANG_AST_TYPE_ARRAY:
-        return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.array.type, ctx,
+        return ptlang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.array.type, ctx,
                                                                            errors, has_error);
     case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.heap_array.type,
+        return ptlang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.heap_array.type,
                                                                            ctx, errors, has_error);
     case PTLANG_AST_TYPE_REFERENCE:
-        return pltang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.reference.type,
+        return ptlang_verify_type_alias_get_referenced_types_from_ast_type(ast_type->content.reference.type,
                                                                            ctx, errors, has_error);
     case PTLANG_AST_TYPE_NAMED:
     {
@@ -1442,11 +1443,11 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
         break;
     }
     case PTLANG_AST_TYPE_FUNCTION:
-        referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
+        referenced_types = ptlang_verify_type_alias_get_referenced_types_from_ast_type(
             ast_type->content.function.return_type, ctx, errors, has_error);
         for (size_t i = 0; i < arrlenu(ast_type->content.function.parameters); i++)
         {
-            size_t *param_referenced_types = pltang_verify_type_alias_get_referenced_types_from_ast_type(
+            size_t *param_referenced_types = ptlang_verify_type_alias_get_referenced_types_from_ast_type(
                 ast_type->content.function.parameters[i], ctx, errors, has_error);
             for (size_t j = 0; j < arrlenu(param_referenced_types); j++)
             {
@@ -1459,7 +1460,7 @@ static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlan
     return referenced_types;
 }
 
-static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
+static char **ptlang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
                                                                         ptlang_context *ctx,
                                                                         ptlang_error **errors)
 {
@@ -1477,7 +1478,7 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
             type = ptlang_context_unname_type(type, ctx->type_scope);
         }
 
-        if (type->type == PTLANG_AST_TYPE_NAMED)
+        if (type != NULL && type->type == PTLANG_AST_TYPE_NAMED)
         {
             // => must be struct
             arrput(referenced_types, type->content.name);
@@ -1486,15 +1487,15 @@ static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_a
     return referenced_types;
 }
 
-// static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
+// static ptlang_verify_struct ptlang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
 //                                                         ptlang_context *ctx, ptlang_error **errors)
 // {
 
-//     return (struct pltang_verify_struct_s){
+//     return (struct ptlang_verify_struct_s){
 //         .name = ast_struct_def->name.name,
 //         .pos = ast_struct_def->pos,
 //         .referenced_types =
-//             pltang_verify_struct_get_referenced_types_from_struct_def(ast_struct_def, ctx, errors),
+//             ptlang_verify_struct_get_referenced_types_from_struct_def(ast_struct_def, ctx, errors),
 //         .referencing_types = NULL,
 //         .resolved = false,
 //     };
@@ -1589,6 +1590,7 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
 
         size_t message_len = to_len + from_len + sizeof(" cannot be casted to the expected type .");
 
+        assert(message_len > 0);
         // Allocate memory for the message
         char *message = ptlang_malloc(message_len);
         char *message_ptr = message;
@@ -1614,6 +1616,7 @@ static ptlang_utils_str ptlang_verify_type_to_string(ptlang_ast_type type,
                                                      ptlang_context_type_scope *type_scope)
 {
     size_t str_size = ptlang_context_type_to_string(type, NULL, type_scope);
+    assert(str_size > 0);
     char *type_str = ptlang_malloc(str_size);
     ptlang_context_type_to_string(type, type_str, type_scope);
     return ALLOCATED_STR(type_str);
@@ -1794,7 +1797,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
                 pointer_size_in_bytes < sizeof(exp->content.unary_operator->ast_type->content.array.len)
                     ? pointer_size_in_bytes
                     : sizeof(exp->content.unary_operator->ast_type->content.array.len);
-            for (uint8_t i = 0; i < pointer_size_in_bytes; i++)
+            for (uint8_t i = 0; i < bytes; i++)
             {
                 binary[i] = exp->content.unary_operator->ast_type->content.array.len >> (i << 3);
             }
@@ -1966,6 +1969,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
         }
 
         evaluated = ptlang_verify_eval(array->content.array.values[num], eval_fully, ctx);
+        break;
     }
     case PTLANG_AST_EXP_REFERENCE:
     {
@@ -2001,6 +2005,7 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
             .type = PTLANG_AST_EXP_BINARY,
             .content.binary = ptlang_malloc_zero(((type->content.integer.size - 1) >> 3) + 1),
         };
+        break;
     }
     case PTLANG_AST_TYPE_FLOAT:
     {
@@ -2008,11 +2013,10 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
             .type = PTLANG_AST_EXP_BINARY,
             .content.binary = ptlang_malloc_zero(type->content.float_size >> 3),
         };
-        return default_value;
+        break;
     }
     case PTLANG_AST_TYPE_ARRAY:
     {
-        ptlang_ast_exp default_value = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
         ptlang_ast_exp *array_values = NULL;
         for (size_t i = 0; i < type->content.array.len; i++)
         {
@@ -2024,6 +2028,7 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
             .content.array.type = ptlang_context_copy_unname_type(type->content.array.type, ctx->type_scope),
             .content.array.values = array_values,
         };
+        break;
     }
     case PTLANG_AST_TYPE_NAMED:
     {
@@ -2088,14 +2093,56 @@ static size_t ptlang_verify_calc_node_count(ptlang_ast_type type, ptlang_context
     }
 }
 
-static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context_type_scope *type_scope)
+static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_graph_node *node,
+                                      ptlang_context_type_scope *type_scope)
+{
+    node->data = path_exp;
+    node++;
+    switch (path_exp->ast_type->type)
+    {
+    case PTLANG_AST_TYPE_ARRAY:
+    {
+        for (size_t i = 0; i < path_exp->ast_type->content.array.len; i++)
+        {
+            char *index_str_repr = ptlang_malloc(21);
+            snprintf(index_str_repr, 21, "%" PRIu64, i);
+            ptlang_ast_exp index = ptlang_ast_exp_integer_new(index_str_repr, NULL);
+            ptlang_ast_exp array_element = ptlang_ast_exp_array_element_new(
+                ptlang_ast_exp_copy(path_exp), index, ptlang_ast_code_position_copy(path_exp->pos));
+            ptlang_verify_label_nodes(array_element, node, type_scope);
+        }
+        break;
+    }
+
+    case PTLANG_AST_TYPE_NAMED:
+    {
+        ptlang_ast_struct_def struct_def =
+            ptlang_context_get_struct_def(path_exp->ast_type->content.name, type_scope);
+        for (size_t i = 0; i < arrlenu(struct_def->members); i++)
+        {
+            ptlang_ast_exp struct_member = ptlang_ast_exp_struct_member_new(
+                ptlang_ast_exp_copy(path_exp), ptlang_ast_ident_copy(struct_def->members[i]->name),
+                ptlang_ast_code_position_copy(path_exp->pos));
+            ptlang_verify_label_nodes(struct_member, node, type_scope);
+        }
+        break;
+    }
+    default:
+        break;
+    }
+}
+
+static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context *ctx)
 {
     ptlang_verify_node_table node_table = NULL;
+    // ptlang_verify_decl_table decl_table = NULL;
     ptlang_utils_graph_node *nodes = NULL;
 
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        size_t decl_node_count = ptlang_verify_calc_node_count(module->declarations[i]->type, type_scope);
+        // shput(decl_table, module->declarations[i]->name.name, module->declarations[i]);
+        size_t decl_node_count =
+            ptlang_verify_calc_node_count(module->declarations[i]->type, ctx->type_scope);
         for (size_t j = 0; j < decl_node_count; j++)
         {
             arrpush(nodes, (struct node_s){.index = -1});
@@ -2105,8 +2152,28 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context_
     }
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        // TODO
+        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name);
+        size_t var_name_size = strlen(module->declarations[i]->name.name) + 1;
+        char *var_name = ptlang_malloc(var_name_size);
+        memcpy(var_name, module->declarations[i]->name.name, var_name_size);
+        ptlang_ast_exp global_var = ptlang_ast_exp_variable_new(
+            var_name, ptlang_ast_code_position_copy(module->declarations[i]->name.pos));
+        ptlang_verify_label_nodes(global_var, node, ctx->type_scope);
+        if (module->declarations[i]->init != NULL)
+            ptlang_verify_build_graph(node, module->declarations[i]->init, node_table, ctx);
     }
+
+    ptlang_utils_graph_node **cycles = ptlang_utils_find_cycles(nodes);
+
+    for (size_t i = 0; i < arrlenu(module->declarations); i++)
+    {
+        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name);
+        if (module->declarations[i]->init == NULL || node->in_cycle)
+            module->declarations[i]->init =
+                ptlang_verify_get_default_value(module->declarations[i]->type, ctx);
+    }
+
+    // TODO error messages
 }
 
 /**
@@ -2156,7 +2223,7 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
     case PTLANG_AST_EXP_STRUCT:
         for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
         {
-            ptlang_ast_type struct_type = exp->type;
+            ptlang_ast_type struct_type = exp->ast_type;
             ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(
                 ptlang_context_unname_type(struct_type->content.name, ctx->type_scope), ctx->type_scope);
 
@@ -2205,7 +2272,7 @@ static void ptlang_verify_add_dependency(ptlang_utils_graph_node *from, ptlang_u
                                          ptlang_ast_exp exp, ptlang_verify_node_table node_table,
                                          ptlang_context *ctx)
 {
-    size_t node_count = ptlang_verify_calc_node_count(exp->type, ctx->type_scope);
+    size_t node_count = ptlang_verify_calc_node_count(exp->ast_type, ctx->type_scope);
     for (size_t i = 0; i < node_count; i++)
     {
         arrpush(from[i].edges_to, &to[i]);
@@ -2225,7 +2292,7 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
     {
         ptlang_utils_graph_node *base_node =
             ptlang_verify_get_node(exp->content.struct_member.struct_, node_table, ctx);
-        ptlang_ast_type struct_type = exp->content.struct_member.struct_->type;
+        ptlang_ast_type struct_type = exp->content.struct_member.struct_->ast_type;
         ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(
             ptlang_context_unname_type(struct_type->content.name, ctx->type_scope), ctx->type_scope);
 
@@ -2251,7 +2318,7 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
     }
 }
 
-size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_context *ctx)
+static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_context *ctx)
 {
 
     enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);

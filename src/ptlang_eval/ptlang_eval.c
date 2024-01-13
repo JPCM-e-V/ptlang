@@ -5,7 +5,7 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
     LLVMContextRef C = LLVMContextCreate();
     LLVMModuleRef M = LLVMModuleCreateWithNameInContext("ptlang_eval", C);
 
-    LLVMTypeRef type = ptlang_ir_builder_type(exp->ast_type, NULL, C);
+    // LLVMTypeRef type = ptlang_ir_builder_type(exp->ast_type, NULL, C);
 
     LLVMTypeRef func_type =
         LLVMFunctionType(LLVMVoidTypeInContext(C), (LLVMTypeRef[]){LLVMPointerTypeInContext(C, 0)}, 1, false);

@@ -301,8 +301,8 @@ LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build
         {
             param_types[i] = ptlang_ir_builder_type(type->content.function.parameters[i], ctx, C);
         }
-        function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, ctx, C),
-                                         param_types, arrlenu(type->content.function.parameters), false);
+        // function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, ctx, C),
+        //                                  param_types, arrlenu(type->content.function.parameters), false);
         ptlang_free(param_types);
         function_type = LLVMPointerTypeInContext(C, 0);
         return function_type;
@@ -1694,6 +1694,8 @@ LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_c
         }
 
         LLVMValueRef as_array = LLVMConstArray(LLVMArrayType(byte, byte_size), bytes, byte_size);
+
+        ptlang_free(bytes);
 
         LLVMValueRef as_int = LLVMConstBitCast(as_array, LLVMIntType(byte_size * 8));
         if (bit_size != byte_size * 8)

@@ -60,7 +60,7 @@ int main(void)
         exit(1);
     }
 
-    pltang_context_destory(&ctx);
+    ptlang_context_destory(&ctx);
 
     LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
     LLVMDumpModule(llvmmod);

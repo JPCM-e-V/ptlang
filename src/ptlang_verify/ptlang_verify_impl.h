@@ -12,22 +12,22 @@
 
 #include "stb_ds.h"
 
-typedef struct pltang_verify_type_alias_s pltang_verify_type_alias;
-struct pltang_verify_type_alias_s
+typedef struct ptlang_verify_type_alias_s ptlang_verify_type_alias;
+struct ptlang_verify_type_alias_s
 {
     ptlang_ast_type type;
     char *name;
     ptlang_ast_code_position pos;
     ptlang_ast_ident *referenced_types;
-    pltang_verify_type_alias **referencing_types;
+    ptlang_verify_type_alias **referencing_types;
     bool resolved;
 };
 
 typedef struct
 {
     char *key;
-    pltang_verify_type_alias value;
-} pltang_verify_type_alias_table;
+    ptlang_verify_type_alias value;
+} ptlang_verify_type_alias_table;
 
 typedef struct ptlang_verify_node_table_s
 {
@@ -35,33 +35,39 @@ typedef struct ptlang_verify_node_table_s
     ptlang_utils_graph_node *value;
 } *ptlang_verify_node_table;
 
-// typedef struct pltang_verify_struct_s pltang_verify_struct;
-// struct pltang_verify_struct_s
+typedef struct ptlang_verify_decl_table_s
+{
+    char *key;
+    ptlang_ast_decl *value;
+} *ptlang_verify_decl_table;
+
+// typedef struct ptlang_verify_struct_s ptlang_verify_struct;
+// struct ptlang_verify_struct_s
 // {
 //     char *name;
 //     ptlang_ast_code_position pos;
 //     char **referenced_types;
-//     pltang_verify_struct **referencing_types;
+//     ptlang_verify_struct **referencing_types;
 //     bool resolved;
 // };
 
 // typedef struct
 // {
 //     char *key;
-//     pltang_verify_struct value;
-// } pltang_verify_struct_table;
+//     ptlang_verify_struct value;
+// } ptlang_verify_struct_table;
 
 static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlang_context *ctx,
                                              ptlang_error **errors);
 
-// static pltang_verify_type_alias
-// pltang_verify_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias, ptlang_context *ctx);
+// static ptlang_verify_type_alias
+// ptlang_verify_type_alias_create(struct ptlang_ast_module_type_alias_s ast_type_alias, ptlang_context *ctx);
 
 static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang_context *ctx,
                                       ptlang_error **errors);
 static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang_error **errors);
 
-// static pltang_verify_struct pltang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
+// static ptlang_verify_struct ptlang_verify_struct_create(ptlang_ast_struct_def ast_struct_def,
 //                                                         ptlang_context *ctx, ptlang_error **errors);
 
 static void ptlang_verify_decl(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
@@ -84,12 +90,12 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
 
 static void ptlang_verify_functions(ptlang_ast_func *functions, ptlang_context *ctx, ptlang_error **errors);
 
-static size_t *pltang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
+static size_t *ptlang_verify_type_alias_get_referenced_types_from_ast_type(ptlang_ast_type ast_type,
                                                                            ptlang_context *ctx,
                                                                            ptlang_error **errors,
                                                                            bool *has_error);
 
-static char **pltang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
+static char **ptlang_verify_struct_get_referenced_types_from_struct_def(ptlang_ast_struct_def struct_def,
                                                                         ptlang_context *ctx,
                                                                         ptlang_error **errors);
 
@@ -112,5 +118,20 @@ static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset,
 ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_context *ctx);
 
 static size_t ptlang_verify_calc_node_count(ptlang_ast_type type, ptlang_context_type_scope *type_scope);
+
+static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_context *ctx);
+
+static ptlang_utils_graph_node *
+ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, ptlang_context *ctx);
+
+static void ptlang_verify_add_dependency(ptlang_utils_graph_node *from, ptlang_utils_graph_node *to,
+                                         ptlang_ast_exp exp, ptlang_verify_node_table node_table,
+                                         ptlang_context *ctx);
+
+static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_exp exp,
+                                      ptlang_verify_node_table node_table, ptlang_context *ctx);
+
+static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_graph_node *node,
+                                      ptlang_context_type_scope *type_scope);
 
 #endif

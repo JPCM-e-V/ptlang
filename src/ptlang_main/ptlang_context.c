@@ -1,6 +1,6 @@
 #include "ptlang_context.h"
 
-void pltang_context_destory(ptlang_context *ctx) { shfree(ctx->type_scope); }
+void ptlang_context_destory(ptlang_context *ctx) { shfree(ctx->type_scope); }
 
 ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope)
 {
@@ -82,6 +82,8 @@ size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_con
         {
             memcpy(out, "Error Type", size);
         }
+
+        return size;
     }
     switch (type->type)
     {
