@@ -25,7 +25,7 @@ struct node_s
     size_t index;
     size_t lowlink;
     bool on_stack;
-    void* data;
+    void *data;
 };
 
 typedef struct ptlang_utils_str
@@ -72,7 +72,7 @@ typedef struct ptlang_utils_str
 
 ptlang_utils_graph_node **ptlang_utils_find_cycles(ptlang_utils_graph_node *graph);
 
-char *ptlang_utils_build_str_from_stb_arr(char **components);
+char *ptlang_utils_build_str_from_char_arr(char **components);
 
 void ptlang_utils_graph_free(ptlang_utils_graph_node *graph);
 

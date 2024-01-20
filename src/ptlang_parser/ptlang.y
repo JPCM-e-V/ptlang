@@ -1,5 +1,6 @@
 %code requires {
     #include "ptlang_ast.h"
+    #include "ptlang_error.h"
 }
 
 %{
@@ -36,6 +37,8 @@
 
 %glr-parser
 %expect-rr 1
+/* %lex-param {ptlang_ast_module out} {ptlang_error **syntax_errors} */
+%parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors}
 
 %token PLUS
 %token MINUS
@@ -131,10 +134,10 @@
 %%
 
 module:
-      | module declaration { ptlang_ast_module_add_declaration(*ptlang_parser_module_out, $2); }
-      | module function { ptlang_ast_module_add_function(*ptlang_parser_module_out, $2); }
-      | module struct_def { ptlang_ast_module_add_struct_def(*ptlang_parser_module_out, $2); }
-      | module TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(*ptlang_parser_module_out, $3, $4, ppcpft(&@2, &@$)); }
+      | module declaration { ptlang_ast_module_add_declaration(out, $2); }
+      | module function { ptlang_ast_module_add_function(out, $2); }
+      | module struct_def { ptlang_ast_module_add_struct_def(out, $2); }
+      | module TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(out, $3, $4, ppcpft(&@2, &@$)); }
 
 declaration: module_decl SEMICOLON { $$ = $1; }
 
@@ -184,11 +187,11 @@ struct_def: STRUCT_DEF ident OPEN_CURLY_BRACE struct_members CLOSE_CURLY_BRACE
            { $$ = ptlang_ast_struct_def_new($2, $4, ppcpft(&@2, &@$)); }
 
 
-type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1); }
+type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1, syntax_errors); }
     | FLOAT_TYPE { $$ = ptlang_ast_type_float($1, ppcp(&@$)); }
     | OPEN_BRACKET types CLOSE_BRACKET COLON type_or_void { $$ = ptlang_ast_type_function($5, $2, ppcp(&@$)); }
     | OPEN_SQUARE_BRACKET CLOSE_SQUARE_BRACKET type { $$ = ptlang_ast_type_heap_array($3, ppcp(&@$)); }
-    | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); ptlang_free($2); }
+    | OPEN_SQUARE_BRACKET INT CLOSE_SQUARE_BRACKET type  { $$ = ptlang_ast_type_array($4, ptlang_parser_strtouint64($2, &@2, syntax_errors), ppcp(&@$)); ptlang_free($2); }
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true, ppcp(&@$)); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false, ppcp(&@$)); }
     | IDENT { $$ = ptlang_ast_type_named($1, ppcp(&@$)); }
@@ -218,8 +221,8 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL, ppcp(&@$)); }
     | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(1, ppcp(&@$)); }
     | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(1, ppcp(&@$)); }
-    | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
-    | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2), ppcp(&@$)); }
+    | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2, syntax_errors), ppcp(&@$)); }
+    | CONTINUE INT SEMICOLON { $$ = ptlang_ast_stmt_continue_new(ptlang_parser_strtouint64($2, &@2, syntax_errors), ppcp(&@$)); }
 
 block: { $$ = ptlang_ast_stmt_block_new(ppcp(&@$)); }
      | block stmt { $$ = $1; ptlang_ast_stmt_block_add_stmt($$, $2); }

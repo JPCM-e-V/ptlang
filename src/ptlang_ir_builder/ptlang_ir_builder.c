@@ -301,7 +301,8 @@ LLVMTypeRef ptlang_ir_builder_type(ptlang_ast_type type, ptlang_ir_builder_build
         {
             param_types[i] = ptlang_ir_builder_type(type->content.function.parameters[i], ctx, C);
         }
-        // function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, ctx, C),
+        // function_type = LLVMFunctionType(ptlang_ir_builder_type(type->content.function.return_type, ctx,
+        // C),
         //                                  param_types, arrlenu(type->content.function.parameters), false);
         ptlang_free(param_types);
         function_type = LLVMPointerTypeInContext(C, 0);

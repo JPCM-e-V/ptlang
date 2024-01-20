@@ -1,6 +1,7 @@
 #ifndef PTLANG_AST_H
 #define PTLANG_AST_H
 
+#include "ptlang_utils.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -198,5 +199,7 @@ ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position 
 ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
 
 ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
+
+ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp);
 
 #endif

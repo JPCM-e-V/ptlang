@@ -102,7 +102,7 @@ static char *ptlang_utils_build_str_from_components(char **components, size_t co
     return str;
 }
 
-char *ptlang_utils_build_str_from_stb_arr(char **components)
+char *ptlang_utils_build_str_from_char_arr(char **components)
 {
     return ptlang_utils_build_str_from_components(components, arrlenu(components));
 }
@@ -114,7 +114,8 @@ ptlang_utils_str ptlang_utils_sprintf_alloc(const char *fmt, ...)
 
     va_list ap;
     va_start(ap, fmt);
-    int n = vsnprintf(NULL, 0, fmt, ap);
+    // clang-tidy false positive: llvm/llvm-project#40656
+    int n = vsnprintf(NULL, 0, fmt, ap); // NOLINT(clang-analyzer-valist.Uninitialized)
     va_end(ap);
 
     if (n < 0)
@@ -135,5 +136,27 @@ ptlang_utils_str ptlang_utils_sprintf_alloc(const char *fmt, ...)
         return CONST_STR(NULL);
     }
 
+    return str;
+}
+
+char *ptlang_utils_build_str_from_str_arr(ptlang_utils_str *strings)
+{
+    size_t string_count = arrlenu(strings);
+    size_t str_len = 0;
+    for (size_t i = 0; i < string_count; i++)
+    {
+        str_len += strlen(strings[i].str);
+    }
+    char *str = ptlang_malloc(str_len + 1);
+    char *str_ptr = str;
+    for (size_t i = 0; i < string_count; i++)
+    {
+        size_t component_len = strlen(strings[i].str);
+        memcpy(str_ptr, strings[i].str, component_len);
+        str_ptr += component_len;
+        if (strings[i].to_free)
+            ptlang_free(strings[i].str);
+    }
+    *str_ptr = '\0';
     return str;
 }

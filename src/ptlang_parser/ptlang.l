@@ -105,5 +105,5 @@
 "void"                                                                  { return VOID; }
 [a-zA-Z_][a-zA-Z_0-9]*                                                  { SAVE_STR; return IDENT; }
 <<EOF>>                                                                 { return PTLANG_YYEOF; }
-.                                                                       { ptlang_yyerror(yylloc, "Unknown token\n"); yyterminate(); };
+.                                                                       { /*ptlang_yyerror(yylloc, "Unknown token\n"); */yyterminate(); };
 %%

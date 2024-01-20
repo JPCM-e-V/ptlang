@@ -1121,3 +1121,170 @@ ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
     }
     return copy;
 }
+
+ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
+{
+    char *str = NULL;
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    case PTLANG_AST_EXP_ADDITION:
+    case PTLANG_AST_EXP_SUBTRACTION:
+    case PTLANG_AST_EXP_NEGATION:
+    case PTLANG_AST_EXP_MULTIPLICATION:
+    case PTLANG_AST_EXP_DIVISION:
+    case PTLANG_AST_EXP_MODULO:
+    case PTLANG_AST_EXP_REMAINDER:
+    case PTLANG_AST_EXP_EQUAL:
+    case PTLANG_AST_EXP_NOT_EQUAL:
+    case PTLANG_AST_EXP_GREATER:
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+    case PTLANG_AST_EXP_LESS:
+    case PTLANG_AST_EXP_LESS_EQUAL:
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+    case PTLANG_AST_EXP_AND:
+    case PTLANG_AST_EXP_OR:
+    case PTLANG_AST_EXP_BITWISE_AND:
+    case PTLANG_AST_EXP_BITWISE_OR:
+    case PTLANG_AST_EXP_BITWISE_XOR:
+    {
+        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.binary_operator.left_value),
+                               CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
+                               ptlang_ast_exp_to_string(exp->content.binary_operator.right_value));
+        break;
+    }
+    case PTLANG_AST_EXP_NOT:
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+    case PTLANG_AST_EXP_LENGTH:
+    case PTLANG_AST_EXP_DEREFERENCE:
+    {
+        ptlang_utils_build_str(str, CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
+                               ptlang_ast_exp_to_string(exp->content.unary_operator));
+        break;
+    }
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+    {
+        // TODO;
+        break;
+    }
+    case PTLANG_AST_EXP_VARIABLE:
+    {
+        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        break;
+    }
+    case PTLANG_AST_EXP_INTEGER:
+    {
+        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        break;
+    }
+    case PTLANG_AST_EXP_FLOAT:
+    {
+        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT:
+    {
+        // TODO
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY:
+    {
+        // TOOD
+        break;
+    }
+    case PTLANG_AST_EXP_TERNARY:
+    {
+        // TOOD
+        break;
+    }
+    case PTLANG_AST_EXP_CAST:
+    {
+        // TOOD
+        break;
+    }
+    case PTLANG_AST_EXP_STRUCT_MEMBER:
+    {
+        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.struct_member.struct_),
+                               CONST_STR("."), CONST_STR(exp->content.struct_member.member_name.name));
+        break;
+    }
+    case PTLANG_AST_EXP_ARRAY_ELEMENT:
+    {
+        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.array_element.array),
+                               CONST_STR("["), ptlang_ast_exp_to_string(exp->content.array_element.index),
+                               CONST_STR("]"));
+        break;
+    }
+    case PTLANG_AST_EXP_REFERENCE:
+    {
+        // TODO writeable
+        ptlang_utils_build_str(str, CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
+                               ptlang_ast_exp_to_string(exp->content.reference.value));
+        break;
+    }
+    case PTLANG_AST_EXP_BINARY:
+        abort();
+    }
+}
+
+static char *ptlang_ast_exp_type_get_symbol(ptlang_ast_exp exp)
+{
+    switch (exp->type)
+    {
+    case PTLANG_AST_EXP_ASSIGNMENT:
+        return "=";
+    case PTLANG_AST_EXP_ADDITION:
+        return "+";
+    case PTLANG_AST_EXP_SUBTRACTION:
+        return "-";
+    case PTLANG_AST_EXP_NEGATION:
+        return "-";
+    case PTLANG_AST_EXP_MULTIPLICATION:
+        return "*";
+    case PTLANG_AST_EXP_DIVISION:
+        return "/";
+    case PTLANG_AST_EXP_MODULO:
+        return "mod";
+    case PTLANG_AST_EXP_REMAINDER:
+        return "%";
+    case PTLANG_AST_EXP_EQUAL:
+        return "==";
+    case PTLANG_AST_EXP_NOT_EQUAL:
+        return "!=";
+    case PTLANG_AST_EXP_GREATER:
+        return ">";
+    case PTLANG_AST_EXP_GREATER_EQUAL:
+        return ">=";
+    case PTLANG_AST_EXP_LESS:
+        return "<";
+    case PTLANG_AST_EXP_LESS_EQUAL:
+        return "<=";
+    case PTLANG_AST_EXP_LEFT_SHIFT:
+        return "<<";
+    case PTLANG_AST_EXP_RIGHT_SHIFT:
+        return ">>";
+    case PTLANG_AST_EXP_AND:
+        return "&&";
+    case PTLANG_AST_EXP_OR:
+        return "||";
+    case PTLANG_AST_EXP_NOT:
+        return "!";
+    case PTLANG_AST_EXP_BITWISE_AND:
+        return "&";
+    case PTLANG_AST_EXP_BITWISE_OR:
+        return "|";
+    case PTLANG_AST_EXP_BITWISE_XOR:
+        return "^";
+    case PTLANG_AST_EXP_BITWISE_INVERSE:
+        return "~";
+    case PTLANG_AST_EXP_LENGTH:
+        return "#";
+    case PTLANG_AST_EXP_REFERENCE:
+        return "&";
+    case PTLANG_AST_EXP_DEREFERENCE:
+        return "*";
+    default:
+        abort();
+    }
+}

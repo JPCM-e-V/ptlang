@@ -24,8 +24,9 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
     ptlang_verify_struct_defs(module->struct_defs, ctx, &errors);
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        // ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
+        ptlang_verify_decl(module->declarations[i], 0, ctx, &errors);
     }
+    ptlang_verify_eval_globals(module, ctx, &errors);
     ptlang_verify_functions(module->functions, ctx, &errors);
     return errors;
 }
@@ -1160,16 +1161,23 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
 {
     for (size_t i = 0; i < arrlenu(struct_defs); i++)
     {
-        for (size_t j = i; j < arrlenu(struct_defs); i++)
+        for (size_t j = i + 1; j < arrlenu(struct_defs); j++)
         {
-            if (strcmp(struct_defs[i]->name.name, struct_defs[j]->name.name) == 0)
+            ptlang_ast_struct_def struct_def_i = struct_defs[i];
+            ptlang_ast_struct_def struct_def_j = struct_defs[j];
+            printf("i: %zu, j: %zu \n", i, j);
+            if (strcmp(struct_def_i->name.name, struct_def_j->name.name) == 0)
             {
-                size_t message_size =
-                    sizeof("Duplicate struct definition of ") + strlen(struct_defs[i]->name.name);
+                size_t name_len = strlen(struct_defs[i]->name.name);
+
+                size_t message_size = sizeof("Duplicate struct definition of ") + name_len;
 
                 char *message = ptlang_malloc(message_size);
                 memcpy(message, "Duplicate struct definition of ",
                        sizeof("Duplicate struct definition of ") - 1);
+                memcpy(message + sizeof("Duplicate struct definition of ") - 1, struct_defs[i]->name.name,
+                       name_len);
+                message[message_size - 1] = '\0';
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_STRUCT_MEMBER_DUPLICATION,
                                     .pos = *(struct_defs[i]->name.pos),
@@ -1220,7 +1228,7 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
             arrpush(message_components, " are recursive.");
         }
 
-        char *message = ptlang_utils_build_str_from_stb_arr(message_components);
+        char *message = ptlang_utils_build_str_from_char_arr(message_components);
         size_t message_size = strlen(message) + 1;
         arrfree(message_components);
 
@@ -1363,7 +1371,7 @@ static void ptlang_verify_type_resolvability(ptlang_ast_module ast_module, ptlan
             arrpush(message_components, " form a circular definition.");
         }
 
-        char *message = ptlang_utils_build_str_from_stb_arr(message_components);
+        char *message = ptlang_utils_build_str_from_char_arr(message_components);
         size_t message_size = strlen(message) + 1;
         arrfree(message_components);
 
@@ -1743,10 +1751,17 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
         ptlang_verify_exp_check_const(exp->content.reference.value, ctx, errors);
         break;
     }
+    case PTLANG_AST_EXP_BINARY:
+    {
+        abort();
+        break;
+    }
     }
 }
 
-static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, ptlang_context *ctx)
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, ptlang_utils_graph_node *node,
+                                         ptlang_utils_graph_node *nodes, ptlang_verify_node_table node_table,
+                                         ptlang_ast_module module, ptlang_context *ctx, ptlang_error **errors)
 {
     ptlang_ast_exp substituted = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
     ptlang_ast_exp evaluated = NULL;
@@ -1772,8 +1787,10 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
     {
-        ptlang_ast_exp left_value = ptlang_verify_eval(exp->content.binary_operator.left_value, true, ctx);
-        ptlang_ast_exp right_value = ptlang_verify_eval(exp->content.binary_operator.right_value, true, ctx);
+        ptlang_ast_exp left_value = ptlang_verify_eval(exp->content.binary_operator.left_value, true, node,
+                                                       nodes, node_table, module, ctx, errors);
+        ptlang_ast_exp right_value = ptlang_verify_eval(exp->content.binary_operator.right_value, true, node,
+                                                        nodes, node_table, module, ctx, errors);
         *substituted = (struct ptlang_ast_exp_s){
             .type = exp->type,
             .content.binary_operator =
@@ -1809,7 +1826,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     {
-        ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, true, ctx);
+        ptlang_ast_exp operand = ptlang_verify_eval(exp->content.unary_operator, true, node, nodes,
+                                                    node_table, module, ctx, errors);
         *substituted = (struct ptlang_ast_exp_s){
             .type = exp->type,
             .content.unary_operator = operand,
@@ -1820,16 +1838,23 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     }
     case PTLANG_AST_EXP_DEREFERENCE:
     {
-        ptlang_ast_exp reference = ptlang_verify_eval(exp->content.unary_operator, eval_fully, ctx);
-        // TODO recheck cycles
-        evaluated = ptlang_verify_eval(reference->content.reference.value, eval_fully, ctx);
+        ptlang_ast_exp reference = ptlang_verify_eval(exp->content.unary_operator, false, node, nodes,
+                                                      node_table, module, ctx, errors);
+
+        // recheck cycles
+        ptlang_verify_build_graph(node, reference->content.reference.value, false, node_table, ctx);
+        ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
+        evaluated = ptlang_verify_eval(reference->content.reference.value, eval_fully, node, nodes,
+                                       node_table, module, ctx, errors);
         break;
     }
     case PTLANG_AST_EXP_VARIABLE:
     {
         // assumes that global variable was already initialized
-        evaluated = ptlang_verify_eval(
-            ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation)->init, eval_fully, ctx);
+        evaluated =
+            ptlang_verify_eval(ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation)->init,
+                               eval_fully, node, nodes, node_table, module, ctx, errors);
         break;
     }
     case PTLANG_AST_EXP_INTEGER:
@@ -1843,6 +1868,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
         ptlang_ast_struct_def struct_def =
             ptlang_context_get_struct_def(exp->content.struct_.type.name, ctx->type_scope);
         ptlang_ast_struct_member_list struct_members = NULL;
+        node += 1;
         for (size_t i = 0; i < arrlenu(struct_def->members); i++)
         {
             size_t j;
@@ -1853,7 +1879,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
             }
             struct ptlang_ast_struct_member_s member = (struct ptlang_ast_struct_member_s){
                 .exp = j < arrlenu(exp->content.struct_.members)
-                           ? (eval_fully ? ptlang_verify_eval(exp->content.struct_.members[j].exp, true, ctx)
+                           ? (eval_fully ? ptlang_verify_eval(exp->content.struct_.members[j].exp, true, node,
+                                                              nodes, node_table, module, ctx, errors)
                                          : ptlang_ast_exp_copy(exp->content.struct_.members[j].exp))
                            : ptlang_verify_get_default_value(struct_def->members[i]->type, ctx),
                 .str = ptlang_ast_ident_copy(struct_def->members[i]->name),
@@ -1861,6 +1888,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
             };
 
             arrpush(struct_members, member);
+            node += ptlang_verify_calc_node_count(struct_def->members[i]->type, ctx->type_scope);
         }
         evaluated = ptlang_ast_exp_struct_new(ptlang_ast_ident_copy(exp->content.struct_.type),
                                               struct_members, ptlang_ast_code_position_copy(exp->pos));
@@ -1870,14 +1898,20 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     case PTLANG_AST_EXP_ARRAY:
     {
         ptlang_ast_exp *array_values = NULL;
+        nodes += 1;
+        size_t element_nodes =
+            ptlang_verify_calc_node_count(exp->content.array.type->content.array.type, ctx->type_scope);
         for (size_t i = 0; i < exp->content.array.type->content.array.len; i++)
         {
             if (i < arrlenu(exp->content.array.values))
-                arrpush(array_values, eval_fully ? ptlang_verify_eval(exp->content.array.values[i], true, ctx)
-                                                 : ptlang_ast_exp_copy(exp->content.array.values[i]));
+                arrpush(array_values, eval_fully
+                                          ? ptlang_verify_eval(exp->content.array.values[i], true, nodes,
+                                                               node, node_table, module, ctx, errors)
+                                          : ptlang_ast_exp_copy(exp->content.array.values[i]));
             else
                 arrpush(array_values,
                         ptlang_verify_get_default_value(exp->content.array.type->content.array.type, ctx));
+            nodes += element_nodes;
         }
         evaluated = ptlang_ast_exp_array_new(
             ptlang_context_copy_unname_type(exp->content.array.type, ctx->type_scope), array_values,
@@ -1886,18 +1920,25 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     }
     case PTLANG_AST_EXP_TERNARY:
     {
-        ptlang_ast_exp condition = ptlang_verify_eval(exp->content.ternary_operator.condition, true, ctx);
-        // TODO recheck cycles
+        ptlang_ast_exp condition = ptlang_verify_eval(exp->content.ternary_operator.condition, true, node,
+                                                      nodes, node_table, module, ctx, errors);
         if (condition->content.binary[0] == 0)
         {
+            ptlang_verify_build_graph(node, exp->content.ternary_operator.else_value, false, node_table, ctx);
+            ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
             ptlang_ast_exp else_value =
-                ptlang_verify_eval(exp->content.ternary_operator.else_value, eval_fully, ctx);
+                ptlang_verify_eval(exp->content.ternary_operator.else_value, eval_fully, nodes, node,
+                                   node_table, module, ctx, errors);
             evaluated = else_value;
         }
         else
         {
-            ptlang_ast_exp if_value =
-                ptlang_verify_eval(exp->content.ternary_operator.if_value, eval_fully, ctx);
+            ptlang_verify_build_graph(node, exp->content.ternary_operator.if_value, false, node_table, ctx);
+            ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
+            ptlang_ast_exp if_value = ptlang_verify_eval(exp->content.ternary_operator.if_value, eval_fully,
+                                                         nodes, node, node_table, module, ctx, errors);
             evaluated = if_value;
         }
 
@@ -1905,7 +1946,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     }
     case PTLANG_AST_EXP_CAST:
     {
-        ptlang_ast_exp value = ptlang_verify_eval(exp->content.cast.value, eval_fully, ctx);
+        ptlang_ast_exp value = ptlang_verify_eval(exp->content.cast.value, eval_fully, node, nodes,
+                                                  node_table, module, ctx, errors);
         *substituted = (struct ptlang_ast_exp_s){
             .type = exp->type,
             .content.cast.type = exp->content.cast.type,
@@ -1917,23 +1959,34 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
-        ptlang_ast_exp struct_ = ptlang_verify_eval(exp->content.struct_member.struct_, false, ctx);
-        // cycles should already have been checked
+        ptlang_ast_exp struct_ = ptlang_verify_eval(exp->content.struct_member.struct_, false, node, nodes,
+                                                    node_table, module, ctx, errors);
+
         for (size_t i = 0; i < arrlenu(struct_->content.struct_.members); i++)
         {
             if (0 == strcmp(struct_->content.struct_.members[i].str.name,
                             exp->content.struct_member.member_name.name))
             {
-                evaluated = ptlang_verify_eval(struct_->content.struct_.members[i].exp, eval_fully, ctx);
+                ptlang_verify_build_graph(node, struct_->content.struct_.members[i].exp, false, node_table,
+                                          ctx);
+                ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
+                evaluated = ptlang_verify_eval(struct_->content.struct_.members[i].exp, eval_fully, node,
+                                               nodes, node_table, module, ctx, errors);
+                break;
             }
+        }
+        if (evaluated == NULL)
+        {
+            evaluated = ptlang_verify_get_default_value(exp->ast_type, ctx);
         }
         break;
     }
     // TODO other types
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
-        ptlang_ast_exp index = ptlang_verify_eval(exp->content.array_element.index, true, ctx);
-        // TODO: recheck cycles
+        ptlang_ast_exp index = ptlang_verify_eval(exp->content.array_element.index, true, node, nodes,
+                                                  node_table, module, ctx, errors);
 
         enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);
         // size_t num = 0;
@@ -1956,7 +2009,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
         //         num += signum;
         // }
 
-        ptlang_ast_exp array = ptlang_verify_eval(exp->content.array_element.array, false, ctx);
+        ptlang_ast_exp array = ptlang_verify_eval(exp->content.array_element.array, false, node, nodes,
+                                                  node_table, module, ctx, errors);
 
         size_t num = ptlang_verify_binary_to_unsigned(index, ctx);
 
@@ -1968,12 +2022,23 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, pt
             // TODO throw error
         }
 
-        evaluated = ptlang_verify_eval(array->content.array.values[num], eval_fully, ctx);
+        ptlang_verify_build_graph(node, array->content.array.values[num], false, node_table, ctx);
+        ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
+        evaluated = ptlang_verify_eval(array->content.array.values[num], eval_fully, node, nodes, node_table,
+                                       module, ctx, errors);
         break;
     }
     case PTLANG_AST_EXP_REFERENCE:
     {
         evaluated = ptlang_ast_exp_copy(exp);
+        break;
+    }
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+    case PTLANG_AST_EXP_BINARY:
+    {
+        abort();
         break;
     }
     }
@@ -1994,6 +2059,8 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
     case PTLANG_AST_TYPE_FUNCTION:
     case PTLANG_AST_TYPE_REFERENCE:
         return NULL;
+    default:
+        break;
     }
     type = ptlang_context_copy_unname_type(type, ctx->type_scope);
     ptlang_ast_exp default_value = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
@@ -2058,6 +2125,15 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
         size_t str_size = strlen(type->content.name) + 1;
         default_value->content.struct_.type.name = ptlang_malloc(str_size);
         memcpy(default_value->content.struct_.type.name, type->content.name, str_size);
+        break;
+    }
+
+    case PTLANG_AST_TYPE_VOID:
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+    case PTLANG_AST_TYPE_FUNCTION:
+    case PTLANG_AST_TYPE_REFERENCE:
+    {
+        abort();
         break;
     }
     }
@@ -2132,7 +2208,7 @@ static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_grap
     }
 }
 
-static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context *ctx)
+static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context *ctx, ptlang_error **errors)
 {
     ptlang_verify_node_table node_table = NULL;
     // ptlang_verify_decl_table decl_table = NULL;
@@ -2160,7 +2236,28 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
             var_name, ptlang_ast_code_position_copy(module->declarations[i]->name.pos));
         ptlang_verify_label_nodes(global_var, node, ctx->type_scope);
         if (module->declarations[i]->init != NULL)
-            ptlang_verify_build_graph(node, module->declarations[i]->init, node_table, ctx);
+            ptlang_verify_build_graph(node, module->declarations[i]->init, false, node_table, ctx);
+    }
+    ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
+
+    for (size_t i = 0; i < arrlenu(module->declarations); i++)
+    {
+        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name);
+        if (module->declarations[i]->init != NULL)
+            module->declarations[i]->init = ptlang_verify_eval(module->declarations[i]->init, true, node,
+                                                               nodes, node_table, module, ctx, errors);
+    }
+}
+
+static void ptlang_verify_check_cycles_in_global_defs(ptlang_utils_graph_node *nodes,
+                                                      ptlang_verify_node_table node_table,
+                                                      ptlang_ast_module module, ptlang_context *ctx,
+                                                      ptlang_error **errors)
+{
+
+    for (size_t i = 0; i < arrlenu(nodes); i++)
+    {
+        nodes[i].index = -1;
     }
 
     ptlang_utils_graph_node **cycles = ptlang_utils_find_cycles(nodes);
@@ -2173,13 +2270,54 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
                 ptlang_verify_get_default_value(module->declarations[i]->type, ctx);
     }
 
-    // TODO error messages
+    for (size_t i = 0, lowlink = 0; i < arrlenu(cycles);)
+    {
+        lowlink = cycles[i]->lowlink;
+        ptlang_utils_str *message_components = NULL;
+        size_t j;
+        for (j = i; j < arrlenu(cycles) && lowlink == cycles[j]->lowlink; j++)
+        {
+            arrpush(message_components, ptlang_ast_exp_to_string(cycles[j]->data));
+            arrpush(message_components, CONST_STR(", "));
+        }
+        arrpop(message_components);
+
+        if (j == i + 1)
+        {
+            arrins(message_components, 0, CONST_STR("The definition of the global variable "));
+            arrpush(message_components, CONST_STR(" refers to itself."));
+        }
+        else
+        {
+            arrins(message_components, 0, CONST_STR("The global variables "));
+            arrpush(message_components, CONST_STR(" form a circular definition."));
+        }
+
+        char *message = ptlang_utils_build_str_from_char_arr(message_components);
+        size_t message_size = strlen(message) + 1;
+        arrfree(message_components);
+
+        for (; i < j; i++)
+        {
+            // arrput(*errors, ((ptlang_error){
+            //                     .type = PTLANG_ERROR_TYPE_UNRESOLVABLE,
+            //                     .pos = *ast_module->type_aliases[cycles[i] - nodes].pos,
+            //                     .message = message,
+            //                 }));
+            if (i < j - 1)
+            {
+                char *new_message = ptlang_malloc(message_size);
+                memcpy(new_message, message, message_size);
+                message = new_message;
+            }
+        }
+    }
 }
 
 /**
  * @returns `false` if cycles have to be rechecked
  */
-static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_exp exp,
+static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_exp exp, bool depends_on_ref,
                                       ptlang_verify_node_table node_table, ptlang_context *ctx)
 {
     switch (exp->type)
@@ -2201,15 +2339,17 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
     case PTLANG_AST_EXP_RIGHT_SHIFT:
     case PTLANG_AST_EXP_AND:
     case PTLANG_AST_EXP_OR:
-        ptlang_verify_build_graph(node, exp->content.binary_operator.left_value, node_table, ctx);
-        ptlang_verify_build_graph(node, exp->content.binary_operator.right_value, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.binary_operator.left_value, depends_on_ref, node_table,
+                                  ctx);
+        ptlang_verify_build_graph(node, exp->content.binary_operator.right_value, depends_on_ref, node_table,
+                                  ctx);
         break;
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_AND:
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
-        ptlang_verify_build_graph(node, exp->content.unary_operator, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.unary_operator, depends_on_ref, node_table, ctx);
         break;
     case PTLANG_AST_EXP_LENGTH:
         break;
@@ -2224,46 +2364,66 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
         for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
         {
             ptlang_ast_type struct_type = exp->ast_type;
-            ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(
-                ptlang_context_unname_type(struct_type->content.name, ctx->type_scope), ctx->type_scope);
+            ptlang_ast_struct_def struct_def =
+                ptlang_context_get_struct_def(struct_type->content.name, ctx->type_scope);
 
             size_t offset;
-            for (offset = 0; offset < arrlenu(struct_def->members); offset++)
-            {
-                if (strcmp(struct_def->members[offset]->name.name,
-                           exp->content.struct_.members[i].str.name) == 0)
+            if (!depends_on_ref)
+                for (offset = 0; offset < arrlenu(struct_def->members); offset++)
                 {
-                    ptlang_verify_build_graph(node + 1 + offset, exp->content.struct_.members[i].exp,
-                                              node_table, ctx);
+                    if (strcmp(struct_def->members[offset]->name.name,
+                               exp->content.struct_.members[i].str.name) == 0)
+                    {
+                        ptlang_verify_build_graph(node + 1 + offset, exp->content.struct_.members[i].exp,
+                                                  false, node_table, ctx);
+                    }
                 }
-            }
         }
         break;
     case PTLANG_AST_EXP_ARRAY:
-        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
-        {
-            ptlang_verify_build_graph(node + 1 + i, exp->content.array.values[i], node_table, ctx);
-        }
+        if (!depends_on_ref)
+            for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+            {
+                ptlang_verify_build_graph(node + 1 + i, exp->content.array.values[i], false, node_table, ctx);
+            }
         break;
     case PTLANG_AST_EXP_TERNARY:
-        ptlang_verify_build_graph(node, exp->content.ternary_operator.condition, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.ternary_operator.condition, false, node_table, ctx);
         return false;
     case PTLANG_AST_EXP_CAST:
-        ptlang_verify_build_graph(node, exp->content.cast.value, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.cast.value, depends_on_ref, node_table, ctx);
     case PTLANG_AST_EXP_STRUCT_MEMBER:
-        ptlang_verify_build_graph(node, exp->content.struct_member.struct_, node_table, ctx);
+    {
+
+        // ptlang_ast_struct_def struct_def =
+        //             ptlang_context_get_struct_def(exp->content.struct_member.struct_->ast_type,
+        //             ctx->type_scope);
+        //         node++;
+        //         for (size_t i = 0;
+        //              strcmp(struct_def->members[i]->name.name,
+        //              exp->content.struct_member.member_name.name); i++)
+        //             node += ptlang_verify_calc_node_count(struct_def->members[i]->type, ctx->type_scope);
+
+        ptlang_verify_build_graph(node, exp->content.struct_member.struct_, true, node_table, ctx);
         return false;
+    }
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
-        ptlang_verify_build_graph(node, exp->content.array_element.array, node_table, ctx);
-        ptlang_verify_build_graph(node, exp->content.array_element.index, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.array_element.array, true, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.array_element.index, false, node_table, ctx);
         return false;
     case PTLANG_AST_EXP_REFERENCE:
         break;
     case PTLANG_AST_EXP_DEREFERENCE:
-        ptlang_verify_build_graph(node, exp->content.unary_operator, node_table, ctx);
+        ptlang_verify_build_graph(node, exp->content.unary_operator, false, node_table, ctx);
         return false;
     case PTLANG_AST_EXP_BINARY:
         break;
+    case PTLANG_AST_EXP_ASSIGNMENT:
+    case PTLANG_AST_EXP_FUNCTION_CALL:
+    {
+        abort();
+        break;
+    }
     }
     return true;
 }
@@ -2293,8 +2453,8 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
         ptlang_utils_graph_node *base_node =
             ptlang_verify_get_node(exp->content.struct_member.struct_, node_table, ctx);
         ptlang_ast_type struct_type = exp->content.struct_member.struct_->ast_type;
-        ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(
-            ptlang_context_unname_type(struct_type->content.name, ctx->type_scope), ctx->type_scope);
+        ptlang_ast_struct_def struct_def =
+            ptlang_context_get_struct_def(struct_type->content.name, ctx->type_scope);
 
         size_t offset;
         for (offset = 0; offset < arrlenu(struct_def->members); offset++)

@@ -145,7 +145,7 @@ target_include_directories(ptlang
                            PRIVATE ${PTLANG_VERIFY_SRC_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
-target_link_libraries(ptlang ptlang_utils ptlang_ast ptlang_parser ptlang_ir_builder ptlang_verify)
+target_link_libraries(ptlang ptlang_utils ptlang_ast ptlang_parser ptlang_ir_builder ptlang_verify ptlang_eval)
 
 
 # get_cmake_property(_variableNames VARIABLES)

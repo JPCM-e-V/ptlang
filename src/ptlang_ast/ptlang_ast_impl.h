@@ -300,4 +300,6 @@ struct ptlang_ast_func_s
     ptlang_ast_code_position pos;
 };
 
+static char *ptlang_ast_exp_type_get_symbol(ptlang_ast_exp exp);
+
 #endif
