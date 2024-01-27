@@ -88,8 +88,8 @@ int main(void)
 
     // if (err != LLVMErrorSuccess)
     // {
-        // fprintf(stderr, "ERROR lll.c Just search this string asdfghjkl\n");
-        // fprintf(stderr, "%s\n", LLVMGetErrorMessage(err));
+    // fprintf(stderr, "ERROR lll.c Just search this string asdfghjkl\n");
+    // fprintf(stderr, "%s\n", LLVMGetErrorMessage(err));
     // }
 
     // // #endif
@@ -102,13 +102,13 @@ int main(void)
 
     // printf("\n ============== end ==============\n\n");
 
-// #ifdef WIN32
-// #    define ASM_FILE "t.asm"
-// #    define OBJ_FILE "t.obj"
-// #else
-// #    define ASM_FILE "t.S"
-// #    define OBJ_FILE "t.o"
-// #endif
+    // #ifdef WIN32
+    // #    define ASM_FILE "t.asm"
+    // #    define OBJ_FILE "t.obj"
+    // #else
+    // #    define ASM_FILE "t.S"
+    // #    define OBJ_FILE "t.o"
+    // #endif
 
     // LLVMInitializeNativeAsmPrinter();
 

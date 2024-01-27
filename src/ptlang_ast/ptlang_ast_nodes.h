@@ -1,9 +1,8 @@
 #ifndef PTLANG_AST_NODES_H
 #define PTLANG_AST_NODES_H
 
-#include <stdint.h>
 #include <stdbool.h>
-
+#include <stdint.h>
 
 typedef struct ptlang_ast_type_s *ptlang_ast_type;
 typedef struct ptlang_ast_stmt_s *ptlang_ast_stmt;
@@ -13,7 +12,6 @@ typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
 typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
 typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
 typedef struct ptlang_ast_struct_member_s *ptlang_ast_struct_member_list;
-
 
 typedef struct ptlang_ast_code_position_s
 {
@@ -70,7 +68,6 @@ struct ptlang_ast_decl_s
     bool export;
     ptlang_ast_code_position pos;
 };
-
 
 struct ptlang_ast_struct_member_s
 {
