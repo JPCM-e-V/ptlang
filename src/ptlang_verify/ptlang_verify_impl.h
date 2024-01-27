@@ -1,7 +1,7 @@
 #ifndef PTLANG_VERIFY_IMPL_H
 #define PTLANG_VERIFY_IMPL_H
 
-#include "ptlang_ast_impl.h"
+#include "ptlang_ast_nodes.h"
 #include "ptlang_eval.h"
 #include "ptlang_utils.h"
 #include "ptlang_verify.h"
@@ -128,7 +128,7 @@ static ptlang_utils_graph_node *
 ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, ptlang_context *ctx);
 
 static void ptlang_verify_add_dependency(ptlang_utils_graph_node *from, ptlang_utils_graph_node *to,
-                                         ptlang_ast_exp exp, ptlang_verify_node_table node_table,
+                                         ptlang_ast_type type, ptlang_verify_node_table node_table,
                                          ptlang_context *ctx);
 
 static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_exp exp, bool depends_on_ref,

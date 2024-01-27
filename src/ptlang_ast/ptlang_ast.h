@@ -1,48 +1,12 @@
 #ifndef PTLANG_AST_H
 #define PTLANG_AST_H
 
+#include "ptlang_ast_nodes.h"
 #include "ptlang_utils.h"
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-
-typedef struct ptlang_ast_code_position_s
-{
-    uint64_t from_line;
-    uint64_t from_column;
-    uint64_t to_line;
-    uint64_t to_column;
-} ptlang_ast_code_position_s;
-
-typedef struct ptlang_ast_code_position_s *ptlang_ast_code_position;
-
-typedef struct ptlang_ast_ident_s
-{
-    char *name;
-    ptlang_ast_code_position pos;
-} ptlang_ast_ident;
-
-typedef struct ptlang_ast_type_s *ptlang_ast_type;
-typedef struct ptlang_ast_stmt_s *ptlang_ast_stmt;
-typedef struct ptlang_ast_module_s *ptlang_ast_module;
-typedef struct ptlang_ast_func_s *ptlang_ast_func;
-typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
-typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
-typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
-typedef struct ptlang_ast_struct_member_s *ptlang_ast_struct_member_list;
-// typedef struct ptlang_ast_decl_list_s *ptlang_ast_decl_list;
-// typedef struct ptlang_ast_type_list_s *ptlang_ast_type_list;
-// typedef struct ptlang_ast_exp_list_s *ptlang_ast_exp_list;
-// typedef struct ptlang_ast_str_exp_list_s *ptlang_ast_str_exp_list;
-
-enum ptlang_ast_type_float_size
-{
-    PTLANG_AST_TYPE_FLOAT_16 = 16,
-    PTLANG_AST_TYPE_FLOAT_32 = 32,
-    PTLANG_AST_TYPE_FLOAT_64 = 64,
-    PTLANG_AST_TYPE_FLOAT_128 = 128,
-};
 
 ptlang_ast_struct_def ptlang_ast_struct_def_new(ptlang_ast_ident name, ptlang_ast_decl *members,
                                                 ptlang_ast_code_position pos);

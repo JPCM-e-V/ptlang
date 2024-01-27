@@ -78,4 +78,6 @@ void ptlang_utils_graph_free(ptlang_utils_graph_node *graph);
 
 ptlang_utils_str ptlang_utils_sprintf_alloc(const char *fmt, ...);
 
+char *ptlang_utils_build_str_from_str_arr(ptlang_utils_str *strings);
+
 #endif

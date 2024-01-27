@@ -24,7 +24,7 @@
 #    include "lexer.h"
 #endif
 
-void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module *out, ptlang_error **syntax_errors,
+void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module out, ptlang_error **syntax_errors,
                     char const *message);
 
 // str: [sSuU][1-9][0-9]{0,6}

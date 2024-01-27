@@ -3,7 +3,7 @@
 // ptlang_ast_module *ptlang_parser_module_out;
 // ptlang_error *syntax_errors;
 
-void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module *out, ptlang_error **syntax_errors,
+void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module out, ptlang_error **syntax_errors,
                     char const *message)
 {
     // fprintf(stderr, "error from %d:%d to %d:%d : %s\n", yylloc->first_line, yylloc->first_column,

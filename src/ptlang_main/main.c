@@ -7,6 +7,7 @@
 #include <inttypes.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/Transforms/PassBuilder.h>
+#include <stb_ds.h>
 
 void print_error(ptlang_error error)
 {
@@ -62,61 +63,61 @@ int main(void)
 
     ptlang_context_destory(&ctx);
 
-    LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
-    LLVMDumpModule(llvmmod);
-    LLVMDisposeTargetData(target_data_layout);
-    char *error = NULL;
-    LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
-    LLVMDisposeMessage(error);
+    // LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
+    // LLVMDumpModule(llvmmod);
+    // LLVMDisposeTargetData(target_data_layout);
+    // char *error = NULL;
+    // LLVMVerifyModule(llvmmod, LLVMAbortProcessAction, &error);
+    // LLVMDisposeMessage(error);
 
-    LLVMSetTarget(llvmmod, triple);
+    // LLVMSetTarget(llvmmod, triple);
 
     LLVMDisposeMessage(triple);
 
-    printf("\n ============= unopt =============\n\n");
+    // printf("\n ============= unopt =============\n\n");
 
-    LLVMDumpModule(llvmmod);
+    // LLVMDumpModule(llvmmod);
 
-    // #ifndef NOPT
-    LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
+    // // #ifndef NOPT
+    // LLVMPassBuilderOptionsRef pbo = LLVMCreatePassBuilderOptions();
 
-    LLVMErrorRef err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
-    // err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
+    // LLVMErrorRef err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
+    // // err = LLVMRunPasses(llvmmod, "default<O3>", machine, pbo);
 
-    LLVMDisposePassBuilderOptions(pbo);
+    // LLVMDisposePassBuilderOptions(pbo);
 
-    if (err != LLVMErrorSuccess)
-    {
-        fprintf(stderr, "ERROR lll.c Just search this string asdfghjkl\n");
-        fprintf(stderr, "%s\n", LLVMGetErrorMessage(err));
-    }
+    // if (err != LLVMErrorSuccess)
+    // {
+        // fprintf(stderr, "ERROR lll.c Just search this string asdfghjkl\n");
+        // fprintf(stderr, "%s\n", LLVMGetErrorMessage(err));
+    // }
 
-    // #endif
+    // // #endif
 
-    printf("\n ============== opt ==============\n\n");
+    // printf("\n ============== opt ==============\n\n");
 
-    // printf("%p", err);
+    // // printf("%p", err);
 
-    LLVMDumpModule(llvmmod);
+    // LLVMDumpModule(llvmmod);
 
-    printf("\n ============== end ==============\n\n");
+    // printf("\n ============== end ==============\n\n");
 
-#ifdef WIN32
-#    define ASM_FILE "t.asm"
-#    define OBJ_FILE "t.obj"
-#else
-#    define ASM_FILE "t.S"
-#    define OBJ_FILE "t.o"
-#endif
+// #ifdef WIN32
+// #    define ASM_FILE "t.asm"
+// #    define OBJ_FILE "t.obj"
+// #else
+// #    define ASM_FILE "t.S"
+// #    define OBJ_FILE "t.o"
+// #endif
 
-    LLVMInitializeNativeAsmPrinter();
+    // LLVMInitializeNativeAsmPrinter();
 
-    LLVMTargetMachineEmitToFile(machine, llvmmod, ASM_FILE, LLVMAssemblyFile, &error);
-    LLVMTargetMachineEmitToFile(machine, llvmmod, OBJ_FILE, LLVMObjectFile, &error);
+    // LLVMTargetMachineEmitToFile(machine, llvmmod, ASM_FILE, LLVMAssemblyFile, &error);
+    // LLVMTargetMachineEmitToFile(machine, llvmmod, OBJ_FILE, LLVMObjectFile, &error);
 
     LLVMDisposeTargetMachine(machine);
 
     ptlang_ast_module_destroy(mod);
 
-    LLVMDisposeModule(llvmmod);
+    // LLVMDisposeModule(llvmmod);
 }

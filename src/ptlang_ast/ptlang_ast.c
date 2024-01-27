@@ -1226,6 +1226,7 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_BINARY:
         abort();
     }
+    return ALLOCATED_STR(str);
 }
 
 static char *ptlang_ast_exp_type_get_symbol(ptlang_ast_exp exp)

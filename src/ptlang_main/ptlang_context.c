@@ -1,6 +1,10 @@
-#include "ptlang_context.h"
+#include "ptlang_context_impl.h"
 
-void ptlang_context_destory(ptlang_context *ctx) { shfree(ctx->type_scope); }
+void ptlang_context_destory(ptlang_context *ctx)
+{
+    arrfree(ctx->scope);
+    shfree(ctx->type_scope);
+}
 
 ptlang_ast_type ptlang_context_unname_type(ptlang_ast_type type, ptlang_context_type_scope *type_scope)
 {

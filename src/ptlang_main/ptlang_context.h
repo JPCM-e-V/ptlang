@@ -1,7 +1,7 @@
 #ifndef PTLANG_CONTEXT_H
 #define PTLANG_CONTEXT_H
 
-#include "ptlang_ast_impl.h"
+#include "ptlang_ast.h"
 #include <llvm-c/Target.h>
 
 typedef struct ptlang_context_type_scope_entry_s
