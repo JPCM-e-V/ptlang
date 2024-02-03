@@ -46,6 +46,8 @@
 %option warn
 %option always-interactive
 %option yylineno
+%option reentrant
+%option extra-type="struct ptlang_lexer_extra_data *"
 
 %%
 "+"                                                                     { return PLUS; }
@@ -105,5 +107,5 @@
 "void"                                                                  { return VOID; }
 [a-zA-Z_][a-zA-Z_0-9]*                                                  { SAVE_STR; return IDENT; }
 <<EOF>>                                                                 { return PTLANG_YYEOF; }
-.                                                                       { /*ptlang_yyerror(yylloc, "Unknown token\n"); */yyterminate(); };
+.                                                                       { ptlang_yyerror(yylloc, NULL, yyextra->syntax_errors, NULL, "Unknown token\n"); yyterminate(); };
 %%

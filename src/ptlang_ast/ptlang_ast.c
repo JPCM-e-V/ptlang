@@ -956,17 +956,18 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
     {
         ptlang_ast_ident_destroy(member_list[i].str);
         ptlang_ast_exp_destroy(member_list[i].exp);
+        ptlang_free(member_list[i].pos);
     }
     arrfree(member_list);
 }
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name)
 {
-    for (size_t i = arrlenu(decl_list); i > 0; i--)
+    for (size_t i = arrlenu(decl_list) - 1; i >= 0; i--)
     {
-        if (0 == strcmp(decl_list[i - 1]->name.name, name))
+        if (0 == strcmp(decl_list[i]->name.name, name))
         {
-            return decl_list[i - 1];
+            return decl_list[i];
         }
     }
     return NULL;

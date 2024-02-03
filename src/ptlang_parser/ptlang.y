@@ -1,6 +1,11 @@
 %code requires {
     #include "ptlang_ast.h"
     #include "ptlang_error.h"
+
+    #ifndef YY_TYPEDEF_YY_SCANNER_T
+    #define YY_TYPEDEF_YY_SCANNER_T
+    typedef void* yyscan_t;
+    #endif
 }
 
 %{
@@ -38,7 +43,9 @@
 %glr-parser
 %expect-rr 1
 /* %lex-param {ptlang_ast_module out} {ptlang_error **syntax_errors} */
-%parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors}
+%lex-param {yyscan_t yyscanner}
+%parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors} {yyscan_t yyscanner}
+/* %parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors} */
 
 %token PLUS
 %token MINUS
@@ -177,7 +184,7 @@ decl: non_const_decl { $$=$1; }
 decl_statement: decl EQ exp { $$ = $1; ptlang_ast_decl_set_init($1, $3); }
     | non_const_decl { $$ = $1; }
 
-declaration_without_export: decl EQ const_exp { $$ = $1; ptlang_ast_decl_set_init($$, $3); }
+declaration_without_export: decl EQ exp { $$ = $1; ptlang_ast_decl_set_init($$, $3); }
                          | non_const_decl { $$ = $1; }
 
 module_decl: declaration_without_export { $$ = $1; }

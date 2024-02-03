@@ -1,49 +1,9 @@
-export void a() {
-    c();
+struct a {
+    u8 b,u8 c,
 }
 
-export void b() {
-}
+u8 d = e.b;
 
-u8 c(){
-}
+a e = a{b d};
 
-export []u8 d(){
-}
-
-export [9]u1 e(){
-}
-
-export u64 len([]u8 a){
-    return #a;
-}
-
-export []u8 setlen([]u8 arr, u64 len){
-    #arr = len;
-    return arr;
-}
-
-export u64 len20([]u20 a){
-    return #a;
-}
-
-export []u20 setlen20([]u20 arr, u64 len){
-    #arr = len;
-    return arr;
-}
-
-export [4]u8 fff(){
-    retval []u8{1,2,3,4};
-}
-
-export void breakinfloop(){
-    while(1){
-        break;
-    }
-}
-
-export void continueinfloop(){
-    while(1){
-        continue;
-    }
-}
+[8]u8 arr = []u8{1,2,3,4,5,6,7,8};

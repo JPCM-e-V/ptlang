@@ -17,6 +17,12 @@
 #    define YYLTYPE PTLANG_YYLTYPE
 #endif
 
+struct ptlang_lexer_extra_data
+{
+    ptlang_ast_module out;
+    ptlang_error **syntax_errors;
+};
+
 #ifndef PTLANG_PARSER_DO_NOT_INCLUDE_LEXER_H
 #    ifndef YY_NO_UNISTD_H
 #        define YY_NO_UNISTD_H
@@ -25,7 +31,7 @@
 #endif
 
 void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module out, ptlang_error **syntax_errors,
-                    char const *message);
+                    yyscan_t yyscanner, char const *message);
 
 // str: [sSuU][1-9][0-9]{0,6}
 ptlang_ast_type ptlang_parser_integer_type_of_string(char *str, const PTLANG_YYLTYPE *yylloc,

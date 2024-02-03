@@ -127,14 +127,14 @@ static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_con
 static ptlang_utils_graph_node *
 ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, ptlang_context *ctx);
 
-static void ptlang_verify_add_dependency(ptlang_utils_graph_node *from, ptlang_utils_graph_node *to,
+static void ptlang_verify_add_dependency(ptlang_utils_graph_node **from, ptlang_utils_graph_node **to,
                                          ptlang_ast_type type, ptlang_verify_node_table node_table,
-                                         ptlang_context *ctx);
+                                         bool depends_on_ref, ptlang_context *ctx);
 
 static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_exp exp, bool depends_on_ref,
                                       ptlang_verify_node_table node_table, ptlang_context *ctx);
 
-static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_graph_node *node,
+static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_graph_node **node,
                                       ptlang_context_type_scope *type_scope);
 
 static void ptlang_verify_check_cycles_in_global_defs(ptlang_utils_graph_node *nodes,
@@ -143,4 +143,11 @@ static void ptlang_verify_check_cycles_in_global_defs(ptlang_utils_graph_node *n
                                                       ptlang_error **errors);
 
 static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context *ctx, ptlang_error **errors);
+
+static void ptlang_verify_decl_init(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
+                                    ptlang_error **errors);
+
+static void ptlang_verify_global_decls(ptlang_ast_decl *declarations, ptlang_context *ctx,
+                                       ptlang_error **errors);
+
 #endif
