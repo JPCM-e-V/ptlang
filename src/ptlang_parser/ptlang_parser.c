@@ -55,8 +55,8 @@ ptlang_ast_code_position ptlang_parser_code_position(const PTLANG_YYLTYPE *yyllo
 
 ptlang_error *ptlang_parser_parse(FILE *file, ptlang_ast_module *out)
 {
-#ifndef NDEBUG
-    // ptlang_yydebug = 1;
+#if PTLANG_DEBUG_BISON
+    ptlang_yydebug = 1;
 #endif
     ptlang_error *syntax_errors = NULL;
     *out = ptlang_ast_module_new();
@@ -69,8 +69,11 @@ ptlang_error *ptlang_parser_parse(FILE *file, ptlang_ast_module *out)
     yyscan_t scanner;
     ptlang_yylex_init_extra(&extra, &scanner);
 
+#if PTLANG_DEBUG_FLEX
+    ptlang_yyset_debug(1, scanner);
+#endif
+
     ptlang_yyset_in(file, scanner);
-    // ptlang_parser_module_out = out;
     ptlang_yyparse(*out, &syntax_errors, scanner);
 
     ptlang_yylex_destroy(scanner);
