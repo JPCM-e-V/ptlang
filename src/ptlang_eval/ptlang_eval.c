@@ -29,7 +29,9 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
     LLVMLinkInInterpreter();
 
     LLVMExecutionEngineRef ee;
-    LLVMCreateExecutionEngineForModule(&ee, M, NULL);
+    // LLVMCreateExecutionEngineForModule(&ee, M, NULL);
+    // LLVMCreateJITCompilerForModule(&ee, M, )
+    LLVMCreateInterpreterForModule(&ee, M, NULL);
 
     uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER ? exp->ast_type->content.integer.size
                                                                        : exp->ast_type->content.float_size;
@@ -40,10 +42,20 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
 
     LLVMGenericValueRef in_llvm_binary = LLVMCreateGenericValueOfPointer(binary);
     LLVMRunFunction(ee, function, 1, &in_llvm_binary);
-    LLVMDisposeExecutionEngine(ee);
+    // LLVMDisposeExecutionEngine(ee);
 
-    LLVMDisposeModule(M);
-    LLVMContextDispose(C);
+    // LLVMDisposeModule(M);
+    // LLVMContextDispose(C);
 
     return ptlang_ast_exp_binary_new(binary, exp);
+}
+
+uint32_t ptlang_eval_calc_byte_size(ptlang_ast_type type)
+{
+    // uint32_t bit_size =
+    //     type->type == PTLANG_AST_TYPE_INTEGER ? type->content.integer.size : type->content.float_size;
+    return (((type->type == PTLANG_AST_TYPE_INTEGER ? type->content.integer.size : type->content.float_size) -
+             1) >>
+            3) +
+           1;
 }

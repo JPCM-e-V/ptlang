@@ -16,3 +16,4 @@
 // LLVMValueRef ptlang_eval_byte_array_to_llvm(ptlang_eval_value val);
 
 ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp);
+uint32_t ptlang_eval_calc_byte_size(ptlang_ast_type type);

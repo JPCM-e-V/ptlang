@@ -943,7 +943,7 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list)
 
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list)
 {
-    for (size_t i = 0; i < arrlenu(exp_list); i++)
+    for (size_t i = 0; i < stbds_arrlenu(exp_list); i++)
     {
         ptlang_ast_exp_destroy(exp_list[i]);
     }
@@ -963,7 +963,7 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name)
 {
-    for (size_t i = arrlenu(decl_list) - 1; i >= 0; i--)
+    for (size_t i = arrlenu(decl_list) - 1; i != -1; i--)
     {
         if (0 == strcmp(decl_list[i]->name.name, name))
         {

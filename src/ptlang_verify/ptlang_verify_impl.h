@@ -29,10 +29,16 @@ typedef struct
     ptlang_verify_type_alias value;
 } ptlang_verify_type_alias_table;
 
+typedef struct
+{
+    ptlang_utils_graph_node *node;
+    bool evaluated;
+} ptlang_verify_node_table_value;
+
 typedef struct ptlang_verify_node_table_s
 {
     char *key;
-    ptlang_utils_graph_node *value;
+    ptlang_verify_node_table_value value;
 } *ptlang_verify_node_table;
 
 typedef struct ptlang_verify_decl_table_s
@@ -40,6 +46,13 @@ typedef struct ptlang_verify_decl_table_s
     char *key;
     ptlang_ast_decl *value;
 } *ptlang_verify_decl_table;
+
+enum ptlang_verify_eval_mode
+{
+    PTLANG_VERIFY_EVAL_INDICES,
+    PTLANG_VERIFY_EVAL_PARTIALLY,
+    PTLANG_VERIFY_EVAL_FULLY,
+};
 
 // typedef struct ptlang_verify_struct_s ptlang_verify_struct;
 // struct ptlang_verify_struct_s
@@ -110,10 +123,10 @@ static ptlang_ast_type ptlang_verify_unify_types(ptlang_ast_type type1, ptlang_a
 
 static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors);
 
-static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, bool eval_fully, ptlang_utils_graph_node *node,
-                                         ptlang_utils_graph_node *nodes, ptlang_verify_node_table node_table,
-                                         ptlang_ast_module module, ptlang_context *ctx,
-                                         ptlang_error **errors);
+static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_eval_mode eval_fully,
+                                         ptlang_utils_graph_node *node, ptlang_utils_graph_node *nodes,
+                                         ptlang_verify_node_table node_table, ptlang_ast_module module,
+                                         ptlang_context *ctx, ptlang_error **errors);
 
 static void ptlang_verify_decl_header(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
                                       ptlang_error **errors);

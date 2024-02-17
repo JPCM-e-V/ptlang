@@ -387,7 +387,7 @@ static ptlang_ast_type ptlang_ir_builder_type_copy_and_unname(ptlang_ast_type ty
 
 static ptlang_ast_type ptlang_ir_builder_exp_type(ptlang_ast_exp exp, ptlang_ir_builder_build_context *ctx)
 {
-    return exp->ast_type;
+    return ptlang_ast_type_copy(exp->ast_type);
     switch (exp->type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:

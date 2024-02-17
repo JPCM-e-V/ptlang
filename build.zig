@@ -1,6 +1,6 @@
 const std = @import("std");
 
-const c_flags = [_][]const u8{};
+const c_flags = [_][]const u8{ "-lasan", "-fsanitize=address" };
 
 // Although this function looks imperative, note that its job is to
 // declaratively construct a build graph that will be executed by an external
