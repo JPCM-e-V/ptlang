@@ -1953,9 +1953,6 @@ static void ptlang_ir_builder_type_add_attributes(ptlang_ast_type type, LLVMValu
 
 LLVMModuleRef ptlang_ir_builder_module(ptlang_ast_module ast_module, LLVMTargetDataRef target_info)
 {
-#ifndef WIN32
-    LLVMContextSetOpaquePointers(LLVMGetGlobalContext(), false);
-#endif
     LLVMModuleRef llvm_module = LLVMModuleCreateWithName("t");
     LLVMSetModuleDataLayout(llvm_module, target_info);
 

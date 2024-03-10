@@ -42,10 +42,10 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
 
     LLVMGenericValueRef in_llvm_binary = LLVMCreateGenericValueOfPointer(binary);
     LLVMRunFunction(ee, function, 1, &in_llvm_binary);
-    // LLVMDisposeExecutionEngine(ee);
+    LLVMDisposeExecutionEngine(ee);
 
     // LLVMDisposeModule(M);
-    // LLVMContextDispose(C);
+    LLVMContextDispose(C);
 
     return ptlang_ast_exp_binary_new(binary, exp);
 }

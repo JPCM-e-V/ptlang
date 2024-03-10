@@ -10,6 +10,7 @@ static void tarjan(ptlang_utils_graph_node *v, ptlang_utils_graph_node *graph,
     v->on_stack = true;
     bool self_reference = false;
 
+
     for (size_t i = 0; i < arrlenu(v->edges_to); ++i)
     {
         ptlang_utils_graph_node *w = v->edges_to[i];
@@ -33,6 +34,7 @@ static void tarjan(ptlang_utils_graph_node *v, ptlang_utils_graph_node *graph,
                 self_reference = true;
             }
         }
+
     }
 
     if (v->lowlink == v->index)
@@ -63,7 +65,7 @@ ptlang_utils_graph_node **ptlang_utils_find_cycles(ptlang_utils_graph_node *grap
 
     for (size_t i = 0; i < arrlenu(graph); ++i)
     {
-        ptlang_utils_graph_node *current = graph + i;
+        ptlang_utils_graph_node *current = &graph[i];
         if (current->index == -1)
         {
             tarjan(current, graph, &stack, &index, &cycles);

@@ -374,6 +374,7 @@ static bool ptlang_verify_child_exp(ptlang_ast_exp left, ptlang_ast_exp right, p
 // returns true if the expression is correct
 static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_error **errors)
 {
+
     ptlang_ast_exp unary = exp->content.unary_operator;
     ptlang_ast_exp left = exp->content.binary_operator.left_value;
     ptlang_ast_exp right = exp->content.binary_operator.right_value;
@@ -941,19 +942,12 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 
         if (member_type != NULL)
         {
-            if (member_type->type != PTLANG_AST_TYPE_ARRAY)
-            {
-                // TODO : throw error
-            }
-            else
-            {
-                exp->ast_type =
-                    ptlang_ast_type_array(ptlang_context_copy_unname_type(member_type, ctx->type_scope),
-                                          arrlenu(exp->content.array.values), NULL);
-                // member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
-            }
+            exp->ast_type =
+                ptlang_ast_type_array(ptlang_context_copy_unname_type(member_type, ctx->type_scope),
+                                      arrlenu(exp->content.array.values), NULL);
+            // member_type = ptlang_context_unname_type(array_type->content.array.type, ctx->type_scope);
 
-            ptlang_error *too_many_values_error = NULL;
+            // ptlang_error *too_many_values_error = NULL;
             for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
             {
                 ptlang_verify_exp(exp->content.array.values[i], ctx, errors);
@@ -1101,7 +1095,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             (index_type->type != PTLANG_AST_TYPE_INTEGER || index_type->content.integer.is_signed))
         {
             arrput(*errors, ptlang_verify_generate_type_error(
-                                "Array index must have be a unsigned integer, but is of type ",
+                                "Array index must be an unsigned integer, but is of type ",
                                 exp->content.array_element.index, ".", ctx->type_scope));
         }
 
@@ -1199,7 +1193,6 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
         {
             ptlang_ast_struct_def struct_def_i = struct_defs[i];
             ptlang_ast_struct_def struct_def_j = struct_defs[j];
-            printf("i: %zu, j: %zu \n", i, j);
             if (strcmp(struct_def_i->name.name, struct_def_j->name.name) == 0)
             {
                 size_t name_len = strlen(struct_defs[i]->name.name);
@@ -1858,6 +1851,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
         }
 
         evaluated = ptlang_ast_exp_binary_new(binary, exp);
+        break;
     }
     case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
@@ -1899,23 +1893,22 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
     {
 
         // assumes that cycles have already been checked
-        ptlang_verify_node_table_value info = shget(node_table, exp->content.str_prepresentation);
+        ptlang_verify_node_table_value *info = shget(node_table, exp->content.str_prepresentation);
         ptlang_ast_decl variable = ptlang_decl_list_find_last(ctx->scope, exp->content.str_prepresentation);
 
         if (eval_mode == PTLANG_VERIFY_EVAL_INDICES)
             evaluated = ptlang_ast_exp_copy(exp);
         else if (variable->init == NULL)
             evaluated = ptlang_verify_get_default_value(exp->ast_type, ctx);
-        else if (info.evaluated)
+        else if (info->evaluated)
             evaluated = ptlang_ast_exp_copy(variable->init);
         else if (eval_mode == PTLANG_VERIFY_EVAL_FULLY)
         {
             ptlang_ast_exp evaled = ptlang_verify_eval(variable->init, PTLANG_VERIFY_EVAL_FULLY, node, nodes,
                                                        node_table, module, ctx, errors);
             ptlang_ast_exp_destroy(variable->init);
-            variable->init = evaled;
-            shput(node_table, exp->content.str_prepresentation,
-                  ((ptlang_verify_node_table_value){.node = info.node, .evaluated = true}));
+            ptlang_verify_set_init(variable, evaled, ctx);
+            info->evaluated = true;
             evaluated = ptlang_ast_exp_copy(variable->init);
         }
         else
@@ -1969,12 +1962,12 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
         // TODO make local
         node += 1;
         size_t element_nodes = ptlang_verify_calc_node_count(exp->content.array.type, ctx->type_scope);
-        for (size_t i = 0; i < exp->content.array.type->content.array.len; i++)
+        for (size_t i = 0; i < exp->ast_type->content.array.len; i++)
         {
             if (i < arrlenu(exp->content.array.values))
                 arrpush(array_values, eval_mode == PTLANG_VERIFY_EVAL_FULLY
-                                          ? ptlang_verify_eval(exp->content.array.values[i], eval_mode, nodes,
-                                                               node, node_table, module, ctx, errors)
+                                          ? ptlang_verify_eval(exp->content.array.values[i], eval_mode, node,
+                                                               nodes, node_table, module, ctx, errors)
                                           : ptlang_ast_exp_copy(exp->content.array.values[i]));
             else
                 arrpush(array_values,
@@ -1997,7 +1990,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
 
             ptlang_ast_exp else_value =
-                ptlang_verify_eval(exp->content.ternary_operator.else_value, eval_mode, nodes, node,
+                ptlang_verify_eval(exp->content.ternary_operator.else_value, eval_mode, node, nodes,
                                    node_table, module, ctx, errors);
             evaluated = else_value;
         }
@@ -2007,7 +2000,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);
 
             ptlang_ast_exp if_value = ptlang_verify_eval(exp->content.ternary_operator.if_value, eval_mode,
-                                                         nodes, node, node_table, module, ctx, errors);
+                                                         node, nodes, node_table, module, ctx, errors);
             evaluated = if_value;
         }
 
@@ -2335,27 +2328,31 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
         // shput(decl_table, module->declarations[i]->name.name, module->declarations[i]);
         size_t decl_node_count =
             ptlang_verify_calc_node_count(module->declarations[i]->type, ctx->type_scope);
+        if (decl_node_count > 0)
+        {
+            ptlang_verify_node_table_value *info = ptlang_malloc(sizeof(ptlang_verify_node_table_value));
+            *info = ((ptlang_verify_node_table_value){
+                .node = (ptlang_utils_graph_node *)index,
+                .evaluated = false,
+            });
+            shput(node_table, module->declarations[i]->name.name, info);
+        }
         for (size_t j = 0; j < decl_node_count; j++)
         {
-            arrpush(nodes, (struct node_s){.index = -1});
-            if (j == 0)
-                shput(node_table, module->declarations[i]->name.name,
-                      ((ptlang_verify_node_table_value){
-                          .node = (ptlang_utils_graph_node *)index,
-                          .evaluated = false,
-                      }));
+            arrpush(nodes, ((struct node_s){.index = -1}));
         }
         index += decl_node_count;
     }
 
     for (size_t i = 0; i < shlen(node_table); i++)
     {
-        node_table[i].value.node = ((size_t)node_table[i].value.node) + nodes;
+        node_table[i].value->node = &nodes[(size_t)node_table[i].value->node];
+        // node_table[i].value->node = ((size_t)node_table[i].value->node) + nodes;
     }
 
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name).node;
+        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name)->node;
         size_t var_name_size = strlen(module->declarations[i]->name.name) + 1;
         char *var_name = ptlang_malloc(var_name_size);
         memcpy(var_name, module->declarations[i]->name.name, var_name_size);
@@ -2366,7 +2363,7 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
     }
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name).node;
+        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name)->node;
         if (module->declarations[i]->init != NULL)
             ptlang_verify_build_graph(node, module->declarations[i]->init, false, node_table, ctx);
     }
@@ -2375,20 +2372,25 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
 
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_verify_node_table_value info = shget(node_table, module->declarations[i]->name.name);
-        ptlang_utils_graph_node *node = info.node;
-        if (module->declarations[i]->init != NULL && !info.evaluated)
+        ptlang_verify_node_table_value *info = shget(node_table, module->declarations[i]->name.name);
+        ptlang_utils_graph_node *node = info->node;
+        if (module->declarations[i]->init != NULL && !info->evaluated)
         {
             ptlang_ast_exp evaled =
                 ptlang_verify_eval(module->declarations[i]->init, PTLANG_VERIFY_EVAL_FULLY, node, nodes,
                                    node_table, module, ctx, errors);
             ptlang_ast_exp_destroy(module->declarations[i]->init);
-            module->declarations[i]->init = evaled;
-            shput(node_table, module->declarations[i]->name.name,
-                  ((ptlang_verify_node_table_value){.node = node, .evaluated = true}));
+            ptlang_verify_set_init(module->declarations[i], evaled, ctx);
+            info->evaluated = true;
         }
     }
+
+    for (size_t i = 0; i < shlen(node_table); i++)
+    {
+        ptlang_free(node_table[i].value);
+    }
     shfree(node_table);
+
     for (size_t i = 0; i < arrlenu(nodes); i++)
     {
         if (nodes[i].data != NULL)
@@ -2412,15 +2414,15 @@ static void ptlang_verify_check_cycles_in_global_defs(ptlang_utils_graph_node *n
 
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_utils_graph_node *node = shget(node_table, module->declarations[i]->name.name).node;
+        ptlang_verify_node_table_value *info = shget(node_table, module->declarations[i]->name.name);
+        ptlang_utils_graph_node *node = info->node;
         if (module->declarations[i]->init == NULL || node->in_cycle)
         {
             if (module->declarations[i]->init != NULL)
                 ptlang_ast_exp_destroy(module->declarations[i]->init);
             module->declarations[i]->init =
                 ptlang_verify_get_default_value(module->declarations[i]->type, ctx);
-            shput(node_table, module->declarations[i]->name.name,
-                  ((ptlang_verify_node_table_value){.node = node, .evaluated = true}));
+            info->evaluated = true;
         }
     }
 
@@ -2659,7 +2661,7 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
     {
     case PTLANG_AST_EXP_VARIABLE:
     {
-        return shget(node_table, exp->content.str_prepresentation).node;
+        return shget(node_table, exp->content.str_prepresentation)->node;
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
@@ -2705,20 +2707,37 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
 static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_context *ctx)
 {
 
+
     enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);
     size_t num = 0;
-    printf("fdsafdsf%p\n", binary->content.binary);
-    printf("is binary: %d\n", binary->type == PTLANG_AST_EXP_BINARY);
 
     for (size_t i = sizeof(size_t); i > 0; i--)
     {
-        num <<= 8;
-        if (i < ptlang_eval_calc_byte_size(binary->ast_type))
+       num <<= 8;
+        if (i <= ptlang_eval_calc_byte_size(binary->ast_type))
             num +=
                 binary->content
                     .binary[byteOrdering == LLVMBigEndian ? ptlang_eval_calc_byte_size(binary->ast_type) - i
                                                           : i - 1];
-        printf("iter: %zu\n", i);
     }
+
     return num;
+}
+
+static void ptlang_verify_set_init(ptlang_ast_decl decl, ptlang_ast_exp init, ptlang_context *ctx)
+{
+    if (decl->type->type == PTLANG_AST_TYPE_ARRAY)
+    {
+        arrsetcap(init->content.array.values, decl->type->content.array.len);
+        while (arrlenu(init->content.array.values) < decl->type->content.array.len)
+        {
+            arrpush(init->content.array.values,
+                    ptlang_verify_get_default_value(decl->type->content.array.type, ctx));
+        }
+
+        ptlang_ast_type_destroy(init->ast_type);
+        init->ast_type = ptlang_ast_type_copy(decl->type);
+    }
+
+    decl->init = init;
 }
