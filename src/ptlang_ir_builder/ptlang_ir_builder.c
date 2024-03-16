@@ -745,7 +745,7 @@ static void ptlang_ir_builder_prepare_binary_op(ptlang_ast_exp exp, LLVMValueRef
     // ptlang_ast_type right_type = ptlang_ir_builder_exp_type(exp->content.binary_operator.right_value, ctx);
     ptlang_ast_type right_type = exp->content.binary_operator.right_value->ast_type;
     // *ret_type = ptlang_ir_builder_combine_types(left_type, right_type, ctx->type_scope);
-    *ret_type = exp->ast_type;
+    *ret_type = ptlang_ast_type_copy(exp->ast_type);
     LLVMValueRef left_value_uncasted = ptlang_ir_builder_exp(exp->content.binary_operator.left_value, ctx);
     *left_value = ptlang_ir_builder_build_cast(left_value_uncasted, left_type, *ret_type, ctx);
     LLVMValueRef right_value_uncasted = ptlang_ir_builder_exp(exp->content.binary_operator.right_value, ctx);

@@ -41,6 +41,13 @@ typedef struct ptlang_verify_node_table_s
     ptlang_verify_node_table_value *value;
 } *ptlang_verify_node_table;
 
+typedef struct
+{
+    bool evaluated;
+    ptlang_ast_exp val;
+    ptlang_ast_exp name;
+} ptlang_verify_node_info;
+
 typedef struct ptlang_verify_decl_table_s
 {
     char *key;
@@ -52,6 +59,7 @@ enum ptlang_verify_eval_mode
     PTLANG_VERIFY_EVAL_INDICES,
     PTLANG_VERIFY_EVAL_PARTIALLY,
     PTLANG_VERIFY_EVAL_FULLY,
+    PTLANG_VERIFY_EVAL_FULLY_AND_WRITE,
 };
 
 // typedef struct ptlang_verify_struct_s ptlang_verify_struct;
@@ -163,6 +171,7 @@ static void ptlang_verify_decl_init(ptlang_ast_decl decl, size_t scope_offset, p
 static void ptlang_verify_global_decls(ptlang_ast_decl *declarations, ptlang_context *ctx,
                                        ptlang_error **errors);
 
-static void ptlang_verify_set_init(ptlang_ast_decl decl, ptlang_ast_exp init, ptlang_context *ctx);
+static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_ast_exp init,
+                                   ptlang_context *ctx);
 
 #endif

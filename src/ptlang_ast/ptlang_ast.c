@@ -1067,22 +1067,24 @@ ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_STRUCT:
     {
         copy->content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type);
+        copy->content.struct_.members = NULL;
         for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
         {
-            arrpush(copy->content.struct_.members,
-                    ((struct ptlang_ast_struct_member_s){
-                        .exp = ptlang_ast_exp_copy(exp->content.struct_.members[i].exp),
-                        .pos = ptlang_ast_code_position_copy(exp->content.struct_.members[i].pos),
-                        .str = ptlang_ast_ident_copy(exp->content.struct_.members[i].str)}));
+            arrput(copy->content.struct_.members,
+                   ((struct ptlang_ast_struct_member_s){
+                       .exp = ptlang_ast_exp_copy(exp->content.struct_.members[i].exp),
+                       .pos = ptlang_ast_code_position_copy(exp->content.struct_.members[i].pos),
+                       .str = ptlang_ast_ident_copy(exp->content.struct_.members[i].str)}));
         }
         break;
     }
     case PTLANG_AST_EXP_ARRAY:
     {
         copy->content.array.type = ptlang_ast_type_copy(exp->content.array.type);
+        copy->content.array.values = NULL;
         for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
         {
-            arrpush(copy->content.array.values, ptlang_ast_exp_copy(exp->content.array.values[i]));
+            arrput(copy->content.array.values, ptlang_ast_exp_copy(exp->content.array.values[i]));
         }
         break;
     }
