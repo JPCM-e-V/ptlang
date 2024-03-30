@@ -141,16 +141,16 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_
 // uint64_t ptlang_ast_module_get_type_alias_count(ptlang_ast_module module);
 // void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *types);
 
-ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type);
-ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list);
+// ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type);
+// ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list);
 
-void ptlang_ast_type_destroy(ptlang_ast_type type);
-void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt);
-void ptlang_ast_module_destroy(ptlang_ast_module module);
-void ptlang_ast_func_destroy(ptlang_ast_func func);
-void ptlang_ast_exp_destroy(ptlang_ast_exp exp);
-void ptlang_ast_decl_destroy(ptlang_ast_decl decl);
-void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def);
+void ptlang_ast_type_destroy(struct ptlang_ast_type_s *type);
+void ptlang_ast_stmt_destroy(struct ptlang_ast_stmt_s *stmt);
+void ptlang_ast_module_destroy(struct ptlang_ast_module_s *module);
+void ptlang_ast_func_destroy(struct ptlang_ast_func_s *func);
+void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp);
+void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl);
+void ptlang_ast_struct_def_destroy(struct ptlang_ast_struct_def_s *struct_def);
 void ptlang_ast_decl_list_destroy(ptlang_ast_decl *decl_list);
 void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list);
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
@@ -158,11 +158,11 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name);
 
-ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos);
+// ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos);
 
-ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
+// ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
 
-ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
+// ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
 
 ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp);
 

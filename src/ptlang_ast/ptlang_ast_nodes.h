@@ -1,16 +1,18 @@
 #ifndef PTLANG_AST_NODES_H
 #define PTLANG_AST_NODES_H
 
+#include "ptlang_rc.h"
 #include <stdbool.h>
 #include <stdint.h>
 
-typedef struct ptlang_ast_type_s *ptlang_ast_type;
-typedef struct ptlang_ast_stmt_s *ptlang_ast_stmt;
-typedef struct ptlang_ast_module_s *ptlang_ast_module;
-typedef struct ptlang_ast_func_s *ptlang_ast_func;
-typedef struct ptlang_ast_exp_s *ptlang_ast_exp;
-typedef struct ptlang_ast_decl_s *ptlang_ast_decl;
-typedef struct ptlang_ast_struct_def_s *ptlang_ast_struct_def;
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_type);
+// typedef struct { size_t ref_count; struct ptlang_ast_type_s content; } **ptlang_ast_type;
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_stmt);
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_module);
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_func);
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_exp);
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_decl);
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_struct_def);
 typedef struct ptlang_ast_struct_member_s *ptlang_ast_struct_member_list;
 
 typedef struct ptlang_ast_code_position_s
@@ -21,7 +23,7 @@ typedef struct ptlang_ast_code_position_s
     uint64_t to_column;
 } ptlang_ast_code_position_s;
 
-typedef struct ptlang_ast_code_position_s *ptlang_ast_code_position;
+PTLANG_RC_DEFINE_REF_TYPE_ONLY(ptlang_ast_code_position);
 
 typedef struct ptlang_ast_ident_s
 {
@@ -300,4 +302,13 @@ struct ptlang_ast_func_s
     ptlang_ast_code_position pos;
 };
 
+
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_type_s, ptlang_ast_type);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_stmt_s, ptlang_ast_stmt);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_module_s, ptlang_ast_module);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_func_s, ptlang_ast_func);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_exp_s, ptlang_ast_exp);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_decl_s, ptlang_ast_decl);
+PTLANG_RC_DEFINE_REF_STRUCT(struct ptlang_ast_struct_def_s, ptlang_ast_struct_def);
+PTLANG_RC_DEFINE_REF_STRUCT(ptlang_ast_code_position_s, ptlang_ast_code_position);
 #endif

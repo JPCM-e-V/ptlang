@@ -3,8 +3,9 @@
 ptlang_ast_struct_def ptlang_ast_struct_def_new(ptlang_ast_ident name, ptlang_ast_decl *members,
                                                 ptlang_ast_code_position pos)
 {
-    ptlang_ast_struct_def struct_def = ptlang_malloc(sizeof(struct ptlang_ast_struct_def_s));
-    *struct_def = (struct ptlang_ast_struct_def_s){
+    ptlang_ast_struct_def struct_def;
+    ptlang_rc_alloc(struct_def);
+    ptlang_rc_deref(struct_def) = (struct ptlang_ast_struct_def_s){
         .name = name,
         .members = members,
         .pos = pos,
@@ -14,8 +15,9 @@ ptlang_ast_struct_def ptlang_ast_struct_def_new(ptlang_ast_ident name, ptlang_as
 
 ptlang_ast_module ptlang_ast_module_new(void)
 {
-    ptlang_ast_module module = ptlang_malloc(sizeof(struct ptlang_ast_module_s));
-    *module = (struct ptlang_ast_module_s){
+    ptlang_ast_module module;
+    ptlang_rc_alloc(module);
+    ptlang_rc_deref(module) = (struct ptlang_ast_module_s){
         .functions = NULL,
         .declarations = NULL,
         .struct_defs = NULL,
@@ -26,7 +28,7 @@ ptlang_ast_module ptlang_ast_module_new(void)
 
 void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func function)
 {
-    arrput(module->functions, function);
+    arrput(ptlang_rc_deref(module).functions, function);
     // module->function_count++;
     // module->functions = ptlang_realloc(module->functions, sizeof(ptlang_ast_func) *
     // module->function_count); module->functions[module->function_count - 1] = function;
@@ -34,7 +36,7 @@ void ptlang_ast_module_add_function(ptlang_ast_module module, ptlang_ast_func fu
 
 void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl declaration)
 {
-    arrput(module->declarations, declaration);
+    arrput(ptlang_rc_deref(module).declarations, declaration);
     // module->declaration_count++;
     // module->declarations =
     //     ptlang_realloc(module->declarations, sizeof(ptlang_ast_decl) * module->declaration_count);
@@ -43,7 +45,7 @@ void ptlang_ast_module_add_declaration(ptlang_ast_module module, ptlang_ast_decl
 
 void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struct_def struct_def)
 {
-    arrput(module->struct_defs, struct_def);
+    arrput(ptlang_rc_deref(module).struct_defs, struct_def);
     // module->struct_def_count++;
     // module->struct_defs =
     //     ptlang_realloc(module->struct_defs, sizeof(ptlang_ast_struct_def) * module->struct_def_count);
@@ -53,11 +55,11 @@ void ptlang_ast_module_add_struct_def(ptlang_ast_module module, ptlang_ast_struc
 void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident name, ptlang_ast_type type,
                                       ptlang_ast_code_position pos)
 {
-    arrput(module->type_aliases, ((struct ptlang_ast_module_type_alias_s){
-                                     .name = name,
-                                     .type = type,
-                                     .pos = pos,
-                                 }));
+    arrput(ptlang_rc_deref(module).type_aliases, ((struct ptlang_ast_module_type_alias_s){
+                                                     .name = name,
+                                                     .type = type,
+                                                     .pos = pos,
+                                                 }));
     // module->type_alias_count++;
     // module->type_aliases = ptlang_realloc(
     //     module->type_aliases, sizeof(struct ptlang_ast_module_type_alias_s) * module->type_alias_count);
@@ -71,8 +73,9 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident
 ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
                                     ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool export)
 {
-    ptlang_ast_func function = ptlang_malloc(sizeof(struct ptlang_ast_func_s));
-    *function = (struct ptlang_ast_func_s){
+    ptlang_ast_func function;
+    ptlang_rc_alloc(function);
+    ptlang_rc_deref(function) = (struct ptlang_ast_func_s){
         .name = name,
         .return_type = return_type,
         .parameters = parameters,
@@ -85,8 +88,9 @@ ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type retur
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name, bool writable,
                                     ptlang_ast_code_position pos)
 {
-    ptlang_ast_decl declaration = ptlang_malloc(sizeof(struct ptlang_ast_decl_s));
-    *declaration = (struct ptlang_ast_decl_s){
+    ptlang_ast_decl declaration;
+    ptlang_rc_alloc(declaration);
+    ptlang_rc_deref(declaration) = (struct ptlang_ast_decl_s){
         .type = type,
         .name = name,
         .writable = writable,
@@ -97,11 +101,14 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name,
     return declaration;
 }
 
-void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init) { decl->init = init; }
+void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init)
+{
+    ptlang_rc_deref(decl).init = init;
+}
 
-void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { decl->export = export; }
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { ptlang_rc_deref(decl).export = export; }
 
-void ptlang_ast_func_set_export(ptlang_ast_func func, bool export) { func->export = export; }
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool export) { ptlang_rc_deref(func).export = export; }
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 // {
@@ -182,8 +189,9 @@ void ptlang_ast_struct_member_list_add(ptlang_ast_struct_member_list *list, ptla
 
 ptlang_ast_type ptlang_ast_type_void(ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_VOID,
         .pos = pos,
     };
@@ -192,8 +200,9 @@ ptlang_ast_type ptlang_ast_type_void(ptlang_ast_code_position pos)
 
 ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size, ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_INTEGER,
         .content.integer =
             {
@@ -207,8 +216,9 @@ ptlang_ast_type ptlang_ast_type_integer(bool is_signed, uint32_t size, ptlang_as
 
 ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size, ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FLOAT,
         .content.float_size = size,
         .pos = pos,
@@ -219,8 +229,9 @@ ptlang_ast_type ptlang_ast_type_float(enum ptlang_ast_type_float_size size, ptla
 ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast_type *parameters,
                                          ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_FUNCTION,
         .content.function =
             {
@@ -234,8 +245,9 @@ ptlang_ast_type ptlang_ast_type_function(ptlang_ast_type return_type, ptlang_ast
 
 ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type, ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_HEAP_ARRAY,
         .content.heap_array.type = element_type,
         .pos = pos,
@@ -245,8 +257,9 @@ ptlang_ast_type ptlang_ast_type_heap_array(ptlang_ast_type element_type, ptlang_
 ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len,
                                       ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_ARRAY,
         .content.array =
             {
@@ -260,8 +273,9 @@ ptlang_ast_type ptlang_ast_type_array(ptlang_ast_type element_type, uint64_t len
 ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool writable,
                                           ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_REFERENCE,
         .content.reference =
             {
@@ -275,8 +289,9 @@ ptlang_ast_type ptlang_ast_type_reference(ptlang_ast_type element_type, bool wri
 
 ptlang_ast_type ptlang_ast_type_named(char *name, ptlang_ast_code_position pos)
 {
-    ptlang_ast_type type = ptlang_malloc(sizeof(struct ptlang_ast_type_s));
-    *type = (struct ptlang_ast_type_s){
+    ptlang_ast_type type;
+    ptlang_rc_alloc(type);
+    ptlang_rc_deref(type) = (struct ptlang_ast_type_s){
         .type = PTLANG_AST_TYPE_NAMED,
         .content.name = name,
         .pos = pos,
@@ -288,8 +303,9 @@ ptlang_ast_type ptlang_ast_type_named(char *name, ptlang_ast_code_position pos)
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp left_value, ptlang_ast_exp right_value,       \
                                                 ptlang_ast_code_position pos)                                \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
-        *exp = (struct ptlang_ast_exp_s){                                                                    \
+        ptlang_ast_exp exp;                                                                                  \
+        ptlang_rc_alloc(exp);                                                                                \
+        ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.binary_operator =                                                                       \
                 {                                                                                            \
@@ -304,8 +320,9 @@ ptlang_ast_type ptlang_ast_type_named(char *name, ptlang_ast_code_position pos)
 #define UNARY_OP(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(ptlang_ast_exp value, ptlang_ast_code_position pos)          \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
-        *exp = (struct ptlang_ast_exp_s){                                                                    \
+        ptlang_ast_exp exp;                                                                                  \
+        ptlang_rc_alloc(exp);                                                                                \
+        ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.unary_operator = value,                                                                 \
             .pos = pos,                                                                                      \
@@ -341,8 +358,9 @@ UNARY_OP(length, LENGTH)
 ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_ast_exp *parameters,
                                                 ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_FUNCTION_CALL,
         .content.function_call =
             {
@@ -357,8 +375,9 @@ ptlang_ast_exp ptlang_ast_exp_function_call_new(ptlang_ast_exp function, ptlang_
 #define STR_REPR(lower, upper)                                                                               \
     ptlang_ast_exp ptlang_ast_exp_##lower##_new(char *str_representation, ptlang_ast_code_position pos)      \
     {                                                                                                        \
-        ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));                                 \
-        *exp = (struct ptlang_ast_exp_s){                                                                    \
+        ptlang_ast_exp exp;                                                                                  \
+        ptlang_rc_alloc(exp);                                                                                \
+        ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){                                                    \
             .type = PTLANG_AST_EXP_##upper,                                                                  \
             .content.str_prepresentation = str_representation,                                               \
             .pos = pos,                                                                                      \
@@ -373,8 +392,9 @@ STR_REPR(float, FLOAT)
 ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_ident type, ptlang_ast_struct_member_list members,
                                          ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT,
         .content.struct_ =
             {
@@ -389,8 +409,9 @@ ptlang_ast_exp ptlang_ast_exp_struct_new(ptlang_ast_ident type, ptlang_ast_struc
 ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *values,
                                         ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY,
         .content.array =
             {
@@ -405,8 +426,9 @@ ptlang_ast_exp ptlang_ast_exp_array_new(ptlang_ast_type type, ptlang_ast_exp *va
 ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptlang_ast_exp if_value,
                                                    ptlang_ast_exp else_value, ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_TERNARY,
         .content.ternary_operator =
             {
@@ -421,8 +443,9 @@ ptlang_ast_exp ptlang_ast_exp_ternary_operator_new(ptlang_ast_exp condition, ptl
 ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp value,
                                        ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_CAST,
         .content.cast =
             {
@@ -437,8 +460,9 @@ ptlang_ast_exp ptlang_ast_exp_cast_new(ptlang_ast_type type, ptlang_ast_exp valu
 ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, ptlang_ast_ident member_name,
                                                 ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_STRUCT_MEMBER,
         .content.struct_member =
             {
@@ -452,8 +476,9 @@ ptlang_ast_exp ptlang_ast_exp_struct_member_new(ptlang_ast_exp struct_, ptlang_a
 ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast_exp index,
                                                 ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_ARRAY_ELEMENT,
         .content.array_element =
             {
@@ -467,8 +492,9 @@ ptlang_ast_exp ptlang_ast_exp_array_element_new(ptlang_ast_exp array, ptlang_ast
 
 ptlang_ast_exp ptlang_ast_exp_reference_new(bool writable, ptlang_ast_exp value, ptlang_ast_code_position pos)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_REFERENCE,
         .content.reference =
             {
@@ -484,20 +510,22 @@ UNARY_OP(dereference, DEREFERENCE)
 
 ptlang_ast_exp ptlang_ast_exp_binary_new(uint8_t *binary, ptlang_ast_exp prev)
 {
-    ptlang_ast_exp exp = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    *exp = (struct ptlang_ast_exp_s){
+    ptlang_ast_exp exp;
+    ptlang_rc_alloc(exp);
+    ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_BINARY,
         .content.binary = binary,
-        .pos = prev->pos,
-        .ast_type = prev->ast_type,
+        .pos = ptlang_rc_deref(prev).pos,
+        .ast_type = ptlang_rc_deref(prev).ast_type,
     };
     return exp;
 }
 
 ptlang_ast_stmt ptlang_ast_stmt_block_new(ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BLOCK,
         .content.block =
             {
@@ -510,9 +538,9 @@ ptlang_ast_stmt ptlang_ast_stmt_block_new(ptlang_ast_code_position pos)
 
 void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt stmt)
 {
-    assert(block_stmt->type == PTLANG_AST_STMT_BLOCK);
+    assert(ptlang_rc_deref(block_stmt).type == PTLANG_AST_STMT_BLOCK);
 
-    arrput(block_stmt->content.block.stmts, stmt);
+    arrput(ptlang_rc_deref(block_stmt).content.block.stmts, stmt);
 
     // block_stmt->content.block.stmt_count++;
     // block_stmt->content.block.stmts = ptlang_realloc(
@@ -521,8 +549,9 @@ void ptlang_ast_stmt_block_add_stmt(ptlang_ast_stmt block_stmt, ptlang_ast_stmt 
 }
 ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_EXP,
         .content.exp = exp,
         .pos = pos,
@@ -531,8 +560,9 @@ ptlang_ast_stmt ptlang_ast_stmt_expr_new(ptlang_ast_exp exp, ptlang_ast_code_pos
 }
 ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_DECL,
         .content.decl = decl,
         .pos = pos,
@@ -542,8 +572,9 @@ ptlang_ast_stmt ptlang_ast_stmt_decl_new(ptlang_ast_decl decl, ptlang_ast_code_p
 ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
                                        ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF,
         .content.control_flow =
             {
@@ -557,8 +588,9 @@ ptlang_ast_stmt ptlang_ast_stmt_if_new(ptlang_ast_exp condition, ptlang_ast_stmt
 ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast_stmt if_stmt,
                                             ptlang_ast_stmt else_stmt, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_IF_ELSE,
         .content.control_flow2 =
             {
@@ -572,8 +604,9 @@ ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt loop_stmt,
                                           ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_WHILE,
         .content.control_flow =
             {
@@ -586,8 +619,9 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
 }
 ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
         .content.exp = return_value,
         .pos = pos,
@@ -596,8 +630,9 @@ ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value, ptlang_a
 }
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
         .content.exp = return_value,
         .pos = pos,
@@ -606,8 +641,9 @@ ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value, ptlang_
 }
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_BREAK,
         .content.nesting_level = nesting_level,
         .pos = pos,
@@ -616,8 +652,9 @@ ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level, ptlang_ast_cod
 }
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_code_position pos)
 {
-    ptlang_ast_stmt stmt = ptlang_malloc(sizeof(struct ptlang_ast_stmt_s));
-    *stmt = (struct ptlang_ast_stmt_s){
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_CONTINUE,
         .content.nesting_level = nesting_level,
         .pos = pos,
@@ -625,57 +662,58 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_
     return stmt;
 }
 
-ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list)
-{
-    ptlang_ast_type *copy = NULL;
-    size_t type_list_len = arrlenu(type_list);
-    arrsetlen(copy, type_list_len);
-    for (size_t i = 0; i < type_list_len; i++)
-    {
-        copy[i] = ptlang_ast_type_copy(type_list[i]);
-    }
-    return copy;
-}
+// ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list)
+// {
+//     ptlang_ast_type *copy = NULL;
+//     size_t type_list_len = arrlenu(type_list);
+//     arrsetlen(copy, type_list_len);
+//     for (size_t i = 0; i < type_list_len; i++)
+//     {
+//         copy[i] = ptlang_ast_type_copy(type_list[i]);
+//     }
+//     return copy;
+// }
 
-ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
-{
-    if (type == NULL)
-    {
-        return NULL;
-    }
-    switch (type->type)
-    {
-    case PTLANG_AST_TYPE_VOID:
-        return ptlang_ast_type_void(ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_INTEGER:
-        return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
-                                       ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_FLOAT:
-        return ptlang_ast_type_float(type->content.float_size, ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_FUNCTION:
-        return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type),
-                                        ptlang_ast_type_list_copy(type->content.function.parameters),
-                                        ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_HEAP_ARRAY:
-        return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type),
-                                          ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_ARRAY:
-        return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type), type->content.array.len,
-                                     ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_REFERENCE:
-        return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type),
-                                         type->content.reference.writable,
-                                         ptlang_ast_code_position_copy(type->pos));
-    case PTLANG_AST_TYPE_NAMED:
-    {
-        size_t name_len = strlen(type->content.name) + 1;
-        char *name = ptlang_malloc(name_len);
-        memcpy(name, type->content.name, name_len);
-        return ptlang_ast_type_named(name, ptlang_ast_code_position_copy(type->pos));
-    }
-    }
-    abort();
-}
+// ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
+// {
+//     if (type == NULL)
+//     {
+//         return NULL;
+//     }
+//     switch (type->type)
+//     {
+//     case PTLANG_AST_TYPE_VOID:
+//         return ptlang_ast_type_void(ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_INTEGER:
+//         return ptlang_ast_type_integer(type->content.integer.is_signed, type->content.integer.size,
+//                                        ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_FLOAT:
+//         return ptlang_ast_type_float(type->content.float_size, ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_FUNCTION:
+//         return ptlang_ast_type_function(ptlang_ast_type_copy(type->content.function.return_type),
+//                                         ptlang_ast_type_list_copy(type->content.function.parameters),
+//                                         ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_HEAP_ARRAY:
+//         return ptlang_ast_type_heap_array(ptlang_ast_type_copy(type->content.heap_array.type),
+//                                           ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_ARRAY:
+//         return ptlang_ast_type_array(ptlang_ast_type_copy(type->content.array.type),
+//         type->content.array.len,
+//                                      ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_REFERENCE:
+//         return ptlang_ast_type_reference(ptlang_ast_type_copy(type->content.reference.type),
+//                                          type->content.reference.writable,
+//                                          ptlang_ast_code_position_copy(type->pos));
+//     case PTLANG_AST_TYPE_NAMED:
+//     {
+//         size_t name_len = strlen(type->content.name) + 1;
+//         char *name = ptlang_malloc(name_len);
+//         memcpy(name, type->content.name, name_len);
+//         return ptlang_ast_type_named(name, ptlang_ast_code_position_copy(type->pos));
+//     }
+//     }
+//     abort();
+// }
 
 // ptlang_ast_func *ptlang_ast_module_get_funcs(ptlang_ast_module module, uint64_t *count)
 // {
@@ -712,28 +750,28 @@ ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type)
 void ptlang_ast_ident_destroy(ptlang_ast_ident ident)
 {
     ptlang_free(ident.name);
-    ptlang_free(ident.pos);
+    ptlang_rc_remove_ref(ident.pos);
 }
 
-void ptlang_ast_type_destroy(ptlang_ast_type type)
+void ptlang_ast_type_destroy(struct ptlang_ast_type_s *type)
 {
     if (type != NULL)
     {
-        ptlang_free(type->pos);
+        ptlang_rc_remove_ref(type->pos);
         switch (type->type)
         {
         case PTLANG_AST_TYPE_FUNCTION:
-            ptlang_ast_type_destroy(type->content.function.return_type);
+            ptlang_rc_remove_ref(type->content.function.return_type, ptlang_ast_type_destroy);
             ptlang_ast_type_list_destroy(type->content.function.parameters);
             break;
         case PTLANG_AST_TYPE_HEAP_ARRAY:
-            ptlang_ast_type_destroy(type->content.heap_array.type);
+            ptlang_rc_remove_ref(type->content.heap_array.type, ptlang_ast_type_destroy);
             break;
         case PTLANG_AST_TYPE_ARRAY:
-            ptlang_ast_type_destroy(type->content.array.type);
+            ptlang_rc_remove_ref(type->content.array.type, ptlang_ast_type_destroy);
             break;
         case PTLANG_AST_TYPE_REFERENCE:
-            ptlang_ast_type_destroy(type->content.reference.type);
+            ptlang_rc_remove_ref(type->content.reference.type, ptlang_ast_type_destroy);
             break;
         case PTLANG_AST_TYPE_NAMED:
             ptlang_free(type->content.name);
@@ -741,88 +779,82 @@ void ptlang_ast_type_destroy(ptlang_ast_type type)
         default:
             break;
         }
-        ptlang_free(type);
     }
 }
 
-void ptlang_ast_stmt_destroy(ptlang_ast_stmt stmt)
+void ptlang_ast_stmt_destroy(struct ptlang_ast_stmt_s *stmt)
 {
-    ptlang_free(stmt->pos);
+    ptlang_rc_remove_ref(stmt->pos);
     switch (stmt->type)
     {
     case PTLANG_AST_STMT_BLOCK:
         for (size_t i = 0; i < arrlenu(stmt->content.block.stmts); i++)
         {
-            ptlang_ast_stmt_destroy(stmt->content.block.stmts[i]);
+            ptlang_rc_remove_ref(stmt->content.block.stmts[i], ptlang_ast_stmt_destroy);
         }
         arrfree(stmt->content.block.stmts);
         break;
     case PTLANG_AST_STMT_EXP:
     case PTLANG_AST_STMT_RETURN:
     case PTLANG_AST_STMT_RET_VAL:
-        ptlang_ast_exp_destroy(stmt->content.exp);
+        ptlang_rc_remove_ref(stmt->content.exp, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_STMT_DECL:
-        ptlang_ast_decl_destroy(stmt->content.decl);
+        ptlang_rc_remove_ref(stmt->content.decl, ptlang_ast_decl_destroy);
         break;
     case PTLANG_AST_STMT_IF:
     case PTLANG_AST_STMT_WHILE:
-        ptlang_ast_exp_destroy(stmt->content.control_flow.condition);
-        ptlang_ast_stmt_destroy(stmt->content.control_flow.stmt);
+        ptlang_rc_remove_ref(stmt->content.control_flow.condition, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(stmt->content.control_flow.stmt, ptlang_ast_stmt_destroy);
         break;
     case PTLANG_AST_STMT_IF_ELSE:
-        ptlang_ast_exp_destroy(stmt->content.control_flow2.condition);
-        ptlang_ast_stmt_destroy(stmt->content.control_flow2.stmt[0]);
-        ptlang_ast_stmt_destroy(stmt->content.control_flow2.stmt[1]);
+        ptlang_rc_remove_ref(stmt->content.control_flow2.condition, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(stmt->content.control_flow2.stmt[0], ptlang_ast_stmt_destroy);
+        ptlang_rc_remove_ref(stmt->content.control_flow2.stmt[1], ptlang_ast_stmt_destroy);
         break;
     default:
         break;
     }
-    ptlang_free(stmt);
 }
 
-void ptlang_ast_module_destroy(ptlang_ast_module module)
+void ptlang_ast_module_destroy(struct ptlang_ast_module_s *module)
 {
     for (size_t i = 0; i < arrlenu(module->functions); i++)
     {
-        ptlang_ast_func_destroy(module->functions[i]);
+        ptlang_rc_remove_ref(module->functions[i], ptlang_ast_func_destroy);
     }
     arrfree(module->functions);
     for (size_t i = 0; i < arrlenu(module->declarations); i++)
     {
-        ptlang_ast_decl_destroy(module->declarations[i]);
+        ptlang_rc_remove_ref(module->declarations[i], ptlang_ast_decl_destroy);
     }
     arrfree(module->declarations);
     for (size_t i = 0; i < arrlenu(module->struct_defs); i++)
     {
-        ptlang_ast_struct_def_destroy(module->struct_defs[i]);
+        ptlang_rc_remove_ref(module->struct_defs[i], ptlang_ast_struct_def_destroy);
     }
     arrfree(module->struct_defs);
     for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
         ptlang_ast_ident_destroy(module->type_aliases[i].name);
-        ptlang_ast_type_destroy(module->type_aliases[i].type);
+        ptlang_rc_remove_ref(module->type_aliases[i].type, ptlang_ast_type_destroy);
     }
     arrfree(module->type_aliases);
-
-    ptlang_free(module);
 }
 
-void ptlang_ast_func_destroy(ptlang_ast_func func)
+void ptlang_ast_func_destroy(struct ptlang_ast_func_s *func)
 {
     ptlang_ast_ident_destroy(func->name);
-    ptlang_free(func->pos);
-    ptlang_ast_type_destroy(func->return_type);
+    ptlang_rc_remove_ref(func->pos);
+    ptlang_rc_remove_ref(func->return_type, ptlang_ast_type_destroy);
     ptlang_ast_decl_list_destroy(func->parameters);
-    ptlang_ast_stmt_destroy(func->stmt);
-
-    ptlang_free(func);
+    ptlang_rc_remove_ref(func->stmt, ptlang_ast_stmt_destroy);
 }
 
-void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
+void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
 {
-    ptlang_free(exp->pos);
-    ptlang_ast_type_destroy(exp->ast_type);
+    ptlang_rc_remove_ref(exp->pos);
+    ptlang_rc_remove_ref(exp->ast_type, ptlang_ast_type_destroy);
     switch (exp->type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
@@ -845,18 +877,18 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_BITWISE_AND:
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
-        ptlang_ast_exp_destroy(exp->content.binary_operator.left_value);
-        ptlang_ast_exp_destroy(exp->content.binary_operator.right_value);
+        ptlang_rc_remove_ref(exp->content.binary_operator.left_value, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(exp->content.binary_operator.right_value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     case PTLANG_AST_EXP_LENGTH:
     case PTLANG_AST_EXP_DEREFERENCE:
-        ptlang_ast_exp_destroy(exp->content.unary_operator);
+        ptlang_rc_remove_ref(exp->content.unary_operator, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_FUNCTION_CALL:
-        ptlang_ast_exp_destroy(exp->content.function_call.function);
+        ptlang_rc_remove_ref(exp->content.function_call.function, ptlang_ast_exp_destroy);
         ptlang_ast_exp_list_destroy(exp->content.function_call.parameters);
         break;
     case PTLANG_AST_EXP_VARIABLE:
@@ -869,64 +901,58 @@ void ptlang_ast_exp_destroy(ptlang_ast_exp exp)
         ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
-        ptlang_ast_type_destroy(exp->content.array.type);
+        ptlang_rc_remove_ref(exp->content.array.type, ptlang_ast_type_destroy);
         ptlang_ast_exp_list_destroy(exp->content.array.values);
         break;
     case PTLANG_AST_EXP_TERNARY:
-        ptlang_ast_exp_destroy(exp->content.ternary_operator.condition);
-        ptlang_ast_exp_destroy(exp->content.ternary_operator.if_value);
-        ptlang_ast_exp_destroy(exp->content.ternary_operator.else_value);
+        ptlang_rc_remove_ref(exp->content.ternary_operator.condition, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(exp->content.ternary_operator.if_value, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(exp->content.ternary_operator.else_value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_CAST:
-        ptlang_ast_type_destroy(exp->content.cast.type);
-        ptlang_ast_exp_destroy(exp->content.cast.value);
+        ptlang_rc_remove_ref(exp->content.cast.type, ptlang_ast_type_destroy);
+        ptlang_rc_remove_ref(exp->content.cast.value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_STRUCT_MEMBER:
-        ptlang_ast_exp_destroy(exp->content.struct_member.struct_);
+        ptlang_rc_remove_ref(exp->content.struct_member.struct_, ptlang_ast_exp_destroy);
         ptlang_ast_ident_destroy(exp->content.struct_member.member_name);
         break;
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
-        ptlang_ast_exp_destroy(exp->content.array_element.array);
-        ptlang_ast_exp_destroy(exp->content.array_element.index);
+        ptlang_rc_remove_ref(exp->content.array_element.array, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(exp->content.array_element.index, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_REFERENCE:
-        ptlang_ast_exp_destroy(exp->content.reference.value);
+        ptlang_rc_remove_ref(exp->content.reference.value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_BINARY:
         ptlang_free(exp->content.binary);
         break;
     }
-
-    ptlang_free(exp);
 }
 
-void ptlang_ast_decl_destroy(ptlang_ast_decl decl)
+void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
 {
-    ptlang_free(decl->pos);
-    ptlang_ast_type_destroy(decl->type);
+    ptlang_rc_remove_ref(decl->pos);
+    ptlang_rc_remove_ref(decl->type, ptlang_ast_type_destroy);
     if (decl->init != NULL)
     {
-        ptlang_ast_exp_destroy(decl->init);
+        ptlang_rc_remove_ref(decl->init, ptlang_ast_exp_destroy);
     }
     ptlang_ast_ident_destroy(decl->name);
-
-    ptlang_free(decl);
 }
 
-void ptlang_ast_struct_def_destroy(ptlang_ast_struct_def struct_def)
+void ptlang_ast_struct_def_destroy(struct ptlang_ast_struct_def_s *struct_def)
 {
-    ptlang_free(struct_def->pos);
+    ptlang_rc_remove_ref(struct_def->pos);
     ptlang_ast_ident_destroy(struct_def->name);
     ptlang_ast_decl_list_destroy(struct_def->members);
-
-    ptlang_free(struct_def);
 }
 
 void ptlang_ast_decl_list_destroy(ptlang_ast_decl *decl_list)
 {
     for (size_t i = 0; i < arrlenu(decl_list); i++)
     {
-        ptlang_ast_decl_destroy(decl_list[i]);
+        ptlang_rc_remove_ref(decl_list[i], ptlang_ast_decl_destroy);
     }
     arrfree(decl_list);
 }
@@ -936,7 +962,7 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list)
 
     for (size_t i = 0; i < arrlenu(type_list); i++)
     {
-        ptlang_ast_type_destroy(type_list[i]);
+        ptlang_rc_remove_ref(type_list[i], ptlang_ast_type_destroy);
     }
     arrfree(type_list);
 }
@@ -945,7 +971,7 @@ void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list)
 {
     for (size_t i = 0; i < stbds_arrlenu(exp_list); i++)
     {
-        ptlang_ast_exp_destroy(exp_list[i]);
+        ptlang_rc_remove_ref(exp_list[i], ptlang_ast_exp_destroy);
     }
     arrfree(exp_list);
 }
@@ -955,8 +981,8 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
     for (size_t i = 0; i < arrlenu(member_list); i++)
     {
         ptlang_ast_ident_destroy(member_list[i].str);
-        ptlang_ast_exp_destroy(member_list[i].exp);
-        ptlang_free(member_list[i].pos);
+        ptlang_rc_remove_ref(member_list[i].exp, ptlang_ast_exp_destroy);
+        ptlang_rc_remove_ref(member_list[i].pos);
     }
     arrfree(member_list);
 }
@@ -965,7 +991,7 @@ ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *nam
 {
     for (size_t i = arrlenu(decl_list) - 1; i != -1; i--)
     {
-        if (0 == strcmp(decl_list[i]->name.name, name))
+        if (0 == strcmp(ptlang_rc_deref(decl_list[i]).name.name, name))
         {
             return decl_list[i];
         }
@@ -973,162 +999,163 @@ ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *nam
     return NULL;
 }
 
-ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos)
-{
-    if (pos == NULL)
-    {
-        return NULL;
-    }
-    ptlang_ast_code_position new_pos = ptlang_malloc(sizeof(*new_pos));
-    *new_pos = ((ptlang_ast_code_position_s){
-        .from_line = pos->from_line,
-        .from_column = pos->from_column,
-        .to_line = pos->to_line,
-        .to_column = pos->to_column,
-    });
-    return new_pos;
-}
+// ptlang_ast_code_position ptlang_ast_code_position_copy(ptlang_ast_code_position pos)
+// {
+//     if (pos == NULL)
+//     {
+//         return NULL;
+//     }
+//     ptlang_ast_code_position new_pos = ptlang_malloc(sizeof(*new_pos));
+//     *new_pos = ((ptlang_ast_code_position_s){
+//         .from_line = pos->from_line,
+//         .from_column = pos->from_column,
+//         .to_line = pos->to_line,
+//         .to_column = pos->to_column,
+//     });
+//     return new_pos;
+// }
 
-ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
-{
-    size_t name_len = strlen(ident.name) + 1;
-    ptlang_ast_ident new_ident = {
-        .name = ptlang_malloc(name_len),
-        .pos = ptlang_ast_code_position_copy(ident.pos),
-    };
-    memcpy(new_ident.name, ident.name, name_len);
-    return new_ident;
-}
+// ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
+// {
+//     size_t name_len = strlen(ident.name) + 1;
+//     ptlang_ast_ident new_ident = {
+//         .name = ptlang_malloc(name_len),
+//         .pos = ptlang_ast_code_position_copy(ident.pos),
+//     };
+//     memcpy(new_ident.name, ident.name, name_len);
+//     return new_ident;
+// }
 
-ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
-{
-    ptlang_ast_exp copy = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
-    copy->ast_type = ptlang_ast_type_copy(exp->ast_type);
-    copy->type = exp->type;
-    copy->pos = ptlang_ast_code_position_copy(exp->pos);
-    switch (exp->type)
-    {
-    case PTLANG_AST_EXP_ASSIGNMENT:
-    case PTLANG_AST_EXP_ADDITION:
-    case PTLANG_AST_EXP_SUBTRACTION:
-    case PTLANG_AST_EXP_MULTIPLICATION:
-    case PTLANG_AST_EXP_DIVISION:
-    case PTLANG_AST_EXP_MODULO:
-    case PTLANG_AST_EXP_REMAINDER:
-    case PTLANG_AST_EXP_EQUAL:
-    case PTLANG_AST_EXP_NOT_EQUAL:
-    case PTLANG_AST_EXP_GREATER:
-    case PTLANG_AST_EXP_GREATER_EQUAL:
-    case PTLANG_AST_EXP_LESS:
-    case PTLANG_AST_EXP_LESS_EQUAL:
-    case PTLANG_AST_EXP_LEFT_SHIFT:
-    case PTLANG_AST_EXP_RIGHT_SHIFT:
-    case PTLANG_AST_EXP_AND:
-    case PTLANG_AST_EXP_OR:
-    case PTLANG_AST_EXP_BITWISE_AND:
-    case PTLANG_AST_EXP_BITWISE_OR:
-    case PTLANG_AST_EXP_BITWISE_XOR:
-    {
-        copy->content.binary_operator.left_value =
-            ptlang_ast_exp_copy(exp->content.binary_operator.left_value);
-        copy->content.binary_operator.right_value =
-            ptlang_ast_exp_copy(exp->content.binary_operator.right_value);
-        break;
-    }
-    case PTLANG_AST_EXP_NEGATION:
-    case PTLANG_AST_EXP_NOT:
-    case PTLANG_AST_EXP_BITWISE_INVERSE:
-    case PTLANG_AST_EXP_LENGTH:
-    case PTLANG_AST_EXP_DEREFERENCE:
-    {
-        copy->content.unary_operator = ptlang_ast_exp_copy(exp->content.unary_operator);
-        break;
-    }
-    case PTLANG_AST_EXP_FUNCTION_CALL:
-    {
-        copy->content.function_call.function = ptlang_ast_exp_copy(exp->content.function_call.function);
-        copy->content.function_call.parameters = NULL;
-        for (size_t i = 0; i < arrlenu(exp->content.function_call.parameters); i++)
-        {
-            arrpush(copy->content.function_call.parameters,
-                    ptlang_ast_exp_copy(exp->content.function_call.parameters[i]));
-        }
-        break;
-    }
-    case PTLANG_AST_EXP_VARIABLE:
-    case PTLANG_AST_EXP_INTEGER:
-    case PTLANG_AST_EXP_FLOAT:
-    {
-        size_t str_size = strlen(exp->content.str_prepresentation) + 1;
-        copy->content.str_prepresentation = ptlang_malloc(str_size);
-        memcpy(copy->content.str_prepresentation, exp->content.str_prepresentation, str_size);
-        break;
-    }
-    case PTLANG_AST_EXP_STRUCT:
-    {
-        copy->content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type);
-        copy->content.struct_.members = NULL;
-        for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
-        {
-            arrput(copy->content.struct_.members,
-                   ((struct ptlang_ast_struct_member_s){
-                       .exp = ptlang_ast_exp_copy(exp->content.struct_.members[i].exp),
-                       .pos = ptlang_ast_code_position_copy(exp->content.struct_.members[i].pos),
-                       .str = ptlang_ast_ident_copy(exp->content.struct_.members[i].str)}));
-        }
-        break;
-    }
-    case PTLANG_AST_EXP_ARRAY:
-    {
-        copy->content.array.type = ptlang_ast_type_copy(exp->content.array.type);
-        copy->content.array.values = NULL;
-        for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
-        {
-            arrput(copy->content.array.values, ptlang_ast_exp_copy(exp->content.array.values[i]));
-        }
-        break;
-    }
-    case PTLANG_AST_EXP_TERNARY:
-        copy->content.ternary_operator.condition =
-            ptlang_ast_exp_copy(exp->content.ternary_operator.condition);
-        copy->content.ternary_operator.if_value = ptlang_ast_exp_copy(exp->content.ternary_operator.if_value);
-        copy->content.ternary_operator.else_value =
-            ptlang_ast_exp_copy(exp->content.ternary_operator.else_value);
-        break;
-    case PTLANG_AST_EXP_CAST:
-        copy->content.cast.type = ptlang_ast_type_copy(exp->content.cast.type);
-        copy->content.cast.value = ptlang_ast_exp_copy(exp->content.cast.value);
-        break;
-    case PTLANG_AST_EXP_STRUCT_MEMBER:
-        copy->content.struct_member.struct_ = ptlang_ast_exp_copy(exp->content.struct_member.struct_);
-        copy->content.struct_member.member_name =
-            ptlang_ast_ident_copy(exp->content.struct_member.member_name);
-        break;
-    case PTLANG_AST_EXP_ARRAY_ELEMENT:
-        copy->content.array_element.array = ptlang_ast_exp_copy(exp->content.array_element.array);
-        copy->content.array_element.index = ptlang_ast_exp_copy(exp->content.array_element.index);
-        break;
-    case PTLANG_AST_EXP_REFERENCE:
-        copy->content.reference.value = ptlang_ast_exp_copy(exp->content.reference.value);
-        copy->content.reference.writable = exp->content.reference.writable;
-        break;
-    case PTLANG_AST_EXP_BINARY:
-    {
-        uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER
-                                ? exp->ast_type->content.integer.size
-                                : exp->ast_type->content.float_size;
-        uint32_t byte_size = (bit_size - 1) / 8 + 1;
-        copy->content.binary = ptlang_malloc(byte_size);
-        memcpy(copy->content.binary, exp->content.binary, byte_size);
-    }
-    }
-    return copy;
-}
+// ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
+// {
+//     ptlang_ast_exp copy = ptlang_malloc(sizeof(struct ptlang_ast_exp_s));
+//     copy->ast_type = ptlang_ast_type_copy(exp->ast_type);
+//     copy->type = exp->type;
+//     copy->pos = ptlang_ast_code_position_copy(exp->pos);
+//     switch (exp->type)
+//     {
+//     case PTLANG_AST_EXP_ASSIGNMENT:
+//     case PTLANG_AST_EXP_ADDITION:
+//     case PTLANG_AST_EXP_SUBTRACTION:
+//     case PTLANG_AST_EXP_MULTIPLICATION:
+//     case PTLANG_AST_EXP_DIVISION:
+//     case PTLANG_AST_EXP_MODULO:
+//     case PTLANG_AST_EXP_REMAINDER:
+//     case PTLANG_AST_EXP_EQUAL:
+//     case PTLANG_AST_EXP_NOT_EQUAL:
+//     case PTLANG_AST_EXP_GREATER:
+//     case PTLANG_AST_EXP_GREATER_EQUAL:
+//     case PTLANG_AST_EXP_LESS:
+//     case PTLANG_AST_EXP_LESS_EQUAL:
+//     case PTLANG_AST_EXP_LEFT_SHIFT:
+//     case PTLANG_AST_EXP_RIGHT_SHIFT:
+//     case PTLANG_AST_EXP_AND:
+//     case PTLANG_AST_EXP_OR:
+//     case PTLANG_AST_EXP_BITWISE_AND:
+//     case PTLANG_AST_EXP_BITWISE_OR:
+//     case PTLANG_AST_EXP_BITWISE_XOR:
+//     {
+//         copy->content.binary_operator.left_value =
+//             ptlang_ast_exp_copy(exp->content.binary_operator.left_value);
+//         copy->content.binary_operator.right_value =
+//             ptlang_ast_exp_copy(exp->content.binary_operator.right_value);
+//         break;
+//     }
+//     case PTLANG_AST_EXP_NEGATION:
+//     case PTLANG_AST_EXP_NOT:
+//     case PTLANG_AST_EXP_BITWISE_INVERSE:
+//     case PTLANG_AST_EXP_LENGTH:
+//     case PTLANG_AST_EXP_DEREFERENCE:
+//     {
+//         copy->content.unary_operator = ptlang_ast_exp_copy(exp->content.unary_operator);
+//         break;
+//     }
+//     case PTLANG_AST_EXP_FUNCTION_CALL:
+//     {
+//         copy->content.function_call.function = ptlang_ast_exp_copy(exp->content.function_call.function);
+//         copy->content.function_call.parameters = NULL;
+//         for (size_t i = 0; i < arrlenu(exp->content.function_call.parameters); i++)
+//         {
+//             arrpush(copy->content.function_call.parameters,
+//                     ptlang_ast_exp_copy(exp->content.function_call.parameters[i]));
+//         }
+//         break;
+//     }
+//     case PTLANG_AST_EXP_VARIABLE:
+//     case PTLANG_AST_EXP_INTEGER:
+//     case PTLANG_AST_EXP_FLOAT:
+//     {
+//         size_t str_size = strlen(exp->content.str_prepresentation) + 1;
+//         copy->content.str_prepresentation = ptlang_malloc(str_size);
+//         memcpy(copy->content.str_prepresentation, exp->content.str_prepresentation, str_size);
+//         break;
+//     }
+//     case PTLANG_AST_EXP_STRUCT:
+//     {
+//         copy->content.struct_.type = ptlang_ast_ident_copy(exp->content.struct_.type);
+//         copy->content.struct_.members = NULL;
+//         for (size_t i = 0; i < arrlenu(exp->content.struct_.members); i++)
+//         {
+//             arrput(copy->content.struct_.members,
+//                    ((struct ptlang_ast_struct_member_s){
+//                        .exp = ptlang_ast_exp_copy(exp->content.struct_.members[i].exp),
+//                        .pos = ptlang_ast_code_position_copy(exp->content.struct_.members[i].pos),
+//                        .str = ptlang_ast_ident_copy(exp->content.struct_.members[i].str)}));
+//         }
+//         break;
+//     }
+//     case PTLANG_AST_EXP_ARRAY:
+//     {
+//         copy->content.array.type = ptlang_ast_type_copy(exp->content.array.type);
+//         copy->content.array.values = NULL;
+//         for (size_t i = 0; i < arrlenu(exp->content.array.values); i++)
+//         {
+//             arrput(copy->content.array.values, ptlang_ast_exp_copy(exp->content.array.values[i]));
+//         }
+//         break;
+//     }
+//     case PTLANG_AST_EXP_TERNARY:
+//         copy->content.ternary_operator.condition =
+//             ptlang_ast_exp_copy(exp->content.ternary_operator.condition);
+//         copy->content.ternary_operator.if_value =
+//         ptlang_ast_exp_copy(exp->content.ternary_operator.if_value);
+//         copy->content.ternary_operator.else_value =
+//             ptlang_ast_exp_copy(exp->content.ternary_operator.else_value);
+//         break;
+//     case PTLANG_AST_EXP_CAST:
+//         copy->content.cast.type = ptlang_ast_type_copy(exp->content.cast.type);
+//         copy->content.cast.value = ptlang_ast_exp_copy(exp->content.cast.value);
+//         break;
+//     case PTLANG_AST_EXP_STRUCT_MEMBER:
+//         copy->content.struct_member.struct_ = ptlang_ast_exp_copy(exp->content.struct_member.struct_);
+//         copy->content.struct_member.member_name =
+//             ptlang_ast_ident_copy(exp->content.struct_member.member_name);
+//         break;
+//     case PTLANG_AST_EXP_ARRAY_ELEMENT:
+//         copy->content.array_element.array = ptlang_ast_exp_copy(exp->content.array_element.array);
+//         copy->content.array_element.index = ptlang_ast_exp_copy(exp->content.array_element.index);
+//         break;
+//     case PTLANG_AST_EXP_REFERENCE:
+//         copy->content.reference.value = ptlang_ast_exp_copy(exp->content.reference.value);
+//         copy->content.reference.writable = exp->content.reference.writable;
+//         break;
+//     case PTLANG_AST_EXP_BINARY:
+//     {
+//         uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER
+//                                 ? exp->ast_type->content.integer.size
+//                                 : exp->ast_type->content.float_size;
+//         uint32_t byte_size = (bit_size - 1) / 8 + 1;
+//         copy->content.binary = ptlang_malloc(byte_size);
+//         memcpy(copy->content.binary, exp->content.binary, byte_size);
+//     }
+//     }
+//     return copy;
+// }
 
 ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
 {
     char *str = NULL;
-    switch (exp->type)
+    switch (ptlang_rc_deref(exp).type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
     case PTLANG_AST_EXP_ADDITION:
@@ -1152,9 +1179,10 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
     {
-        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.binary_operator.left_value),
-                               CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
-                               ptlang_ast_exp_to_string(exp->content.binary_operator.right_value));
+        ptlang_utils_build_str(
+            str, ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.binary_operator.left_value),
+            CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
+            ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.binary_operator.right_value));
         break;
     }
     case PTLANG_AST_EXP_NOT:
@@ -1163,7 +1191,7 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_DEREFERENCE:
     {
         ptlang_utils_build_str(str, CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
-                               ptlang_ast_exp_to_string(exp->content.unary_operator));
+                               ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.unary_operator));
         break;
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
@@ -1173,17 +1201,17 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     }
     case PTLANG_AST_EXP_VARIABLE:
     {
-        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        ptlang_utils_build_str(str, CONST_STR(ptlang_rc_deref(exp).content.str_prepresentation));
         break;
     }
     case PTLANG_AST_EXP_INTEGER:
     {
-        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        ptlang_utils_build_str(str, CONST_STR(ptlang_rc_deref(exp).content.str_prepresentation));
         break;
     }
     case PTLANG_AST_EXP_FLOAT:
     {
-        ptlang_utils_build_str(str, CONST_STR(exp->content.str_prepresentation));
+        ptlang_utils_build_str(str, CONST_STR(ptlang_rc_deref(exp).content.str_prepresentation));
         break;
     }
     case PTLANG_AST_EXP_STRUCT:
@@ -1208,22 +1236,23 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     }
     case PTLANG_AST_EXP_STRUCT_MEMBER:
     {
-        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.struct_member.struct_),
-                               CONST_STR("."), CONST_STR(exp->content.struct_member.member_name.name));
+        ptlang_utils_build_str(
+            str, ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.struct_member.struct_), CONST_STR("."),
+            CONST_STR(ptlang_rc_deref(exp).content.struct_member.member_name.name));
         break;
     }
     case PTLANG_AST_EXP_ARRAY_ELEMENT:
     {
-        ptlang_utils_build_str(str, ptlang_ast_exp_to_string(exp->content.array_element.array),
-                               CONST_STR("["), ptlang_ast_exp_to_string(exp->content.array_element.index),
-                               CONST_STR("]"));
+        ptlang_utils_build_str(
+            str, ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.array_element.array), CONST_STR("["),
+            ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.array_element.index), CONST_STR("]"));
         break;
     }
     case PTLANG_AST_EXP_REFERENCE:
     {
         // TODO writeable
         ptlang_utils_build_str(str, CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
-                               ptlang_ast_exp_to_string(exp->content.reference.value));
+                               ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.reference.value));
         break;
     }
     case PTLANG_AST_EXP_BINARY:
@@ -1234,7 +1263,7 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
 
 static char *ptlang_ast_exp_type_get_symbol(ptlang_ast_exp exp)
 {
-    switch (exp->type)
+    switch (ptlang_rc_deref(exp).type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
         return "=";

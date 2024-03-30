@@ -35,8 +35,9 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp, ptlang_context *ctx)
     // LLVMCreateJITCompilerForModule(&ee, M, )
     LLVMCreateInterpreterForModule(&ee, M, NULL);
 
-    uint32_t bit_size = exp->ast_type->type == PTLANG_AST_TYPE_INTEGER ? exp->ast_type->content.integer.size
-                                                                       : exp->ast_type->content.float_size;
+    uint32_t bit_size = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type == PTLANG_AST_TYPE_INTEGER
+                            ? ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.size
+                            : ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.float_size;
 
     uint8_t *binary = ptlang_malloc((bit_size - 1) / 8 + 1);
 
@@ -56,7 +57,9 @@ uint32_t ptlang_eval_calc_byte_size(ptlang_ast_type type)
 {
     // uint32_t bit_size =
     //     type->type == PTLANG_AST_TYPE_INTEGER ? type->content.integer.size : type->content.float_size;
-    return (((type->type == PTLANG_AST_TYPE_INTEGER ? type->content.integer.size : type->content.float_size) -
+    return (((ptlang_rc_deref(type).type == PTLANG_AST_TYPE_INTEGER
+                  ? ptlang_rc_deref(type).content.integer.size
+                  : ptlang_rc_deref(type).content.float_size) -
              1) >>
             3) +
            1;
