@@ -45,36 +45,36 @@
 
 #endif
 
-#include <stdio.h>
-PTLANG_RC_DEFINE_REF_TYPE(int, intref)
+// #include <stdio.h>
+// PTLANG_RC_DEFINE_REF_TYPE(int, intref)
 
 
-void use(void *anything);
-void use(void *anything) { printf("%p\n", anything); }
+// void use(void *anything);
+// void use(void *anything) { printf("%p\n", anything); }
 
-void remove_int(int *a);
-void remove_int(int *a) { printf("remove int %d\n", *a); }
+// void remove_int(int *a);
+// void remove_int(int *a) { printf("remove int %d\n", *a); }
 
-int main(void)
-{
-    intref ref, otherref;
-    ptlang_rc_alloc(ref);
+// int main(void)
+// {
+//     intref ref, otherref;
+//     ptlang_rc_alloc(ref);
 
-    ptlang_rc_deref(ref) = 1;
+//     ptlang_rc_deref(ref) = 1;
 
-    use(&ptlang_rc_deref(ref));
+//     use(&ptlang_rc_deref(ref));
 
-    otherref = ptlang_rc_add_ref(ref);
+//     otherref = ptlang_rc_add_ref(ref);
 
-    // otherref = ((*ref)->ref_count += 1, *(uint8_t *)malloc(sizeof(*ref)) = *ref);
+//     // otherref = ((*ref)->ref_count += 1, *(uint8_t *)malloc(sizeof(*ref)) = *ref);
 
-    use(ref);
+//     use(ref);
 
-    ptlang_rc_remove_ref(ref, remove_int);
+//     ptlang_rc_remove_ref(ref, remove_int);
 
-    ptlang_rc_deref(otherref) = 1;
+//     ptlang_rc_deref(otherref) = 1;
 
-    ptlang_rc_remove_ref(otherref, remove_int);
+//     ptlang_rc_remove_ref(otherref, remove_int);
 
-    return 0;
-}
+//     return 0;
+// }

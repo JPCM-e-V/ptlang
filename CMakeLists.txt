@@ -114,7 +114,7 @@ add_library(ptlang_eval OBJECT
 
 target_include_directories(ptlang_eval
                            PRIVATE ${PTLANG_AST_SRC_DIR}
-                        #    PRIVATE ${PTLANG_MAIN_SRC_DIR}
+                           PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                            PRIVATE ${PTLANG_UTILS_SRC_DIR}
                            PUBLIC ${PTLANG_STB_DIR}

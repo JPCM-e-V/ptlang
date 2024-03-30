@@ -2198,7 +2198,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
     {
 
         if (evaluated == NULL)
-            evaluated = ptlang_eval_const_exp(substituted);
+            evaluated = ptlang_eval_const_exp(substituted, ctx);
 
         if (substituted != NULL)
         {

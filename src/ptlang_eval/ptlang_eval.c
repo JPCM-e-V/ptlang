@@ -1,6 +1,6 @@
 #include "ptlang_eval_impl.h"
 
-ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
+ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp, ptlang_context *ctx)
 {
     LLVMContextRef C = LLVMContextCreate();
     LLVMModuleRef M = LLVMModuleCreateWithNameInContext("ptlang_eval", C);
@@ -20,12 +20,14 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp)
         .builder = B,
         .module = M,
         .function = function,
+        .target_info = ctx->target_data_layout,
     };
     LLVMPositionBuilderAtEnd(B, entry);
 
     LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
     LLVMBuildStore(B, value, LLVMGetParam(function, 0));
     LLVMBuildRetVoid(B);
+
     LLVMLinkInInterpreter();
 
     LLVMExecutionEngineRef ee;

@@ -1685,25 +1685,49 @@ LLVMValueRef ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_build_c
                                 : exp->ast_type->content.float_size;
         uint32_t byte_size = (bit_size - 1) / 8 + 1;
 
-        LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
+        // LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
 
-        LLVMTypeRef byte = LLVMInt8Type();
+        // LLVMTypeRef byte = LLVMInt8Type();
+
+        LLVMTypeRef type = LLVMIntType(bit_size);
+
+        LLVMValueRef value = LLVMConstInt(type, 0, false);
+
+        enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_info);
 
         for (uint32_t i = 0; i < byte_size; i++)
         {
-            bytes[i] = LLVMConstInt(byte, exp->content.binary[i], false);
+            value = LLVMConstShl(value, LLVMConstInt(type, 1, false));
+            value = LLVMConstOr(
+                value,
+                LLVMConstInt(type, exp->content.binary[byteOrdering == LLVMBigEndian ? i : byte_size - i - 1],
+                             false));
+            // LLVMConstString()
+            // bytes[i] = LLVMConstInt(type, exp->content.binary[i], false);
         }
 
-        LLVMValueRef as_array = LLVMConstArray(LLVMArrayType(byte, byte_size), bytes, byte_size);
+        // LLVMValueRef as_array = LLVMConstArray(LLVMArrayType2(byte, byte_size), bytes, byte_size);
 
-        ptlang_free(bytes);
+        // // // // // // // // LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
 
-        LLVMValueRef as_int = LLVMConstBitCast(as_array, LLVMIntType(byte_size * 8));
+        // // // // // // // // LLVMTypeRef byte = LLVMInt8Type();
+
+        // // // // // // // // for (uint32_t i = 0; i < byte_size; i++)
+        // // // // // // // // {
+        // // // // // // // //     bytes[i] = LLVMConstInt(byte, exp->content.binary[i], false);
+        // // // // // // // // }
+
+        // // // // // // // LLVMValueRef as_array = LLVMConstString("fsafd", 5, true);
+        // // // // // // // // LLVMConstArray(LLVMArrayType(byte, byte_size), bytes, byte_size);
+
+        // // // // // // // // ptlang_free(bytes);
+
+        // LLVMValueRef as_int = LLVMConstBitCast(as_array, LLVMIntType(byte_size * 8));
         if (bit_size != byte_size * 8)
         {
-            as_int = LLVMConstTrunc(as_int, LLVMIntType(bit_size));
+            value = LLVMConstTrunc(value, LLVMIntType(bit_size));
         }
-        return as_int;
+        return value;
     }
     }
     abort();
