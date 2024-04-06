@@ -162,7 +162,7 @@ ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *nam
 
 // ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp);
 
-// ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
+ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident);
 
 ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp);
 

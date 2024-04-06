@@ -750,41 +750,45 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_
 void ptlang_ast_ident_destroy(ptlang_ast_ident ident)
 {
     ptlang_free(ident.name);
-    ptlang_rc_remove_ref(ident.pos);
+    if (ident.pos != NULL)
+        ptlang_rc_remove_ref(ident.pos);
 }
 
 void ptlang_ast_type_destroy(struct ptlang_ast_type_s *type)
 {
-    if (type != NULL)
-    {
+
+    if (type->pos != NULL)
         ptlang_rc_remove_ref(type->pos);
-        switch (type->type)
-        {
-        case PTLANG_AST_TYPE_FUNCTION:
-            ptlang_rc_remove_ref(type->content.function.return_type, ptlang_ast_type_destroy);
-            ptlang_ast_type_list_destroy(type->content.function.parameters);
-            break;
-        case PTLANG_AST_TYPE_HEAP_ARRAY:
+    switch (type->type)
+    {
+    case PTLANG_AST_TYPE_FUNCTION:
+        ptlang_rc_remove_ref(type->content.function.return_type, ptlang_ast_type_destroy);
+        ptlang_ast_type_list_destroy(type->content.function.parameters);
+        break;
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+        if (type->content.heap_array.type != NULL)
             ptlang_rc_remove_ref(type->content.heap_array.type, ptlang_ast_type_destroy);
-            break;
-        case PTLANG_AST_TYPE_ARRAY:
+        break;
+    case PTLANG_AST_TYPE_ARRAY:
+        if (type->content.array.type != NULL)
             ptlang_rc_remove_ref(type->content.array.type, ptlang_ast_type_destroy);
-            break;
-        case PTLANG_AST_TYPE_REFERENCE:
+        break;
+    case PTLANG_AST_TYPE_REFERENCE:
+        if (type->content.reference.type != NULL)
             ptlang_rc_remove_ref(type->content.reference.type, ptlang_ast_type_destroy);
-            break;
-        case PTLANG_AST_TYPE_NAMED:
-            ptlang_free(type->content.name);
-            break;
-        default:
-            break;
-        }
+        break;
+    case PTLANG_AST_TYPE_NAMED:
+        ptlang_free(type->content.name);
+        break;
+    default:
+        break;
     }
 }
 
 void ptlang_ast_stmt_destroy(struct ptlang_ast_stmt_s *stmt)
 {
-    ptlang_rc_remove_ref(stmt->pos);
+    if (stmt->pos != NULL)
+        ptlang_rc_remove_ref(stmt->pos);
     switch (stmt->type)
     {
     case PTLANG_AST_STMT_BLOCK:
@@ -837,7 +841,8 @@ void ptlang_ast_module_destroy(struct ptlang_ast_module_s *module)
     for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
         ptlang_ast_ident_destroy(module->type_aliases[i].name);
-        ptlang_rc_remove_ref(module->type_aliases[i].type, ptlang_ast_type_destroy);
+        if (module->type_aliases[i].type != NULL)
+            ptlang_rc_remove_ref(module->type_aliases[i].type, ptlang_ast_type_destroy);
     }
     arrfree(module->type_aliases);
 }
@@ -845,16 +850,20 @@ void ptlang_ast_module_destroy(struct ptlang_ast_module_s *module)
 void ptlang_ast_func_destroy(struct ptlang_ast_func_s *func)
 {
     ptlang_ast_ident_destroy(func->name);
-    ptlang_rc_remove_ref(func->pos);
-    ptlang_rc_remove_ref(func->return_type, ptlang_ast_type_destroy);
+    if (func->pos != NULL)
+        ptlang_rc_remove_ref(func->pos);
+    if (func->return_type != NULL)
+        ptlang_rc_remove_ref(func->return_type, ptlang_ast_type_destroy);
     ptlang_ast_decl_list_destroy(func->parameters);
     ptlang_rc_remove_ref(func->stmt, ptlang_ast_stmt_destroy);
 }
 
 void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
 {
-    ptlang_rc_remove_ref(exp->pos);
-    ptlang_rc_remove_ref(exp->ast_type, ptlang_ast_type_destroy);
+    if (exp->pos != NULL)
+        ptlang_rc_remove_ref(exp->pos);
+    if (exp->ast_type != NULL)
+        ptlang_rc_remove_ref(exp->ast_type, ptlang_ast_type_destroy);
     switch (exp->type)
     {
     case PTLANG_AST_EXP_ASSIGNMENT:
@@ -901,7 +910,8 @@ void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
         ptlang_ast_struct_member_list_destroy(exp->content.struct_.members);
         break;
     case PTLANG_AST_EXP_ARRAY:
-        ptlang_rc_remove_ref(exp->content.array.type, ptlang_ast_type_destroy);
+        if (exp->content.array.type != NULL)
+            ptlang_rc_remove_ref(exp->content.array.type, ptlang_ast_type_destroy);
         ptlang_ast_exp_list_destroy(exp->content.array.values);
         break;
     case PTLANG_AST_EXP_TERNARY:
@@ -910,7 +920,8 @@ void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
         ptlang_rc_remove_ref(exp->content.ternary_operator.else_value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_CAST:
-        ptlang_rc_remove_ref(exp->content.cast.type, ptlang_ast_type_destroy);
+        if (exp->content.cast.type != NULL)
+            ptlang_rc_remove_ref(exp->content.cast.type, ptlang_ast_type_destroy);
         ptlang_rc_remove_ref(exp->content.cast.value, ptlang_ast_exp_destroy);
         break;
     case PTLANG_AST_EXP_STRUCT_MEMBER:
@@ -932,8 +943,10 @@ void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
 
 void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
 {
-    ptlang_rc_remove_ref(decl->pos);
-    ptlang_rc_remove_ref(decl->type, ptlang_ast_type_destroy);
+    if (decl->pos != NULL)
+        ptlang_rc_remove_ref(decl->pos);
+    if (decl->type != NULL)
+        ptlang_rc_remove_ref(decl->type, ptlang_ast_type_destroy);
     if (decl->init != NULL)
     {
         ptlang_rc_remove_ref(decl->init, ptlang_ast_exp_destroy);
@@ -943,7 +956,8 @@ void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
 
 void ptlang_ast_struct_def_destroy(struct ptlang_ast_struct_def_s *struct_def)
 {
-    ptlang_rc_remove_ref(struct_def->pos);
+    if (struct_def->pos == NULL)
+        ptlang_rc_remove_ref(struct_def->pos);
     ptlang_ast_ident_destroy(struct_def->name);
     ptlang_ast_decl_list_destroy(struct_def->members);
 }
@@ -962,7 +976,8 @@ void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list)
 
     for (size_t i = 0; i < arrlenu(type_list); i++)
     {
-        ptlang_rc_remove_ref(type_list[i], ptlang_ast_type_destroy);
+        if (type_list[i] != NULL)
+            ptlang_rc_remove_ref(type_list[i], ptlang_ast_type_destroy);
     }
     arrfree(type_list);
 }
@@ -1015,16 +1030,16 @@ ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *nam
 //     return new_pos;
 // }
 
-// ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
-// {
-//     size_t name_len = strlen(ident.name) + 1;
-//     ptlang_ast_ident new_ident = {
-//         .name = ptlang_malloc(name_len),
-//         .pos = ptlang_ast_code_position_copy(ident.pos),
-//     };
-//     memcpy(new_ident.name, ident.name, name_len);
-//     return new_ident;
-// }
+ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
+{
+    size_t name_len = strlen(ident.name) + 1;
+    ptlang_ast_ident new_ident = {
+        .name = ptlang_malloc(name_len),
+        .pos = ptlang_rc_add_ref(ident.pos),
+    };
+    memcpy(new_ident.name, ident.name, name_len);
+    return new_ident;
+}
 
 // ptlang_ast_exp ptlang_ast_exp_copy(ptlang_ast_exp exp)
 // {

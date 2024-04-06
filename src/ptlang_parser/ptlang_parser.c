@@ -3,7 +3,7 @@
 // ptlang_ast_module *ptlang_parser_module_out;
 // ptlang_error *syntax_errors;
 
-static void ptlang_parser_code_position_pt(ptlang_ast_code_position pos, const PTLANG_YYLTYPE *yylloc)
+static void ptlang_parser_code_position_pt(ptlang_ast_code_position_s *pos, const PTLANG_YYLTYPE *yylloc)
 {
     *pos = ((ptlang_ast_code_position_s){
         .from_line = yylloc->first_line,
@@ -37,8 +37,9 @@ void ptlang_yyerror(const PTLANG_YYLTYPE *yylloc, ptlang_ast_module out, ptlang_
 ptlang_ast_code_position ptlang_parser_code_position_from_to(const PTLANG_YYLTYPE *from,
                                                              const PTLANG_YYLTYPE *to)
 {
-    ptlang_ast_code_position pos = ptlang_malloc(sizeof(*pos));
-    *pos = ((ptlang_ast_code_position_s){
+    ptlang_ast_code_position pos;
+    ptlang_rc_alloc(pos);
+    ptlang_rc_deref(pos) = ((ptlang_ast_code_position_s){
         .from_line = from->first_line,
         .from_column = from->first_column,
         .to_line = to->last_line,
@@ -48,8 +49,9 @@ ptlang_ast_code_position ptlang_parser_code_position_from_to(const PTLANG_YYLTYP
 }
 ptlang_ast_code_position ptlang_parser_code_position(const PTLANG_YYLTYPE *yylloc)
 {
-    ptlang_ast_code_position pos = ptlang_malloc(sizeof(*pos));
-    ptlang_parser_code_position_pt(pos, yylloc);
+    ptlang_ast_code_position pos;
+    ptlang_rc_alloc(pos);
+    ptlang_parser_code_position_pt(&ptlang_rc_deref(pos), yylloc);
     return pos;
 }
 
