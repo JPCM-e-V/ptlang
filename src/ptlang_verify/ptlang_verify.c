@@ -1,3 +1,4 @@
+#define asdf
 #include "ptlang_verify_impl.h"
 
 // Type not found
@@ -414,7 +415,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
 
         ptlang_rc_deref(exp).ast_type =
-            ptlang_context_unname_type(ptlang_rc_deref(left).ast_type, ctx->type_scope);
+            ptlang_rc_add_ref(ptlang_context_unname_type(ptlang_rc_deref(left).ast_type, ctx->type_scope));
         ptlang_verify_check_implicit_cast(ptlang_rc_deref(right).ast_type, ptlang_rc_deref(left).ast_type,
                                           ptlang_rc_deref(exp).pos, ctx, errors);
         break;
@@ -454,8 +455,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         if (ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).type == PTLANG_AST_TYPE_INTEGER ||
             ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).type == PTLANG_AST_TYPE_FLOAT)
         {
-            ptlang_rc_deref(exp).ast_type =
-                ptlang_context_unname_type(ptlang_rc_deref(unary).ast_type, ctx->type_scope);
+            ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(
+                ptlang_context_unname_type(ptlang_rc_deref(unary).ast_type, ctx->type_scope));
         }
         else
         {
@@ -560,7 +561,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
 
         ptlang_rc_deref(exp).ast_type =
-            ptlang_context_unname_type(ptlang_rc_deref(left).ast_type, ctx->type_scope);
+            ptlang_rc_add_ref(ptlang_context_unname_type(ptlang_rc_deref(left).ast_type, ctx->type_scope));
         break;
     }
     case PTLANG_AST_EXP_AND:
@@ -653,7 +654,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
 
         ptlang_rc_deref(exp).ast_type =
-            ptlang_context_unname_type(ptlang_rc_deref(unary).ast_type, ctx->type_scope);
+            ptlang_rc_add_ref(ptlang_context_unname_type(ptlang_rc_deref(unary).ast_type, ctx->type_scope));
         break;
     }
     case PTLANG_AST_EXP_LENGTH:
@@ -686,11 +687,11 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             }
             else
             {
-                ptlang_rc_deref(exp).ast_type = ptlang_context_unname_type(
+                ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
                     ptlang_rc_deref(
                         ptlang_rc_deref(ptlang_rc_deref(exp).content.function_call.function).ast_type)
                         .content.function.return_type,
-                    ctx->type_scope);
+                    ctx->type_scope));
                 if (arrlenu(ptlang_rc_deref(exp).content.function_call.parameters) >
                     arrlenu(ptlang_rc_deref(
                                 ptlang_rc_deref(ptlang_rc_deref(exp).content.function_call.function).ast_type)
@@ -798,7 +799,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         else
         {
             ptlang_rc_deref(exp).ast_type =
-                ptlang_context_unname_type(ptlang_rc_deref(decl).type, ctx->type_scope);
+                ptlang_rc_add_ref(ptlang_context_unname_type(ptlang_rc_deref(decl).type, ctx->type_scope));
         }
         break;
     }
@@ -1020,9 +1021,9 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 
         if (member_type != NULL)
         {
-            ptlang_rc_deref(exp).ast_type =
-                ptlang_ast_type_array(ptlang_context_unname_type(member_type, ctx->type_scope),
-                                      arrlenu(ptlang_rc_deref(exp).content.array.values), NULL);
+            ptlang_rc_deref(exp).ast_type = ptlang_ast_type_array(
+                ptlang_rc_add_ref(ptlang_context_unname_type(member_type, ctx->type_scope)),
+                arrlenu(ptlang_rc_deref(exp).content.array.values), NULL);
             // member_type = ptlang_context_unname_type(ptlang_rc_deref(array_type).content.array.type,
             // ctx->type_scope);
 
@@ -1091,8 +1092,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     }
     case PTLANG_AST_EXP_CAST:
     {
-        ptlang_ast_type to =
-            ptlang_context_unname_type(ptlang_rc_deref(exp).content.cast.type, ctx->type_scope);
+        ptlang_ast_type to = ptlang_rc_add_ref(
+            ptlang_context_unname_type(ptlang_rc_deref(exp).content.cast.type, ctx->type_scope));
         ptlang_rc_deref(exp).ast_type = to;
         ptlang_verify_exp(ptlang_rc_deref(exp).content.cast.value, ctx, errors);
         ptlang_ast_type from = ptlang_context_unname_type(
@@ -1169,8 +1170,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                 }
                 else
                 {
-                    ptlang_rc_deref(exp).ast_type =
-                        ptlang_context_unname_type(ptlang_rc_deref(member).type, ctx->type_scope);
+                    ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(
+                        ptlang_context_unname_type(ptlang_rc_deref(member).type, ctx->type_scope));
                 }
             }
         }
@@ -1197,13 +1198,13 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         {
             if (ptlang_rc_deref(array_type).type == PTLANG_AST_TYPE_ARRAY)
             {
-                ptlang_rc_deref(exp).ast_type = ptlang_context_unname_type(
-                    ptlang_rc_deref(array_type).content.array.type, ctx->type_scope);
+                ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
+                    ptlang_rc_deref(array_type).content.array.type, ctx->type_scope));
             }
             else if (ptlang_rc_deref(array_type).type == PTLANG_AST_TYPE_HEAP_ARRAY)
             {
-                ptlang_rc_deref(exp).ast_type = ptlang_context_unname_type(
-                    ptlang_rc_deref(array_type).content.heap_array.type, ctx->type_scope);
+                ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
+                    ptlang_rc_deref(array_type).content.heap_array.type, ctx->type_scope));
             }
             else
             {
@@ -1270,8 +1271,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                                 }));
                 break;
             }
-            ptlang_rc_deref(exp).ast_type = ptlang_context_unname_type(
-                ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).content.reference.type, ctx->type_scope);
+            ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
+                ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).content.reference.type, ctx->type_scope));
         }
         break;
     }
@@ -2015,7 +2016,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             ptlang_rc_alloc(substituted);
             ptlang_rc_deref(substituted) = (struct ptlang_ast_exp_s){
                 .type = ptlang_rc_deref(exp).type,
-                .content.unary_operator = ptlang_rc_add_ref(operand),
+                .content.unary_operator = operand,
                 .pos = ptlang_rc_add_ref(ptlang_rc_deref(exp).pos),
                 .ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type),
             };
@@ -2064,8 +2065,10 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                 evaluated = ptlang_rc_add_ref(((ptlang_verify_node_info *)var_node->data)->val);
             else if (eval_mode >= PTLANG_VERIFY_EVAL_FULLY)
             {
-                ptlang_verify_eval(ptlang_rc_deref(variable).init, PTLANG_VERIFY_EVAL_FULLY_AND_WRITE,
-                                   var_node, nodes, node_table, module, ctx, errors);
+                ptlang_ast_exp _ =
+                    ptlang_verify_eval(ptlang_rc_deref(variable).init, PTLANG_VERIFY_EVAL_FULLY_AND_WRITE,
+                                       var_node, nodes, node_table, module, ctx, errors);
+                ptlang_rc_remove_ref(_, ptlang_ast_exp_destroy);
                 ptlang_rc_remove_ref(ptlang_rc_deref(variable).init, ptlang_ast_exp_destroy);
                 ptlang_rc_deref(variable).init =
                     ptlang_rc_add_ref(((ptlang_verify_node_info *)var_node->data)->val);
@@ -2104,10 +2107,10 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                     .exp =
                         j < arrlenu(ptlang_rc_deref(exp).content.struct_.members)
                             ? (eval_mode >= PTLANG_VERIFY_EVAL_FULLY
-                                   ? (should_write ? ptlang_rc_add_ref(ptlang_verify_eval(
+                                   ? (should_write ? ptlang_verify_eval(
                                                          ptlang_rc_deref(exp).content.struct_.members[j].exp,
                                                          PTLANG_VERIFY_EVAL_FULLY_AND_WRITE, child_node,
-                                                         nodes, node_table, module, ctx, errors))
+                                                         nodes, node_table, module, ctx, errors)
                                                    : ptlang_verify_eval(
                                                          ptlang_rc_deref(exp).content.struct_.members[j].exp,
                                                          eval_mode, child_node, nodes, node_table, module,
@@ -2142,13 +2145,13 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                 if (i < arrlenu(ptlang_rc_deref(exp).content.array.values))
                     arrpush(array_values,
                             eval_mode >= PTLANG_VERIFY_EVAL_FULLY
-                                ? (should_write ? ptlang_rc_add_ref(ptlang_verify_eval(
-                                                      ptlang_rc_deref(exp).content.array.values[i],
-                                                      PTLANG_VERIFY_EVAL_FULLY_AND_WRITE, child_node, nodes,
-                                                      node_table, module, ctx, errors))
-                                                : ptlang_verify_eval(
-                                                      ptlang_rc_deref(exp).content.array.values[i], eval_mode,
-                                                      child_node, nodes, node_table, module, ctx, errors))
+                                ? (should_write
+                                       ? ptlang_verify_eval(ptlang_rc_deref(exp).content.array.values[i],
+                                                            PTLANG_VERIFY_EVAL_FULLY_AND_WRITE, child_node,
+                                                            nodes, node_table, module, ctx, errors)
+                                       : ptlang_verify_eval(ptlang_rc_deref(exp).content.array.values[i],
+                                                            eval_mode, child_node, nodes, node_table, module,
+                                                            ctx, errors))
                                 : ptlang_rc_add_ref(ptlang_rc_deref(exp).content.array.values[i]));
                 else
                     arrpush(array_values,
@@ -2157,9 +2160,10 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                                 ctx));
                 child_node += element_nodes;
             }
-            evaluated = ptlang_ast_exp_array_new(
-                ptlang_context_unname_type(ptlang_rc_deref(exp).content.array.type, ctx->type_scope),
-                array_values, ptlang_rc_add_ref(ptlang_rc_deref(exp).pos));
+            evaluated =
+                ptlang_ast_exp_array_new(ptlang_rc_add_ref(ptlang_context_unname_type(
+                                             ptlang_rc_deref(exp).content.array.type, ctx->type_scope)),
+                                         array_values, ptlang_rc_add_ref(ptlang_rc_deref(exp).pos));
             break;
         }
         case PTLANG_AST_EXP_TERNARY:
@@ -2365,9 +2369,12 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
         if (should_write)
         {
             ptlang_verify_node_info *node_info = ((ptlang_verify_node_info *)node->data);
-            ptlang_verify_set_init(node_info, evaluated, ctx);
-            arrfree(node->edges_to);
-            node->edges_to = NULL;
+            if (!((ptlang_verify_node_info *)node->data)->evaluated)
+            {
+                ptlang_verify_set_init(node_info, ptlang_rc_add_ref(evaluated), ctx);
+                arrfree(node->edges_to);
+                node->edges_to = NULL;
+            }
         }
     }
     else
@@ -2426,8 +2433,8 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
         }
         ptlang_rc_deref(default_value) = (struct ptlang_ast_exp_s){
             .type = PTLANG_AST_EXP_ARRAY,
-            .content.array.type =
-                ptlang_context_unname_type(ptlang_rc_deref(type).content.array.type, ctx->type_scope),
+            .content.array.type = ptlang_rc_add_ref(
+                ptlang_context_unname_type(ptlang_rc_deref(type).content.array.type, ctx->type_scope)),
             .content.array.values = array_values,
         };
         break;
@@ -2475,7 +2482,7 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
         break;
     }
     }
-    ptlang_rc_deref(default_value).ast_type = type;
+    ptlang_rc_deref(default_value).ast_type = ptlang_rc_add_ref(type);
     ptlang_rc_deref(default_value).pos = NULL;
     return default_value;
 }
@@ -2633,9 +2640,12 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
         if (ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init != NULL && !info->evaluated)
         {
             if (!node_info->evaluated)
-                ptlang_verify_eval(ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init,
-                                   PTLANG_VERIFY_EVAL_FULLY_AND_WRITE, node, nodes, node_table, module, ctx,
-                                   errors);
+            {
+                ptlang_ast_exp _ = ptlang_verify_eval(
+                    ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init,
+                    PTLANG_VERIFY_EVAL_FULLY_AND_WRITE, node, nodes, node_table, module, ctx, errors);
+                ptlang_rc_remove_ref(_, ptlang_ast_exp_destroy);
+            }
             ptlang_rc_remove_ref(ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init,
                                  ptlang_ast_exp_destroy);
             ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init =
@@ -2656,7 +2666,12 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
         {
             ptlang_rc_remove_ref(((ptlang_verify_node_info *)nodes[i].data)->name, ptlang_ast_exp_destroy);
             if (((ptlang_verify_node_info *)nodes[i].data)->val != NULL)
+            {
+
+                printf("init: %p, ast_type: %p\n", ((ptlang_verify_node_info *)nodes[i].data)->val,
+                       ptlang_rc_deref(((ptlang_verify_node_info *)nodes[i].data)->val).ast_type);
                 ptlang_rc_remove_ref(((ptlang_verify_node_info *)nodes[i].data)->val, ptlang_ast_exp_destroy);
+            }
             ptlang_free(nodes[i].data);
         }
     }
@@ -3041,8 +3056,12 @@ static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_as
                         ptlang_rc_deref(ptlang_rc_deref(node_info->name).ast_type).content.array.type, ctx));
         }
 
-        ptlang_rc_remove_ref(ptlang_rc_deref(init).ast_type, ptlang_ast_type_destroy);
+        if (ptlang_rc_deref(init).ast_type != NULL)
+        {
+            ptlang_rc_remove_ref(ptlang_rc_deref(init).ast_type, ptlang_ast_type_destroy);
+        }
         ptlang_rc_deref(init).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(node_info->name).ast_type);
+        printf("initptr: %p\n", init);
     }
 
     node_info->evaluated = true;

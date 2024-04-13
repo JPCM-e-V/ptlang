@@ -515,8 +515,8 @@ ptlang_ast_exp ptlang_ast_exp_binary_new(uint8_t *binary, ptlang_ast_exp prev)
     ptlang_rc_deref(exp) = (struct ptlang_ast_exp_s){
         .type = PTLANG_AST_EXP_BINARY,
         .content.binary = binary,
-        .pos = ptlang_rc_deref(prev).pos,
-        .ast_type = ptlang_rc_deref(prev).ast_type,
+        .pos = ptlang_rc_add_ref(ptlang_rc_deref(prev).pos),
+        .ast_type = ptlang_rc_add_ref(ptlang_rc_deref(prev).ast_type),
     };
     return exp;
 }
@@ -946,7 +946,11 @@ void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
     if (decl->pos != NULL)
         ptlang_rc_remove_ref(decl->pos);
     if (decl->type != NULL)
+    {
+
+        printf("refco: %p %d\n",*decl->type, (*(decl->type))->ref_count);
         ptlang_rc_remove_ref(decl->type, ptlang_ast_type_destroy);
+    }
     if (decl->init != NULL)
     {
         ptlang_rc_remove_ref(decl->init, ptlang_ast_exp_destroy);
