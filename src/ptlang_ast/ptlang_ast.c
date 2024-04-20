@@ -841,6 +841,7 @@ void ptlang_ast_module_destroy(struct ptlang_ast_module_s *module)
     for (size_t i = 0; i < arrlenu(module->type_aliases); i++)
     {
         ptlang_ast_ident_destroy(module->type_aliases[i].name);
+        ptlang_rc_remove_ref(module->type_aliases[i].pos);
         if (module->type_aliases[i].type != NULL)
             ptlang_rc_remove_ref(module->type_aliases[i].type, ptlang_ast_type_destroy);
     }
@@ -947,8 +948,6 @@ void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
         ptlang_rc_remove_ref(decl->pos);
     if (decl->type != NULL)
     {
-
-        printf("refco: %p %d\n",*decl->type, (*(decl->type))->ref_count);
         ptlang_rc_remove_ref(decl->type, ptlang_ast_type_destroy);
     }
     if (decl->init != NULL)
@@ -960,7 +959,7 @@ void ptlang_ast_decl_destroy(struct ptlang_ast_decl_s *decl)
 
 void ptlang_ast_struct_def_destroy(struct ptlang_ast_struct_def_s *struct_def)
 {
-    if (struct_def->pos == NULL)
+    if (struct_def->pos != NULL)
         ptlang_rc_remove_ref(struct_def->pos);
     ptlang_ast_ident_destroy(struct_def->name);
     ptlang_ast_decl_list_destroy(struct_def->members);
@@ -1000,8 +999,10 @@ void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_
     for (size_t i = 0; i < arrlenu(member_list); i++)
     {
         ptlang_ast_ident_destroy(member_list[i].str);
-        ptlang_rc_remove_ref(member_list[i].exp, ptlang_ast_exp_destroy);
-        ptlang_rc_remove_ref(member_list[i].pos);
+        if (member_list[i].exp != NULL)
+            ptlang_rc_remove_ref(member_list[i].exp, ptlang_ast_exp_destroy);
+        if (member_list[i].pos != NULL)
+            ptlang_rc_remove_ref(member_list[i].pos);
     }
     arrfree(member_list);
 }

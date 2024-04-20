@@ -252,6 +252,10 @@ ptlang_ast_struct_def ptlang_context_get_struct_def(char *name, ptlang_context_t
             struct_def = entry.value.struct_def;
             break;
         }
+        if (entry.value.ptlang_type == NULL)
+        {
+            return NULL;
+        }
         name = ptlang_rc_deref(entry.value.ptlang_type).content.name;
     }
     return struct_def;

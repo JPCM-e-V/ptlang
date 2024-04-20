@@ -28,26 +28,28 @@
 #else
 #    include <stdint.h>
 
-void **ptlang_rc_add_ref_func(char *function, char *file, uint64_t line, void **ref);
+void *ptlang_rc_add_ref_func(const char *function, char *file, uint64_t line, void **ref);
 
 #    define PTLANG_RC_DEFINE_REF_TYPE_ONLY(name) typedef struct name##_ref_struct **name
 
 #    define ptlang_rc_alloc(ref)                                                                             \
         (void)((ref) = ptlang_malloc(sizeof(*(ref))), *(ref) = ptlang_malloc(sizeof(**(ref))),               \
                (*(ref))->ref_count = 0,                                                                      \
-               printf("allo ar inner: %p outer: %p method: %s file: " __FILE__ ":%d\n", *ref, ref,           \
-                      __FUNCTION__, __LINE__))
+               printf("allo ar inner: %p outer: %p method: %s file: " __FILE__ ":%d\n", (void *)*ref,        \
+                      (void *)ref, &__FUNCTION__[0], __LINE__))
 
 // #    define ptlang_rc_add_ref(ref)                                                                           \
 //         (printf("ar inner: %p outer: %p method: %s file: " __FILE__ ":%d\n", *ref, ref, __FUNCTION__,        \
 //                 __LINE__),                                                                                   \
 //          (*(ref))->ref_count += 1, memcpy(ptlang_malloc(sizeof(*(ref))), (ref), sizeof(*(ref))))
 
-#    define ptlang_rc_add_ref(ref) ptlang_rc_add_ref_func(__FUNCTION__, __FILE__, __LINE__, (ref))
+#    define ptlang_rc_add_ref(ref)                                                                           \
+        ptlang_rc_add_ref_func(&__FUNCTION__[0], __FILE__, __LINE__, (void **)(ref))
 
 #    define ptlang_rc_remove_ref_with_fn(ref, destroy_fn, ...)                                               \
         (printf("%srr inner: %p outer: %p method: %s file: " __FILE__ ":%d\n",                               \
-                ((*(ref))->ref_count == 0) ? "del " : "", *ref, ref, __FUNCTION__, __LINE__),                \
+                ((*(ref))->ref_count == 0) ? "del " : "", (void *)*ref, (void *)ref, &__FUNCTION__[0],       \
+                __LINE__),                                                                                   \
          ((*(ref))->ref_count == 0) ? (destroy_fn(&(*(ref))->content), ptlang_free(*(ref)))                  \
                                     : (void)((*(ref))->ref_count -= 1),                                      \
          ptlang_free(ref))
@@ -55,14 +57,16 @@ void **ptlang_rc_add_ref_func(char *function, char *file, uint64_t line, void **
 #    define ptlang_rc_deref(ref) ((*(ref))->content)
 
 #    ifdef asdf
+#        include <inttypes.h>
 #        include <stdio.h>
-void **ptlang_rc_add_ref_func(char *function, char *file, uint64_t line, void **ref)
+void *ptlang_rc_add_ref_func(const char *function, char *file, uint64_t line, void **ref)
 {
     void **new_ref = memcpy(ptlang_malloc(sizeof(*(ref))), (ref), sizeof(*(ref)));
     *((size_t *)(*(ref))) += 1;
     ;
-    printf("ar inner: %p outer: %p method: %s file: %s:%d\n", *ref, new_ref, function, file, line);
-    return new_ref;
+    printf("ar inner: %p outer: %p method: %s file: %s:%" PRIu64 "\n", (void *)*ref, (void *)new_ref,
+           function, file, line);
+    return (void *)new_ref;
 }
 #    endif
 

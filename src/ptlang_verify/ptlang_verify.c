@@ -2533,19 +2533,24 @@ static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_grap
     if (ptlang_rc_deref(path_exp).ast_type == NULL)
         return;
 
-    switch (ptlang_rc_deref(ptlang_rc_deref(path_exp).ast_type).type)
+    ptlang_ast_type type = ptlang_context_unname_type(ptlang_rc_deref(path_exp).ast_type, type_scope);
+
+    if (type == NULL)
+        return;
+
+    switch (ptlang_rc_deref(type).type)
     {
     case PTLANG_AST_TYPE_ARRAY:
     {
-        for (size_t i = 0; i < ptlang_rc_deref(ptlang_rc_deref(path_exp).ast_type).content.array.len; i++)
+        for (size_t i = 0; i < ptlang_rc_deref(type).content.array.len; i++)
         {
-            char *index_str_repr = ptlang_malloc(21);
-            snprintf(index_str_repr, 21, "%" PRIu64, i);
+            char *index_str_repr = ptlang_malloc(sizeof("18446744073709551615"));
+            snprintf(index_str_repr, sizeof("18446744073709551615"), "%" PRIu64, i);
             ptlang_ast_exp index = ptlang_ast_exp_integer_new(index_str_repr, NULL);
             ptlang_ast_exp array_element = ptlang_ast_exp_array_element_new(
                 ptlang_rc_add_ref(path_exp), index, ptlang_rc_add_ref(ptlang_rc_deref(path_exp).pos));
             ptlang_rc_deref(array_element).ast_type =
-                ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(path_exp).ast_type).content.array.type);
+                ptlang_rc_add_ref(ptlang_rc_deref(type).content.array.type);
             ptlang_verify_label_nodes(array_element, node, type_scope);
         }
         break;
@@ -2553,8 +2558,8 @@ static void ptlang_verify_label_nodes(ptlang_ast_exp path_exp, ptlang_utils_grap
 
     case PTLANG_AST_TYPE_NAMED:
     {
-        ptlang_ast_struct_def struct_def = ptlang_context_get_struct_def(
-            ptlang_rc_deref(ptlang_rc_deref(path_exp).ast_type).content.name, type_scope);
+        ptlang_ast_struct_def struct_def =
+            ptlang_context_get_struct_def(ptlang_rc_deref(type).content.name, type_scope);
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(struct_def).members); i++)
         {
             ptlang_ast_exp struct_member = ptlang_ast_exp_struct_member_new(
@@ -2667,9 +2672,6 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
             ptlang_rc_remove_ref(((ptlang_verify_node_info *)nodes[i].data)->name, ptlang_ast_exp_destroy);
             if (((ptlang_verify_node_info *)nodes[i].data)->val != NULL)
             {
-
-                printf("init: %p, ast_type: %p\n", ((ptlang_verify_node_info *)nodes[i].data)->val,
-                       ptlang_rc_deref(((ptlang_verify_node_info *)nodes[i].data)->val).ast_type);
                 ptlang_rc_remove_ref(((ptlang_verify_node_info *)nodes[i].data)->val, ptlang_ast_exp_destroy);
             }
             ptlang_free(nodes[i].data);
@@ -3061,7 +3063,7 @@ static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_as
             ptlang_rc_remove_ref(ptlang_rc_deref(init).ast_type, ptlang_ast_type_destroy);
         }
         ptlang_rc_deref(init).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(node_info->name).ast_type);
-        printf("initptr: %p\n", init);
+        printf("initptr: %p\n", (void *)init);
     }
 
     node_info->evaluated = true;
