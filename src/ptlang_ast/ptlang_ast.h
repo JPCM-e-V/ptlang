@@ -155,6 +155,7 @@ void ptlang_ast_decl_list_destroy(ptlang_ast_decl *decl_list);
 void ptlang_ast_type_list_destroy(ptlang_ast_type *type_list);
 void ptlang_ast_exp_list_destroy(ptlang_ast_exp *exp_list);
 void ptlang_ast_struct_member_list_destroy(ptlang_ast_struct_member_list member_list);
+void ptlang_ast_ident_destroy(ptlang_ast_ident ident);
 
 ptlang_ast_decl ptlang_decl_list_find_last(ptlang_ast_decl *decl_list, char *name);
 

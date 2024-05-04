@@ -115,6 +115,47 @@
 %type <struct_def> struct_def
 %type <type_and_ident> type_and_ident
 
+%destructor {
+    ptlang_free($$);
+} <str>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_type_destroy);
+} <type>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_stmt_destroy);
+} <stmt>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_func_destroy);
+} <func>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_exp_destroy);
+} <exp>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_decl_destroy);
+} <decl>
+
+%destructor {
+    ptlang_ast_decl_list_destroy($$);
+} <decl_list>
+
+%destructor {
+    ptlang_ast_ident_destroy($$);
+} <ident>
+
+%destructor {
+    ptlang_rc_remove_ref($$, ptlang_ast_struct_def_destroy);
+} <struct_def>
+
+%destructor {
+    ptlang_rc_remove_ref($$.type, ptlang_ast_type_destroy);
+    ptlang_ast_ident_destroy($$.ident);
+} <type_and_ident>
+
 %precedence single_if
 %precedence ELSE
 
