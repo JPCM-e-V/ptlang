@@ -50,8 +50,8 @@ int main(void)
     if (arrlenu(syntax_errors) != 0)
     {
         handle_errors(syntax_errors);
-        ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
-        exit(1);
+        // ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
+        // exit(1);
     }
     ptlang_error *semantic_errors = ptlang_verify_module(mod, &ctx);
     if (arrlenu(semantic_errors) != 0)

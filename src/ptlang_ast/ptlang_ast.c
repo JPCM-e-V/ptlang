@@ -1180,7 +1180,6 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
     case PTLANG_AST_EXP_ASSIGNMENT:
     case PTLANG_AST_EXP_ADDITION:
     case PTLANG_AST_EXP_SUBTRACTION:
-    case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_MULTIPLICATION:
     case PTLANG_AST_EXP_DIVISION:
     case PTLANG_AST_EXP_MODULO:
@@ -1205,6 +1204,7 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
             ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.binary_operator.right_value));
         break;
     }
+    case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_NOT:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
     case PTLANG_AST_EXP_LENGTH:

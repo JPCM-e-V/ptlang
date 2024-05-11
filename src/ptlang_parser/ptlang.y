@@ -8,6 +8,8 @@
     #endif
 }
 
+%define parse.error detailed
+
 %{
     #include "ptlang_parser_impl.h"
     #include "ptlang_utils.h"
@@ -47,58 +49,58 @@
 %parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors} {yyscan_t yyscanner}
 /* %parse-param {ptlang_ast_module out} {ptlang_error **syntax_errors} */
 
-%token PLUS
-%token MINUS
-%token STAR
-%token SLASH
-%token PERCENT
-%token LEQ
-%token GEQ
-%token EQ
-%token EQEQ
-%token NEQ
-%token LESSER
-%token GREATER
-%token SEMICOLON
-%token <str> IDENT
-%token <str> INT_TYPE
-%token <float_size> FLOAT_TYPE
-%token <str> INT_VAL
-%token <str> INT
-%token <str> FLOAT_VAL
-%token OPEN_SQUARE_BRACKET
-%token CLOSE_SQUARE_BRACKET
-%token OPEN_BRACKET
-%token CLOSE_BRACKET
-%token OPEN_CURLY_BRACE
-%token CLOSE_CURLY_BRACE
-%token COMMA
-%token MOD
-%token IF
-%token ELSE
-%token WHILE
-%token CONST
-%token RETURN
-%token RET_VAL
-%token BREAK
-%token CONTINUE
-%token TYPE_ALIAS
-%token STRUCT_DEF
-%token EXPORT
-%token LEFT_SHIFT
-%token RIGHT_SHIFT
-%token AND
-%token OR
-%token NOT
-%token AMPERSAND
-%token VERTICAL_BAR
-%token CIRCUMFLEX
-%token TILDE
-%token DOT
-%token QUESTION_MARK
-%token COLON
-%token HASHTAG
-%token VOID
+%token PLUS "'+'"
+%token MINUS "'-'"
+%token STAR "'*'"
+%token SLASH "'/'"
+%token PERCENT "'%'"
+%token LEQ "'>='"
+%token GEQ "'<='"
+%token EQ "'='"
+%token EQEQ "'=='"
+%token NEQ "'!='"
+%token LESSER "'<'"
+%token GREATER "'>'"
+%token SEMICOLON "';'"
+%token <str> IDENT "identifier"
+%token <str> INT_TYPE "integer type"
+%token <float_size> FLOAT_TYPE "floating point number type"
+%token <str> INT_VAL "integer value with type suffix"
+%token <str> INT "integer value"
+%token <str> FLOAT_VAL "floating point number value"
+%token OPEN_SQUARE_BRACKET "'['"
+%token CLOSE_SQUARE_BRACKET "']'"
+%token OPEN_BRACKET "'('"
+%token CLOSE_BRACKET "')'"
+%token OPEN_CURLY_BRACE "'{'"
+%token CLOSE_CURLY_BRACE "'}'"
+%token COMMA "','"
+%token MOD "'mod'"
+%token IF "'if'"
+%token ELSE "'else'"
+%token WHILE "'while'"
+%token CONST "'const'"
+%token RETURN "'return'"
+%token RET_VAL "'retval'"
+%token BREAK "'break'"
+%token CONTINUE "'continue'"
+%token TYPE_ALIAS "'typealias'"
+%token STRUCT_DEF "'struct'"
+%token EXPORT "'export'"
+%token LEFT_SHIFT "'<<'"
+%token RIGHT_SHIFT "'>>'"
+%token AND "'&&'"
+%token OR "'||'"
+%token NOT "'!'"
+%token AMPERSAND "'&'"
+%token VERTICAL_BAR "'|'"
+%token CIRCUMFLEX "'^'"
+%token TILDE "'~'"
+%token DOT "'.'"
+%token QUESTION_MARK "'?'"
+%token COLON "':'"
+%token HASHTAG "'#'"
+%token VOID "'void'"
 
 %type <str> int_val
 %type <type> type type_or_void void
@@ -120,7 +122,9 @@
 } <str>
 
 %destructor {
-    ptlang_rc_remove_ref($$, ptlang_ast_type_destroy);
+    if ($$ != NULL){
+        ptlang_rc_remove_ref($$, ptlang_ast_type_destroy);
+    }
 } <type>
 
 %destructor {
@@ -142,6 +146,18 @@
 %destructor {
     ptlang_ast_decl_list_destroy($$);
 } <decl_list>
+
+%destructor {
+    ptlang_ast_type_list_destroy($$);
+} <type_list>
+
+%destructor {
+    ptlang_ast_exp_list_destroy($$);
+} <exp_list>
+
+%destructor {
+    ptlang_ast_struct_member_list_destroy($$);
+} <struct_member_list>
 
 %destructor {
     ptlang_ast_ident_destroy($$);
@@ -243,6 +259,7 @@ type: INT_TYPE { $$ = ptlang_parser_integer_type_of_string($1, &@1, syntax_error
     | AMPERSAND type %prec reference { $$ = ptlang_ast_type_reference($2, true, ppcp(&@$)); }
     | AMPERSAND CONST type %prec reference { $$ = ptlang_ast_type_reference($3, false, ppcp(&@$)); }
     | IDENT { $$ = ptlang_ast_type_named($1, ppcp(&@$)); }
+    | error { $$ = NULL; }
     /* | DUMMY { $$ = NULL; } */
 
 type_or_void: type {$$ = $1;} | void { $$ = $1; }

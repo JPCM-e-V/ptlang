@@ -1379,6 +1379,11 @@ static void ptlang_verify_struct_defs(ptlang_ast_struct_def *struct_defs, ptlang
 
 static bool ptlang_verify_type(ptlang_ast_type type, ptlang_context *ctx, ptlang_error **errors)
 {
+    if (type == NULL)
+    {
+        return true;
+    }
+
     switch (ptlang_rc_deref(type).type)
     {
     case PTLANG_AST_TYPE_VOID:
@@ -1720,7 +1725,7 @@ static bool ptlang_verify_implicit_cast(ptlang_ast_type from, ptlang_ast_type to
          (ptlang_rc_deref(to).type == PTLANG_AST_TYPE_FLOAT ||
           ptlang_rc_deref(to).type == PTLANG_AST_TYPE_INTEGER)))
     {
-        if (ptlang_rc_deref(to).type == PTLANG_AST_EXP_INTEGER)
+        if (ptlang_rc_deref(to).type == PTLANG_AST_TYPE_INTEGER)
             return (ptlang_rc_deref(to).content.integer.size >= ptlang_rc_deref(from).content.integer.size);
         return true;
     }
@@ -1739,6 +1744,7 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
                                               ptlang_ast_code_position pos, ptlang_context *ctx,
                                               ptlang_error **errors)
 {
+
     if (!ptlang_verify_implicit_cast(from, to, ctx))
     {
         // Calculate the message length
@@ -2622,7 +2628,9 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
         ptlang_ast_exp global_var = ptlang_ast_exp_variable_new(
             var_name, ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).name.pos));
         ptlang_rc_deref(global_var).ast_type =
-            ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).type);
+            ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).type == NULL
+                ? NULL
+                : ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).type);
         ptlang_verify_label_nodes(global_var, &node, ctx->type_scope);
     }
     for (size_t i = 0; i < arrlenu(ptlang_rc_deref(module).declarations); i++)
@@ -2786,7 +2794,6 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
     {
     case PTLANG_AST_EXP_ADDITION:
     case PTLANG_AST_EXP_SUBTRACTION:
-    case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_MULTIPLICATION:
     case PTLANG_AST_EXP_DIVISION:
     case PTLANG_AST_EXP_MODULO:
@@ -2810,6 +2817,7 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
     case PTLANG_AST_EXP_BITWISE_AND:
     case PTLANG_AST_EXP_BITWISE_OR:
     case PTLANG_AST_EXP_BITWISE_XOR:
+    case PTLANG_AST_EXP_NEGATION:
     case PTLANG_AST_EXP_BITWISE_INVERSE:
         ptlang_verify_build_graph(node, ptlang_rc_deref(exp).content.unary_operator, depends_on_ref,
                                   node_table, ctx);
@@ -3046,7 +3054,7 @@ static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_con
 static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_ast_exp init,
                                    ptlang_context *ctx)
 {
-    if (ptlang_rc_deref(ptlang_rc_deref(node_info->name).ast_type).type == PTLANG_AST_TYPE_ARRAY)
+    if (ptlang_rc_deref(node_info->name).ast_type != NULL && ptlang_rc_deref(ptlang_rc_deref(node_info->name).ast_type).type == PTLANG_AST_TYPE_ARRAY)
     {
         arrsetcap(ptlang_rc_deref(init).content.array.values,
                   ptlang_rc_deref(ptlang_rc_deref(node_info->name).ast_type).content.array.len);
@@ -3063,7 +3071,6 @@ static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_as
             ptlang_rc_remove_ref(ptlang_rc_deref(init).ast_type, ptlang_ast_type_destroy);
         }
         ptlang_rc_deref(init).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(node_info->name).ast_type);
-        printf("initptr: %p\n", (void *)init);
     }
 
     node_info->evaluated = true;
