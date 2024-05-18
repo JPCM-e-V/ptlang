@@ -486,9 +486,9 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
              ptlang_rc_deref(ptlang_rc_deref(right).ast_type).type != PTLANG_AST_TYPE_FLOAT &&
              ptlang_rc_deref(ptlang_rc_deref(right).ast_type).type != PTLANG_AST_TYPE_REFERENCE))
         {
-            size_t message_len = sizeof("The operant types must be numbers or references.");
+            size_t message_len = sizeof("The operant structs must be numbers or references.");
             char *message = ptlang_malloc(message_len);
-            memcpy(message, "The operant types must be numbers or references.", message_len);
+            memcpy(message, "The operant structs must be numbers or references.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
                                 .pos = ptlang_rc_deref(ptlang_rc_deref(exp).pos),
@@ -499,9 +499,9 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                  (ptlang_rc_deref(ptlang_rc_deref(left).ast_type).type == PTLANG_AST_TYPE_REFERENCE) ==
                      (ptlang_rc_deref(ptlang_rc_deref(right).ast_type).type == PTLANG_AST_TYPE_REFERENCE))
         {
-            size_t message_len = sizeof("The operant types must either be both numbers or both references.");
+            size_t message_len = sizeof("The operant structs must either be both numbers or both references.");
             char *message = ptlang_malloc(message_len);
-            memcpy(message, "The operant types must either be both numbers or both references.", message_len);
+            memcpy(message, "The operant structs must either be both numbers or both references.", message_len);
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
                                 .pos = ptlang_rc_deref(ptlang_rc_deref(exp).pos),
@@ -661,7 +661,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     {
         ptlang_verify_exp(unary, ctx, errors);
         ptlang_rc_deref(exp).ast_type =
-            ptlang_ast_type_integer(true, LLVMPointerSize(ctx->target_data_layout), NULL);
+            ptlang_ast_type_integer(true, ctx->pointer_bytes*8, NULL);
         break;
     }
     case PTLANG_AST_EXP_FUNCTION_CALL:
@@ -1985,18 +1985,17 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
         }
         case PTLANG_AST_EXP_LENGTH:
         {
-            unsigned pointer_size_in_bytes = LLVMPointerSize(ctx->target_data_layout);
-            uint8_t *binary = ptlang_malloc_zero(pointer_size_in_bytes);
+            uint8_t *binary = ptlang_malloc_zero(ctx->pointer_bytes);
 
             if (ptlang_rc_deref(ptlang_rc_deref(ptlang_rc_deref(exp).content.unary_operator).ast_type).type ==
                 PTLANG_AST_TYPE_ARRAY)
             {
                 uint8_t bytes =
-                    pointer_size_in_bytes <
+                    ctx->pointer_bytes <
                             sizeof(ptlang_rc_deref(
                                        ptlang_rc_deref(ptlang_rc_deref(exp).content.unary_operator).ast_type)
                                        .content.array.len)
-                        ? pointer_size_in_bytes
+                        ? ctx->pointer_bytes
                         : sizeof(ptlang_rc_deref(
                                      ptlang_rc_deref(ptlang_rc_deref(exp).content.unary_operator).ast_type)
                                      .content.array.len);
@@ -2280,20 +2279,19 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             }
             break;
         }
-        // TODO other types
+        // TODO other structs
         case PTLANG_AST_EXP_ARRAY_ELEMENT:
         {
             ptlang_ast_exp index =
                 ptlang_verify_eval(ptlang_rc_deref(exp).content.array_element.index, PTLANG_VERIFY_EVAL_FULLY,
                                    node, nodes, node_table, module, ctx, errors);
 
-            enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);
 
             size_t num = ptlang_verify_binary_to_unsigned(index, ctx);
 
             if ((ptlang_rc_deref(ptlang_rc_deref(index).ast_type).content.integer.is_signed &&
                  (ptlang_rc_deref(index)
-                      .content.binary[byteOrdering == LLVMBigEndian
+                      .content.binary[ctx->is_big_endian
                                           ? 0
                                           : ptlang_eval_calc_byte_size(ptlang_rc_deref(index).ast_type) - 1] &
                   0x80)) ||
@@ -3035,7 +3033,6 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
 static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_context *ctx)
 {
 
-    enum LLVMByteOrdering byteOrdering = LLVMByteOrder(ctx->target_data_layout);
     size_t num = 0;
 
     for (size_t i = sizeof(size_t); i > 0; i--)
@@ -3043,7 +3040,7 @@ static size_t ptlang_verify_binary_to_unsigned(ptlang_ast_exp binary, ptlang_con
         num <<= 8;
         if (i <= ptlang_eval_calc_byte_size(ptlang_rc_deref(binary).ast_type))
             num += ptlang_rc_deref(binary)
-                       .content.binary[byteOrdering == LLVMBigEndian
+                       .content.binary[ctx->is_big_endian
                                            ? ptlang_eval_calc_byte_size(ptlang_rc_deref(binary).ast_type) - i
                                            : i - 1];
     }

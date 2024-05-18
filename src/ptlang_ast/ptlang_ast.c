@@ -71,7 +71,7 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident
 }
 
 ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
-                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool export)
+                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported)
 {
     ptlang_ast_func function;
     ptlang_rc_alloc(function);
@@ -80,7 +80,7 @@ ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type retur
         .return_type = return_type,
         .parameters = parameters,
         .stmt = stmt,
-        .export = export,
+        .exported = exported,
     };
     return function;
 }
@@ -94,7 +94,7 @@ ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name,
         .type = type,
         .name = name,
         .writable = writable,
-        .export = false,
+        .exported = false,
         .init = 0,
         .pos = pos,
     };
@@ -106,9 +106,9 @@ void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init)
     ptlang_rc_deref(decl).init = init;
 }
 
-void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export) { ptlang_rc_deref(decl).export = export; }
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool exported) { ptlang_rc_deref(decl).exported = exported; }
 
-void ptlang_ast_func_set_export(ptlang_ast_func func, bool export) { ptlang_rc_deref(func).export = export; }
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool exported) { ptlang_rc_deref(func).exported = exported; }
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 // {
@@ -138,8 +138,8 @@ void ptlang_ast_func_set_export(ptlang_ast_func func, bool export) { ptlang_rc_d
 // void ptlang_ast_type_list_add(ptlang_ast_type_list list, ptlang_ast_type type)
 // {
 //     list->count++;
-//     list->types = ptlang_realloc(list->types, sizeof(ptlang_ast_type) * list->count);
-//     list->types[list->count - 1] = type;
+//     list->structs = ptlang_realloc(list->structs, sizeof(ptlang_ast_type) * list->count);
+//     list->structs[list->count - 1] = type;
 // }
 
 // ptlang_ast_exp_list ptlang_ast_exp_list_new(void)
@@ -738,12 +738,12 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_
 //     return module->type_alias_count;
 // }
 
-// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *types)
+// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *structs)
 // {
 //     for (uint64_t i = 0; i < module->type_alias_count; i++)
 //     {
 //         names[i] = module->type_aliases[i].name;
-//         types[i] = module->type_aliases[i].type;
+//         structs[i] = module->type_aliases[i].type;
 //     }
 // }
 

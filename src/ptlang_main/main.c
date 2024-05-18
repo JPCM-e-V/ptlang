@@ -5,8 +5,7 @@
 #include "ptlang_verify.h"
 
 #include <inttypes.h>
-#include <llvm-c/Analysis.h>
-#include <llvm-c/Transforms/PassBuilder.h>
+
 #include <stb_ds.h>
 
 void print_error(ptlang_error error)
@@ -30,21 +29,22 @@ int main(void)
 {
     ptlang_ast_module mod;
 
-    char *triple = LLVMGetDefaultTargetTriple();
+    // char *triple = LLVMGetDefaultTargetTriple();
 
-    LLVMInitializeNativeTarget();
+    // LLVMInitializeNativeTarget();
 
-    LLVMTargetRef target;
-    LLVMGetTargetFromTriple(triple, &target, NULL);
+    // LLVMTargetRef target;
+    // LLVMGetTargetFromTriple(triple, &target, NULL);
 
-    LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
-        target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
+    // LLVMTargetMachineRef machine = LLVMCreateTargetMachine(
+    //     target, triple, "generic", "", LLVMCodeGenLevelDefault, LLVMRelocDefault, LLVMCodeModelDefault);
 
-    // LLVMCreateTargetDataLayout
-    LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
+    // // LLVMCreateTargetDataLayout
+    // LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
 
     ptlang_context ctx = {
-        .target_data_layout = target_data_layout,
+        .is_big_endian = false,
+        .pointer_bytes = 8,
     };
     ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
     if (arrlenu(syntax_errors) != 0)
@@ -61,6 +61,8 @@ int main(void)
         exit(1);
     }
 
+    ptlang_ir_builder_dump_module(mod, &ctx);
+
     ptlang_context_destory(&ctx);
 
     // LLVMModuleRef llvmmod = ptlang_ir_builder_module(mod, target_data_layout);
@@ -72,7 +74,7 @@ int main(void)
 
     // LLVMSetTarget(llvmmod, triple);
 
-    LLVMDisposeMessage(triple);
+    // LLVMDisposeMessage(triple);
 
     // printf("\n ============= unopt =============\n\n");
 
@@ -115,7 +117,7 @@ int main(void)
     // LLVMTargetMachineEmitToFile(machine, llvmmod, ASM_FILE, LLVMAssemblyFile, &error);
     // LLVMTargetMachineEmitToFile(machine, llvmmod, OBJ_FILE, LLVMObjectFile, &error);
 
-    LLVMDisposeTargetMachine(machine);
+    // LLVMDisposeTargetMachine(machine);
 
     ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
 

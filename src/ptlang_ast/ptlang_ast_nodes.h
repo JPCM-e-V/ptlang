@@ -67,7 +67,7 @@ struct ptlang_ast_decl_s
     ptlang_ast_exp init;
     ptlang_ast_ident name;
     bool writable;
-    bool export;
+    bool exported;
     ptlang_ast_code_position pos;
 };
 
@@ -298,7 +298,7 @@ struct ptlang_ast_func_s
     ptlang_ast_type return_type;
     ptlang_ast_decl *parameters;
     ptlang_ast_stmt stmt;
-    bool export;
+    bool exported;
     ptlang_ast_code_position pos;
 };
 

@@ -2,53 +2,54 @@
 
 ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp, ptlang_context *ctx)
 {
-    LLVMContextRef C = LLVMContextCreate();
-    LLVMModuleRef M = LLVMModuleCreateWithNameInContext("ptlang_eval", C);
+    // LLVMContextRef C = LLVMContextCreate();
+    // LLVMModuleRef M = LLVMModuleCreateWithNameInContext("ptlang_eval", C);
 
-    // LLVMTypeRef type = ptlang_ir_builder_type(exp->ast_type, NULL, C);
+    // // LLVMTypeRef type = ptlang_ir_builder_type(exp->ast_type, NULL, C);
 
-    LLVMTypeRef func_type =
-        LLVMFunctionType(LLVMVoidTypeInContext(C), (LLVMTypeRef[]){LLVMPointerTypeInContext(C, 0)}, 1, false);
+    // LLVMTypeRef func_type =
+    //     LLVMFunctionType(LLVMVoidTypeInContext(C), (LLVMTypeRef[]){LLVMPointerTypeInContext(C, 0)}, 1, false);
 
-    LLVMValueRef function = LLVMAddFunction(M, "main", func_type);
+    // LLVMValueRef function = LLVMAddFunction(M, "main", func_type);
 
-    LLVMBuilderRef B = LLVMCreateBuilderInContext(C);
+    // LLVMBuilderRef B = LLVMCreateBuilderInContext(C);
 
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(C, function, "entry");
+    // LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(C, function, "entry");
 
-    ptlang_ir_builder_build_context cxt = {
-        .builder = B,
-        .module = M,
-        .function = function,
-        .target_info = ctx->target_data_layout,
-    };
-    LLVMPositionBuilderAtEnd(B, entry);
+    // ptlang_ir_builder_build_context cxt = {
+    //     .builder = B,
+    //     .module = M,
+    //     .function = function,
+    //     .target_info = ctx->target_data_layout,
+    // };
+    // LLVMPositionBuilderAtEnd(B, entry);
 
-    LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
-    LLVMBuildStore(B, value, LLVMGetParam(function, 0));
-    LLVMBuildRetVoid(B);
+    // LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
+    // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
+    // LLVMBuildRetVoid(B);
 
-    LLVMLinkInInterpreter();
+    // LLVMLinkInInterpreter();
 
-    LLVMExecutionEngineRef ee;
-    // LLVMCreateExecutionEngineForModule(&ee, M, NULL);
-    // LLVMCreateJITCompilerForModule(&ee, M, )
-    LLVMCreateInterpreterForModule(&ee, M, NULL);
+    // LLVMExecutionEngineRef ee;
+    // // LLVMCreateExecutionEngineForModule(&ee, M, NULL);
+    // // LLVMCreateJITCompilerForModule(&ee, M, )
+    // LLVMCreateInterpreterForModule(&ee, M, NULL);
 
     uint32_t bit_size = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type == PTLANG_AST_TYPE_INTEGER
                             ? ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.size
                             : ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.float_size;
 
-    uint8_t *binary = ptlang_malloc((bit_size - 1) / 8 + 1);
+    uint8_t *binary = ptlang_malloc_zero((bit_size - 1) / 8 + 1);
+
 
     // arrsetlen(binary, size);
 
-    LLVMGenericValueRef in_llvm_binary = LLVMCreateGenericValueOfPointer(binary);
-    LLVMRunFunction(ee, function, 1, &in_llvm_binary);
-    LLVMDisposeExecutionEngine(ee);
+    // LLVMGenericValueRef in_llvm_binary = LLVMCreateGenericValueOfPointer(binary);
+    // LLVMRunFunction(ee, function, 1, &in_llvm_binary);
+    // LLVMDisposeExecutionEngine(ee);
 
-    // LLVMDisposeModule(M);
-    LLVMContextDispose(C);
+    // // LLVMDisposeModule(M);
+    // LLVMContextDispose(C);
 
     return ptlang_ast_exp_binary_new(binary, exp);
 }

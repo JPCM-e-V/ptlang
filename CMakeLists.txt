@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.25.1)
 
 project(ptlang
-        LANGUAGES C)
+        LANGUAGES C CXX)
 
 set(PTLANG_SRC_DIR ${PROJECT_SOURCE_DIR}/src)
 set(PTLANG_AST_SRC_DIR ${PTLANG_SRC_DIR}/ptlang_ast)
@@ -86,7 +86,10 @@ target_include_directories(ptlang_parser
                            PRIVATE ${PROJECT_BINARY_DIR})
 
 add_library(ptlang_ir_builder OBJECT
-            ${PTLANG_IR_BUILDER_SRC_DIR}/ptlang_ir_builder.c)
+            ${PTLANG_IR_BUILDER_SRC_DIR}/ptlang_ir_builder.cc)
+
+
+set_property(TARGET ptlang_parser PROPERTY CXX_STANDARD 17)
 
 target_include_directories(ptlang_ir_builder
                            PRIVATE ${PTLANG_AST_SRC_DIR}

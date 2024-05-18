@@ -20,13 +20,13 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident
                                       ptlang_ast_code_position pos);
 
 ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
-                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool export);
+                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported);
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name, bool writable,
                                     ptlang_ast_code_position pos);
 void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init);
-void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool export);
-void ptlang_ast_func_set_export(ptlang_ast_func func, bool export);
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool exported);
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool exported);
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void);
 // void ptlang_ast_decl_list_add(ptlang_ast_decl_list list, ptlang_ast_decl decl);
@@ -139,7 +139,7 @@ ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_
 // ptlang_ast_decl *ptlang_ast_module_get_decls(ptlang_ast_module module, uint64_t *count);
 // ptlang_ast_struct_def *ptlang_ast_module_get_struct_defs(ptlang_ast_module module, uint64_t *count);
 // uint64_t ptlang_ast_module_get_type_alias_count(ptlang_ast_module module);
-// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *types);
+// void ptlang_ast_module_get_type_aliases(ptlang_ast_module module, char **names, ptlang_ast_type *structs);
 
 // ptlang_ast_type ptlang_ast_type_copy(ptlang_ast_type type);
 // ptlang_ast_type *ptlang_ast_type_list_copy(ptlang_ast_type *type_list);
