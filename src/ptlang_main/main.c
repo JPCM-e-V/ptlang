@@ -47,9 +47,13 @@ int main(void)
         .pointer_bytes = 8,
     };
     ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
+
+    bool errors = false;
+
     if (arrlenu(syntax_errors) != 0)
     {
         handle_errors(syntax_errors);
+        errors = true;
         // ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
         // exit(1);
     }
@@ -57,6 +61,10 @@ int main(void)
     if (arrlenu(semantic_errors) != 0)
     {
         handle_errors(semantic_errors);
+        errors = true;
+    }
+
+    if(errors) { 
         ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
         exit(1);
     }
