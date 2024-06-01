@@ -5,6 +5,7 @@
 #include "ptlang_verify.h"
 
 #include <inttypes.h>
+#include <unistd.h>
 
 #include <stb_ds.h>
 

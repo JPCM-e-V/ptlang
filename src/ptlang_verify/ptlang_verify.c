@@ -41,6 +41,15 @@ static void ptlang_verify_global_decls(ptlang_ast_decl *declarations, ptlang_con
         ptlang_verify_decl_init(declarations[i], 0, ctx, errors);
         if (ptlang_rc_deref(declarations[i]).init != NULL)
             ptlang_verify_exp_check_const(ptlang_rc_deref(declarations[i]).init, ctx, errors);
+        else
+        {
+            // TODO ERROR TYPES/VALS
+            if (ptlang_rc_deref(declarations[i]).type != NULL)
+            {
+                ptlang_rc_deref(declarations[i]).init =
+                    ptlang_verify_get_default_value(ptlang_rc_deref(declarations[i]).type, ctx);
+            }
+        }
     }
 }
 
@@ -1243,7 +1252,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         }
 
         ptlang_ast_type referenced_type =
-            ptlang_rc_deref(ptlang_rc_deref(exp).content.reference.value).ast_type;
+            ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(exp).content.reference.value).ast_type);
         if (referenced_type != NULL)
         {
             ptlang_rc_deref(exp).ast_type = ptlang_ast_type_reference(
@@ -2142,9 +2151,9 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                 child_node += ptlang_verify_calc_node_count(
                     ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).type, ctx->type_scope);
             }
-            evaluated =
-                ptlang_ast_exp_struct_new(ptlang_ast_ident_copy(ptlang_rc_deref(exp).content.struct_.type),
-                                          struct_members, ptlang_rc_add_ref(ptlang_rc_deref(exp).pos));
+            evaluated = ptlang_ast_exp_struct_new(
+                ptlang_ast_ident_copy(ptlang_rc_deref(exp).content.struct_.type), struct_members,
+                ptlang_rc_deref(exp).pos != NULL ? ptlang_rc_add_ref(ptlang_rc_deref(exp).pos) : NULL);
 
             break;
         }
@@ -2353,11 +2362,21 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             break;
         }
         case PTLANG_AST_EXP_BINARY:
-        case PTLANG_AST_EXP_REFERENCE:
         {
             evaluated = ptlang_rc_add_ref(exp);
             break;
         }
+        case PTLANG_AST_EXP_REFERENCE:
+        {
+            ptlang_ast_exp referred =
+                ptlang_verify_eval(ptlang_rc_deref(exp).content.reference.value, PTLANG_VERIFY_EVAL_INDICES,
+                                   node, nodes, node_table, module, ctx, errors);
+            evaluated = ptlang_ast_exp_reference_new(ptlang_rc_deref(exp).content.reference.writable,
+                                                     referred, ptlang_rc_add_ref(ptlang_rc_deref(exp).pos));
+            ptlang_rc_deref(evaluated).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type);
+            break;
+        }
+
         case PTLANG_AST_EXP_ASSIGNMENT:
         case PTLANG_AST_EXP_FUNCTION_CALL:
         {
@@ -3043,7 +3062,8 @@ ptlang_verify_get_node(ptlang_ast_exp exp, ptlang_verify_node_table node_table, 
                ptlang_verify_binary_to_unsigned(ptlang_rc_deref(exp).content.array_element.index, ctx);
     }
     case PTLANG_AST_EXP_REFERENCE:
-        return ptlang_verify_get_node(ptlang_rc_deref(exp).content.reference.value, node_table, ctx);
+        return NULL;
+        // return ptlang_verify_get_node(ptlang_rc_deref(exp).content.reference.value, node_table, ctx);
     case PTLANG_AST_EXP_DEREFERENCE:
         return ptlang_verify_get_node(ptlang_rc_deref(exp).content.unary_operator, node_table, ctx);
     default:

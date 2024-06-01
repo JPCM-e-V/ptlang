@@ -106,9 +106,15 @@ void ptlang_ast_decl_set_init(ptlang_ast_decl decl, ptlang_ast_exp init)
     ptlang_rc_deref(decl).init = init;
 }
 
-void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool exported) { ptlang_rc_deref(decl).exported = exported; }
+void ptlang_ast_decl_set_export(ptlang_ast_decl decl, bool exported)
+{
+    ptlang_rc_deref(decl).exported = exported;
+}
 
-void ptlang_ast_func_set_export(ptlang_ast_func func, bool exported) { ptlang_rc_deref(func).exported = exported; }
+void ptlang_ast_func_set_export(ptlang_ast_func func, bool exported)
+{
+    ptlang_rc_deref(func).exported = exported;
+}
 
 // ptlang_ast_decl_list ptlang_ast_decl_list_new(void)
 // {
@@ -1040,7 +1046,7 @@ ptlang_ast_ident ptlang_ast_ident_copy(ptlang_ast_ident ident)
     size_t name_len = strlen(ident.name) + 1;
     ptlang_ast_ident new_ident = {
         .name = ptlang_malloc(name_len),
-        .pos = ptlang_rc_add_ref(ident.pos),
+        .pos = ident.pos != NULL ? ptlang_rc_add_ref(ident.pos) : NULL,
     };
     memcpy(new_ident.name, ident.name, name_len);
     return new_ident;
