@@ -15,13 +15,27 @@ extern "C"
             /*.llvm_ctx =*/llvm_ctx,
             /*.ctx =*/context,
             /*.scope =*/&global_scope,
+            /*.di_file =*/llvm::DIFile::get(llvm_ctx, "/tmp", "test.ptl"),
         };
+
+        ctx.di_scope = llvm::DICompileUnit::getDistinct(
+            llvm_ctx, 0, ctx.di_file, "ptlang 0.0.0", false, "", 0, "",
+            llvm::DICompileUnit::DebugEmissionKind::FullDebug, llvm::DICompositeTypeArray(),
+            llvm::DIScopeArray(),
+            llvm::DIGlobalVariableExpressionArray(), llvm::DIImportedEntityArray(), llvm::DIMacroNodeArray(),
+            0, false, false, llvm::DICompileUnit::DebugNameTableKind::Default, false, "", "");
 
         // ctx.ctx = context;
 
         // ctx.module_("name", llvm_ctx);
 
         ptlang_ir_builder_module(module, &ctx);
+
+#ifndef NDEBUG
+        bool broken_debug_info;
+        ptlang_assert(!llvm::verifyModule(ctx.module_, &llvm::dbgs(), &broken_debug_info));
+        ptlang_assert(!broken_debug_info);
+#endif
 
         ctx.module_.print(llvm::dbgs(), NULL, false, true);
 
@@ -104,6 +118,13 @@ extern "C"
                                            : llvm::GlobalValue::LinkageTypes::InternalLinkage,
             NULL, ptlang_rc_deref(decl).name.name);
         shput(ctx->scope->variables, ptlang_rc_deref(decl).name.name, var);
+        var->addDebugInfo(llvm::DIGlobalVariableExpression::get(
+            ctx->llvm_ctx,
+            llvm::DIGlobalVariable::get(ctx->llvm_ctx, ctx->di_scope, ptlang_rc_deref(decl).name.name,
+                                        ptlang_rc_deref(decl).name.name, ctx->di_file,
+                                        ptlang_rc_deref(ptlang_rc_deref(decl).pos).from_line, NULL, false,
+                                        true, NULL, NULL, 0, NULL),
+            llvm::DIExpression::get(ctx->llvm_ctx, llvm::ArrayRef<uint64_t>())));
         return var;
     }
 
@@ -227,7 +248,10 @@ extern "C"
                     ptlang_ir_builder_exp_const(ptlang_rc_deref(exp).content.struct_.members[i].exp, ctx);
             }
 
-            return llvm::ConstantStruct::get((llvm::StructType *)type, llvm::ArrayRef(vals, val_count));
+            llvm::Constant *const_struct =
+                llvm::ConstantStruct::get((llvm::StructType *)type, llvm::ArrayRef(vals, val_count));
+            ptlang_free(vals);
+            return const_struct;
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY:
         {
@@ -239,7 +263,10 @@ extern "C"
                 vals[i] = ptlang_ir_builder_exp_const(ptlang_rc_deref(exp).content.array.values[i], ctx);
             }
 
-            return llvm::ConstantArray::get((llvm::ArrayType *)type, llvm::ArrayRef(vals, val_count));
+            llvm::Constant *const_array =
+                llvm::ConstantArray::get((llvm::ArrayType *)type, llvm::ArrayRef(vals, val_count));
+            ptlang_free(vals);
+            return const_array;
         }
 
         case ptlang_ast_exp_s::PTLANG_AST_EXP_REFERENCE:

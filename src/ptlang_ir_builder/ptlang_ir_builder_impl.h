@@ -1,11 +1,13 @@
 #pragma once
 
+#include "llvm/IR/DebugInfoMetadata.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Module.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/IR/Verifier.h"
 
 #include "stb_ds.h"
 
@@ -41,6 +43,9 @@ extern "C"
         ptlang_context *ctx;
 
         ptlang_ir_builder_scope *scope;
+
+        llvm::DIFile *di_file;
+        llvm::DIScope *di_scope;
 
         ptlang_ir_builder_struct *structs;
     } ptlang_ir_builder_context;

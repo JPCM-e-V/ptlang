@@ -2155,6 +2155,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                 ptlang_ast_ident_copy(ptlang_rc_deref(exp).content.struct_.type), struct_members,
                 ptlang_rc_deref(exp).pos != NULL ? ptlang_rc_add_ref(ptlang_rc_deref(exp).pos) : NULL);
 
+            ptlang_rc_deref(evaluated).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type);
+
             break;
         }
         case PTLANG_AST_EXP_ARRAY:
@@ -2188,6 +2190,8 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
                 ptlang_ast_exp_array_new(ptlang_rc_add_ref(ptlang_context_unname_type(
                                              ptlang_rc_deref(exp).content.array.type, ctx->type_scope)),
                                          array_values, ptlang_rc_add_ref(ptlang_rc_deref(exp).pos));
+
+            ptlang_rc_deref(evaluated).ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type);
             break;
         }
         case PTLANG_AST_EXP_TERNARY:
@@ -2482,16 +2486,15 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
 
         // Init members
         ptlang_ast_struct_member_list struct_members = NULL;
+        arrsetlen(struct_members, arrlenu(ptlang_rc_deref(struct_def).members));
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(struct_def).members); i++)
         {
-            struct ptlang_ast_struct_member_s member_default = (struct ptlang_ast_struct_member_s){
+            struct_members[i] = (struct ptlang_ast_struct_member_s){
                 .exp = ptlang_verify_get_default_value(
                     ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).type, ctx),
                 .str = ptlang_ast_ident_copy(ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).name),
                 .pos = NULL,
             };
-
-            arrput(struct_members, member_default);
         }
 
         ptlang_rc_deref(default_value) = (struct ptlang_ast_exp_s){
@@ -2675,6 +2678,10 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
         if (ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init != NULL)
             ptlang_verify_build_graph(node, ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init,
                                       false, node_table, ctx);
+        // else
+        //     ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init =
+        //     ptlang_verify_get_default_value(
+        //         ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).type, ctx);
     }
 
     ptlang_verify_check_cycles_in_global_defs(nodes, node_table, module, ctx, errors);

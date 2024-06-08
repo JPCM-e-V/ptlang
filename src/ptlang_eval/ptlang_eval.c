@@ -8,7 +8,8 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp, ptlang_context *ctx)
     // // LLVMTypeRef type = ptlang_ir_builder_type(exp->ast_type, NULL, C);
 
     // LLVMTypeRef func_type =
-    //     LLVMFunctionType(LLVMVoidTypeInContext(C), (LLVMTypeRef[]){LLVMPointerTypeInContext(C, 0)}, 1, false);
+    //     LLVMFunctionType(LLVMVoidTypeInContext(C), (LLVMTypeRef[]){LLVMPointerTypeInContext(C, 0)}, 1,
+    //     false);
 
     // LLVMValueRef function = LLVMAddFunction(M, "main", func_type);
 
@@ -39,8 +40,7 @@ ptlang_ast_exp ptlang_eval_const_exp(ptlang_ast_exp exp, ptlang_context *ctx)
                             ? ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.size
                             : ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.float_size;
 
-    uint8_t *binary = ptlang_malloc_zero((bit_size - 1) / 8 + 1);
-
+    uint8_t *binary = memset(ptlang_malloc((bit_size - 1) / 8 + 1), 0x6b, (bit_size - 1) / 8 + 1);
 
     // arrsetlen(binary, size);
 
