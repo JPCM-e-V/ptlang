@@ -21,9 +21,9 @@ extern "C"
         ctx.di_scope = llvm::DICompileUnit::getDistinct(
             llvm_ctx, 0, ctx.di_file, "ptlang 0.0.0", false, "", 0, "",
             llvm::DICompileUnit::DebugEmissionKind::FullDebug, llvm::DICompositeTypeArray(),
-            llvm::DIScopeArray(),
-            llvm::DIGlobalVariableExpressionArray(), llvm::DIImportedEntityArray(), llvm::DIMacroNodeArray(),
-            0, false, false, llvm::DICompileUnit::DebugNameTableKind::Default, false, "", "");
+            llvm::DIScopeArray(), llvm::DIGlobalVariableExpressionArray(), llvm::DIImportedEntityArray(),
+            llvm::DIMacroNodeArray(), 0, false, false, llvm::DICompileUnit::DebugNameTableKind::Default,
+            false, "", "");
 
         // ctx.ctx = context;
 
@@ -227,6 +227,57 @@ extern "C"
             return shget(ctx->structs, ptlang_rc_deref(ast_type).content.name);
         }
         abort();
+    }
+
+    static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
+    {
+        ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
+        if (ptlang_rc_deref(ast_type).type == ptlang_ast_type_s::PTLANG_AST_TYPE_VOID)
+            return NULL;
+
+        size_t type_name_len = ptlang_context_type_to_string(ast_type, NULL, ctx->ctx->type_scope);
+        char *type_name_cstr = (char *)ptlang_malloc(type_name_len);
+        ptlang_context_type_to_string(ast_type, type_name_cstr, ctx->ctx->type_scope);
+        llvm::StringRef type_name = llvm::StringRef(type_name_cstr, type_name_len);
+
+        switch (ptlang_rc_deref(ast_type).type)
+        {
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER:
+
+            return llvm::DIBasicType::get(
+                ctx->llvm_ctx, 0, type_name, ptlang_rc_deref(ast_type).content.integer.size, 0,
+                ptlang_rc_deref(ast_type).content.integer.is_signed ? 5 : 7, llvm::DINode::FlagZero);
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT:
+            return llvm::DIBasicType::get(ctx->llvm_ctx, 0, type_name,
+                                          ptlang_rc_deref(ast_type).content.float_size, 0, 4,
+                                          llvm::DINode::FlagZero);
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_FUNCTION:
+        {
+            // TODO: last param is TypeArray, head = return type, tail = params
+            return llvm::DISubroutineType::get(ctx->llvm_ctx, llvm::DINode::FlagZero, 1, NULL);
+        }
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY:
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_REFERENCE:
+
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_NAMED:
+        {
+            llvm::DINodeArray()
+
+            llvm::
+
+                DICompositeType *struct_ = llvm::DICompositeType::get(
+                    ctx->llvm_ctx, 19, ptlang_rc_deref(ast_type).content.name, ctx->di_file,
+                    ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
+                    llvm::DINode::FlagZero, 3, 0, NULL);
+            return struct_;
+        }
+        }
     }
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
