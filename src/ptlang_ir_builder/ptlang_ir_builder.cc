@@ -15,7 +15,7 @@ extern "C"
             /*.llvm_ctx =*/llvm_ctx,
             /*.ctx =*/context,
             /*.scope =*/&global_scope,
-            /*.di_file =*/llvm::DIFile::get(llvm_ctx, "/tmp", "test.ptl"),
+            /*.di_file =*/llvm::DIFile::get(llvm_ctx, "test.ptl", "/tmp"),
         };
 
         ctx.di_scope = llvm::DICompileUnit::getDistinct(
@@ -122,7 +122,8 @@ extern "C"
             ctx->llvm_ctx,
             llvm::DIGlobalVariable::get(ctx->llvm_ctx, ctx->di_scope, ptlang_rc_deref(decl).name.name,
                                         ptlang_rc_deref(decl).name.name, ctx->di_file,
-                                        ptlang_rc_deref(ptlang_rc_deref(decl).pos).from_line, NULL, false,
+                                        ptlang_rc_deref(ptlang_rc_deref(decl).pos).from_line,
+                                        ptlang_ir_builder_di_type(ptlang_rc_deref(decl).type, ctx), false,
                                         true, NULL, NULL, 0, NULL),
             llvm::DIExpression::get(ctx->llvm_ctx, llvm::ArrayRef<uint64_t>())));
         return var;
@@ -229,55 +230,151 @@ extern "C"
         abort();
     }
 
+    static llvm::DIType *ptlang_ir_builder_di_function_type(ptlang_ast_type ast_type,
+                                                            ptlang_ir_builder_context *ctx)
+    {
+        size_t num_args = arrlenu(ptlang_rc_deref(ast_type).content.function.parameters);
+        llvm::Metadata **ret_and_params =
+            (llvm::Metadata **)ptlang_malloc(sizeof(llvm::DIType *) * (num_args + 1));
+        ret_and_params[0] =
+            ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.function.return_type, ctx);
+        for (size_t i = 0; i < num_args; i++)
+        {
+            ret_and_params[i + 1] =
+                ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.function.parameters[i], ctx);
+        }
+        // TODO: last param is TypeArray, head = return type, tail = params
+        return llvm::DISubroutineType::get(ctx->llvm_ctx, llvm::DINode::FlagZero, llvm::dwarf::DW_CC_normal,
+                                           llvm::DITypeRefArray(llvm::MDTuple::get(
+                                               ctx->llvm_ctx, llvm::ArrayRef(ret_and_params, num_args + 1))));
+    }
+
     static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
     {
-        ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
-        if (ptlang_rc_deref(ast_type).type == ptlang_ast_type_s::PTLANG_AST_TYPE_VOID)
-            return NULL;
-
+        // TODO: typedef
         size_t type_name_len = ptlang_context_type_to_string(ast_type, NULL, ctx->ctx->type_scope);
         char *type_name_cstr = (char *)ptlang_malloc(type_name_len);
         ptlang_context_type_to_string(ast_type, type_name_cstr, ctx->ctx->type_scope);
-        llvm::StringRef type_name = llvm::StringRef(type_name_cstr, type_name_len);
+        llvm::StringRef type_name = type_name_cstr;
+
+        ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
+
+        llvm::DIType *ret_type;
 
         switch (ptlang_rc_deref(ast_type).type)
         {
+        case ptlang_ast_type_s::PTLANG_AST_TYPE_VOID:
+
+            ret_type = NULL;
+            break;
         case ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER:
 
-            return llvm::DIBasicType::get(
-                ctx->llvm_ctx, 0, type_name, ptlang_rc_deref(ast_type).content.integer.size, 0,
-                ptlang_rc_deref(ast_type).content.integer.is_signed ? 5 : 7, llvm::DINode::FlagZero);
+            ret_type = llvm::DIBasicType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_base_type, type_name,
+                                              ptlang_rc_deref(ast_type).content.integer.size, 0,
+                                              ptlang_rc_deref(ast_type).content.integer.is_signed
+                                                  ? llvm::dwarf::DW_ATE_signed
+                                                  : llvm::dwarf::DW_ATE_unsigned,
+                                              llvm::DINode::FlagZero);
+            break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT:
-            return llvm::DIBasicType::get(ctx->llvm_ctx, 0, type_name,
-                                          ptlang_rc_deref(ast_type).content.float_size, 0, 4,
-                                          llvm::DINode::FlagZero);
+            ret_type = llvm::DIBasicType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_base_type, type_name,
+                                              ptlang_rc_deref(ast_type).content.float_size, 0,
+                                              llvm::dwarf::DW_ATE_float, llvm::DINode::FlagZero);
+            break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_FUNCTION:
-        {
-            // TODO: last param is TypeArray, head = return type, tail = params
-            return llvm::DISubroutineType::get(ctx->llvm_ctx, llvm::DINode::FlagZero, 1, NULL);
-        }
+            ret_type =
+                llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, type_name, NULL, 0,
+                                         NULL, ptlang_ir_builder_di_function_type(ast_type, ctx),
+                                         ctx->ctx->pointer_bytes >> 3, 0, 0, NULL, llvm::DINode::FlagZero);
+            break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
+        {
+            llvm::DICompositeType *heap_array = llvm::DICompositeType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, type_name, ctx->di_file,
+                ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
+                llvm::DINode::FlagZero, llvm::DINodeArray(), 0, NULL);
+
+            llvm::Metadata *elements[2];
+
+            ptlang_ast_type len_type = ptlang_ast_type_integer(false, ctx->ctx->pointer_bytes >> 3, NULL);
+            elements[0] = llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "len", NULL, 0,
+                                                   heap_array, ptlang_ir_builder_di_type(len_type, ctx), 0, 0,
+                                                   0, std::nullopt, llvm::DINode::FlagZero);
+            ptlang_rc_remove_ref(len_type, ptlang_ast_type_destroy);
+
+            llvm::DIType *ptr_type = llvm::DIDerivedType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, llvm::StringRef(), NULL, 0, NULL,
+                ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.heap_array.type, ctx), 0, 0, 0,
+                std::nullopt, llvm::DINode::FlagZero);
+            elements[1] =
+                llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "ptr", NULL, 0,
+                                         heap_array, ptr_type, 0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+
+            heap_array->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(ctx->llvm_ctx, elements)));
+
+            ret_type = heap_array;
+            break;
+        }
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY:
+        {
+            llvm::Metadata *index_range =
+                llvm::DISubrange::get(ctx->llvm_ctx, ptlang_rc_deref(ast_type).content.array.len, 0);
+            ret_type = llvm::DICompositeType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_array_type, type_name, NULL, 0, NULL, NULL, 0, 0, 0,
+                llvm::DINode::FlagZero,
+                llvm::DINodeArray(llvm::MDTuple::get(ctx->llvm_ctx, llvm::ArrayRef(index_range))), 0, NULL);
+            break;
+        }
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_REFERENCE:
+        {
+            ret_type = llvm::DIDerivedType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_reference_type, type_name, ctx->di_file,
+                ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, NULL,
+                ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.reference.type, ctx), 0, 0, 0,
+                std::nullopt, llvm::DINode::FlagZero);
+            break;
+        }
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_NAMED:
         {
-            llvm::DINodeArray()
+            // TODO: typedef
+            ptlang_ast_struct_def struct_def =
+                ptlang_context_get_struct_def(ptlang_rc_deref(ast_type).content.name, ctx->ctx->type_scope);
 
-            llvm::
+            llvm::DICompositeType *struct_ = llvm::DICompositeType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, type_name, ctx->di_file,
+                ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
+                llvm::DINode::FlagZero, llvm::DINodeArray(), 0, NULL);
 
-                DICompositeType *struct_ = llvm::DICompositeType::get(
-                    ctx->llvm_ctx, 19, ptlang_rc_deref(ast_type).content.name, ctx->di_file,
-                    ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
-                    llvm::DINode::FlagZero, 3, 0, NULL);
-            return struct_;
+            llvm::Metadata **elements = (llvm::Metadata **)ptlang_malloc(
+                sizeof(llvm::Metadata *) * arrlenu(ptlang_rc_deref(struct_def).members));
+
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(struct_def).members); i++)
+            {
+                elements[i] = llvm::DIDerivedType::get(
+                    ctx->llvm_ctx, llvm::dwarf::DW_TAG_member,
+                    ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).name.name, ctx->di_file,
+                    ptlang_rc_deref(ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).pos).from_line,
+                    struct_,
+                    ptlang_ir_builder_di_type(ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).type,
+                                              ctx),
+                    0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+            }
+
+            struct_->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(
+                ctx->llvm_ctx, llvm::ArrayRef(elements, arrlenu(ptlang_rc_deref(struct_def).members)))));
+
+            ret_type = struct_;
+            break;
         }
         }
+        ptlang_free(type_name_cstr);
+        return ret_type;
     }
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
