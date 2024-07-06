@@ -1,5 +1,11 @@
 #include "ptlang_ir_builder_impl.h"
 
+#ifndef NULL
+#    define NULL nullptr
+#endif
+
+typedef __SIZE_TYPE__ size_t;
+
 extern "C"
 {
 
@@ -73,6 +79,11 @@ extern "C"
         {
             glob_vars[i]->setInitializer(ptlang_ir_builder_exp_const(
                 ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init, ctx));
+        }
+
+        for (size_t i = 0; i < arrlenu(ptlang_rc_deref(module).functions); i++)
+        {
+            ptlang_ir_builder_func_body(ptlang_rc_deref(module).functions[i], functions[i], ctx);
         }
 
         ptlang_free(glob_vars);
@@ -161,6 +172,70 @@ extern "C"
         return function;
     }
 
+    static void ptlang_ir_builder_func_body(ptlang_ast_func func, llvm::Function *llvm_func,
+                                            ptlang_ir_builder_context *ctx)
+
+    {
+        ptlang_ir_builder_fun_ctx fun_ctx = {ctx, llvm_func};
+
+        llvm::BasicBlock::Create(ctx->llvm_ctx, "entry", llvm_func);
+
+        ctx->builder.SetInsertPointPastAllocas(fun_ctx.func);
+
+        ptlang_ir_builder_scope_init(ctx);
+
+        llvm::Type *return_type;
+
+        if (ptlang_rc_deref(ptlang_rc_deref(func).return_type).type !=
+            ptlang_ast_type_s::PTLANG_AST_TYPE_VOID)
+        {
+            return_type = ptlang_ir_builder_type(ptlang_rc_deref(func).return_type, ctx);
+            fun_ctx.return_ptr = ctx->builder.CreateAlloca(return_type, NULL, "return_ptr");
+        }
+
+        llvm::Value **arg_ptrs =
+            (llvm::Value **)ptlang_malloc(sizeof(llvm::Value *) * arrlenu(ptlang_rc_deref(func).parameters));
+
+        for (size_t i = 0; i < arrlenu(ptlang_rc_deref(func).parameters); i++)
+        {
+
+            arg_ptrs[i] = ctx->builder.CreateAlloca(
+                ptlang_ir_builder_type(ptlang_rc_deref(ptlang_rc_deref(func).parameters[i]).type, ctx), NULL,
+                "arg_ptr");
+
+            shput(ctx->scope->variables, ptlang_rc_deref(ptlang_rc_deref(func).parameters[i]).name.name,
+                  arg_ptrs[i]);
+        }
+        for (size_t i = 0; i < arrlenu(ptlang_rc_deref(func).parameters); i++)
+        {
+            // TODO: start lifetimes
+            ctx->builder.CreateStore(fun_ctx.func->getArg(i), arg_ptrs[i]);
+        }
+
+        ptlang_free(arg_ptrs);
+
+        fun_ctx.return_block = llvm::BasicBlock::Create(ctx->llvm_ctx, "return", llvm_func);
+
+        // TODO build statement
+
+        ctx->builder.CreateBr(fun_ctx.return_block);
+
+        ctx->builder.SetInsertPoint(fun_ctx.return_block);
+
+        ptlang_ir_builder_scope_deinit(ctx);
+
+        if (ptlang_rc_deref(ptlang_rc_deref(func).return_type).type !=
+            ptlang_ast_type_s::PTLANG_AST_TYPE_VOID)
+        {
+            llvm::Value *ret_val = ctx->builder.CreateLoad(return_type, fun_ctx.return_ptr, "return_ptr");
+            ctx->builder.CreateRet(ret_val);
+        }
+        else
+        {
+            ctx->builder.CreateRetVoid();
+        }
+    }
+
     llvm::Value *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope)
     {
         while (scope != NULL)
@@ -171,6 +246,14 @@ extern "C"
             scope = scope->parent;
         }
         abort();
+    }
+
+    static void ptlang_ir_builder_scope_deinit(ptlang_ir_builder_context *ctx)
+    {
+        // TODO end lifetimes
+
+        shfree(ctx->scope->variables);
+        ctx->scope = ctx->scope->parent;
     }
 
     static llvm::Type *ptlang_ir_builder_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
@@ -215,7 +298,7 @@ extern "C"
                 llvm::PointerType::getUnqual(
                     ptlang_ir_builder_type(ptlang_rc_deref(ast_type).content.heap_array.type, ctx)),
                 llvm::IntegerType::get(ctx->llvm_ctx, ctx->ctx->pointer_bytes >> 3)};
-            return llvm::StructType::get(ctx->llvm_ctx, llvm::ArrayRef(member_types));
+            return llvm::StructType::get(ctx->llvm_ctx, llvm::ArrayRef(member_types, 2), false);
         }
         case ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY:
             return llvm::ArrayType::get(
@@ -243,7 +326,6 @@ extern "C"
             ret_and_params[i + 1] =
                 ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.function.parameters[i], ctx);
         }
-        // TODO: last param is TypeArray, head = return type, tail = params
         return llvm::DISubroutineType::get(ctx->llvm_ctx, llvm::DINode::FlagZero, llvm::dwarf::DW_CC_normal,
                                            llvm::DITypeRefArray(llvm::MDTuple::get(
                                                ctx->llvm_ctx, llvm::ArrayRef(ret_and_params, num_args + 1))));
@@ -257,7 +339,7 @@ extern "C"
         ptlang_context_type_to_string(ast_type, type_name_cstr, ctx->ctx->type_scope);
         llvm::StringRef type_name = type_name_cstr;
 
-        ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
+        // ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
 
         llvm::DIType *ret_type;
 
@@ -284,10 +366,10 @@ extern "C"
             break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_FUNCTION:
-            ret_type =
-                llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, type_name, NULL, 0,
-                                         NULL, ptlang_ir_builder_di_function_type(ast_type, ctx),
-                                         ctx->ctx->pointer_bytes >> 3, 0, 0, NULL, llvm::DINode::FlagZero);
+            ret_type = llvm::DIDerivedType::get(
+                ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, type_name, NULL, 0, NULL,
+                ptlang_ir_builder_di_function_type(ast_type, ctx), (ctx->ctx->pointer_bytes) >> 3, 0, 0,
+                std::nullopt, llvm::DINode::FlagZero);
             break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
@@ -313,7 +395,8 @@ extern "C"
                 llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "ptr", NULL, 0,
                                          heap_array, ptr_type, 0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
 
-            heap_array->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(ctx->llvm_ctx, elements)));
+            heap_array->replaceElements(
+                llvm::DINodeArray(llvm::MDTuple::get(ctx->llvm_ctx, llvm::ArrayRef(elements, 2))));
 
             ret_type = heap_array;
             break;
@@ -342,34 +425,49 @@ extern "C"
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_NAMED:
         {
-            // TODO: typedef
-            ptlang_ast_struct_def struct_def =
-                ptlang_context_get_struct_def(ptlang_rc_deref(ast_type).content.name, ctx->ctx->type_scope);
 
-            llvm::DICompositeType *struct_ = llvm::DICompositeType::get(
-                ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, type_name, ctx->di_file,
-                ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
-                llvm::DINode::FlagZero, llvm::DINodeArray(), 0, NULL);
-
-            llvm::Metadata **elements = (llvm::Metadata **)ptlang_malloc(
-                sizeof(llvm::Metadata *) * arrlenu(ptlang_rc_deref(struct_def).members));
-
-            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(struct_def).members); i++)
+            ptlang_context_type_scope_entry entry =
+                shget(ctx->ctx->type_scope, ptlang_rc_deref(ast_type).content.name);
+            if (entry.type == ptlang_context_type_scope_entry_s::PTLANG_CONTEXT_TYPE_SCOPE_ENTRY_STRUCT)
             {
-                elements[i] = llvm::DIDerivedType::get(
-                    ctx->llvm_ctx, llvm::dwarf::DW_TAG_member,
-                    ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).name.name, ctx->di_file,
-                    ptlang_rc_deref(ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).pos).from_line,
-                    struct_,
-                    ptlang_ir_builder_di_type(ptlang_rc_deref(ptlang_rc_deref(struct_def).members[i]).type,
-                                              ctx),
-                    0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+                llvm::DICompositeType *struct_ = llvm::DICompositeType::get(
+                    ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, type_name, ctx->di_file,
+                    ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, ctx->di_scope, NULL, 0, 0, 0,
+                    llvm::DINode::FlagZero, llvm::DINodeArray(), 0, NULL);
+
+                llvm::Metadata **elements = (llvm::Metadata **)ptlang_malloc(
+                    sizeof(llvm::Metadata *) * arrlenu(ptlang_rc_deref(entry.value.struct_def).members));
+
+                for (size_t i = 0; i < arrlenu(ptlang_rc_deref(entry.value.struct_def).members); i++)
+                {
+                    elements[i] = llvm::DIDerivedType::get(
+                        ctx->llvm_ctx, llvm::dwarf::DW_TAG_member,
+                        ptlang_rc_deref(ptlang_rc_deref(entry.value.struct_def).members[i]).name.name,
+                        ctx->di_file,
+                        ptlang_rc_deref(
+                            ptlang_rc_deref(ptlang_rc_deref(entry.value.struct_def).members[i]).pos)
+                            .from_line,
+                        struct_,
+                        ptlang_ir_builder_di_type(
+                            ptlang_rc_deref(ptlang_rc_deref(entry.value.struct_def).members[i]).type, ctx),
+                        0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+                }
+
+                struct_->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(
+                    ctx->llvm_ctx,
+                    llvm::ArrayRef(elements, arrlenu(ptlang_rc_deref(entry.value.struct_def).members)))));
+
+                ret_type = struct_;
+            }
+            else
+            {
+                ret_type = llvm::DIDerivedType::get(
+                    ctx->llvm_ctx, llvm::dwarf::DW_TAG_typedef, type_name, ctx->di_file,
+                    ptlang_rc_deref(ptlang_rc_deref(entry.value.ptlang_type).pos).from_line, ctx->di_scope,
+                    ptlang_ir_builder_di_type(entry.value.ptlang_type, ctx), 0, 0, 0, std::nullopt,
+                    llvm::DINode::FlagZero);
             }
 
-            struct_->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(
-                ctx->llvm_ctx, llvm::ArrayRef(elements, arrlenu(ptlang_rc_deref(struct_def).members)))));
-
-            ret_type = struct_;
             break;
         }
         }
@@ -506,7 +604,7 @@ extern "C"
             for (uint32_t i = 0; i < byte_size; i++)
             {
                 value = llvm::ConstantExpr::getShl(value, one);
-                value = llvm::ConstantExpr::getOr(
+                value = llvm::ConstantExpr::getAdd(
                     value,
                     llvm::ConstantInt::get(
                         type,

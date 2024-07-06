@@ -15,6 +15,7 @@
 #include "ptlang_ir_builder.h"
 extern "C"
 {
+#include <stddef.h>
 
     typedef struct ptlang_ir_builder_scope_variable_s
     {
@@ -51,6 +52,14 @@ extern "C"
         ptlang_ir_builder_struct *structs;
     } ptlang_ir_builder_context;
 
+    typedef struct ptlang_ir_builder_fun_ctx_s
+    {
+        ptlang_ir_builder_context *ctx;
+        llvm::Function *func;
+        llvm::BasicBlock *return_block;
+        llvm::Value *return_ptr;
+    } ptlang_ir_builder_fun_ctx;
+
     static void ptlang_ir_builder_module(ptlang_ast_module module, ptlang_ir_builder_context *ctx);
 
     static void ptlang_ir_builder_struct_defs(ptlang_ast_struct_def *struct_defs,
@@ -63,7 +72,18 @@ extern "C"
 
     llvm::Value *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope);
 
+#define ptlang_ir_builder_scope_init(ctx)                                                                    \
+    ptlang_ir_builder_scope scope = {                                                                        \
+        /*.variables=*/NULL,                                                                                 \
+        /*.parent=*/(ctx)->scope,                                                                            \
+    };                                                                                                       \
+    (ctx)->scope = &scope;
+
+    static void ptlang_ir_builder_scope_deinit(ptlang_ir_builder_context *ctx);
+
     static llvm::Function *ptlang_ir_builder_func_decl(ptlang_ast_func func, ptlang_ir_builder_context *ctx);
+    static void ptlang_ir_builder_func_body(ptlang_ast_func func, llvm::Function *llvm_func,
+                                            ptlang_ir_builder_context *ctx);
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
 

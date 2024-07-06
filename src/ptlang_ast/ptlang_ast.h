@@ -130,8 +130,8 @@ ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast
                                             ptlang_ast_stmt else_stmt, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt stmt,
                                           ptlang_ast_code_position pos);
-ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos);
-ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos);
+ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos);
+ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_code_position pos);
 

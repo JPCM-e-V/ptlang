@@ -623,24 +623,24 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
+ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt;
     ptlang_rc_alloc(stmt);
     ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
-        .content.exp = return_value,
+        .content.exp = return_ptr,
         .pos = pos,
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_value, ptlang_ast_code_position pos)
+ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt;
     ptlang_rc_alloc(stmt);
     ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RET_VAL,
-        .content.exp = return_value,
+        .content.exp = return_ptr,
         .pos = pos,
     };
     return stmt;

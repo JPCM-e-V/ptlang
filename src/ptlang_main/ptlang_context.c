@@ -221,19 +221,19 @@ size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_con
     }
     case PTLANG_AST_TYPE_NAMED:
     {
-        ptlang_ast_type unnamed_type = ptlang_context_unname_type(type, type_scope);
-        if (unnamed_type == type)
+        // ptlang_ast_type unnamed_type = ptlang_context_unname_type(type, type_scope);
+        // if (unnamed_type == type)
+        // {
+        size = strlen(ptlang_rc_deref(type).content.name) + 1;
+        if (out != NULL)
         {
-            size = strlen(ptlang_rc_deref(type).content.name) + 1;
-            if (out != NULL)
-            {
-                memcpy(out, ptlang_rc_deref(type).content.name, size);
-            }
+            memcpy(out, ptlang_rc_deref(type).content.name, size);
         }
-        else
-        {
-            size = ptlang_context_type_to_string(unnamed_type, out, type_scope);
-        }
+        // }
+        // else
+        // {
+        //     size = ptlang_context_type_to_string(unnamed_type, out, type_scope);
+        // }
         break;
     }
     }
