@@ -51,6 +51,8 @@ extern "C"
         // delete ctx.module_;
         // delete llvm_ctx;
 
+        delete ctx.ctx->data_layout;
+
         shfree(global_scope.variables);
 
         ptlang_ir_builder_context_destroy(&ctx);
@@ -121,14 +123,16 @@ extern "C"
     static llvm::GlobalVariable *ptlang_ir_builder_decl_decl(ptlang_ast_decl decl,
                                                              ptlang_ir_builder_context *ctx)
     {
+        llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(decl).type, ctx);
         // llvm::GlobalVariable()
         llvm::GlobalVariable *var = new llvm::GlobalVariable(
-            ctx->module_, ptlang_ir_builder_type(ptlang_rc_deref(decl).type, ctx),
-            !ptlang_rc_deref(decl).writable,
+            ctx->module_, type, !ptlang_rc_deref(decl).writable,
             ptlang_rc_deref(decl).exported ? llvm::GlobalValue::LinkageTypes::ExternalLinkage
                                            : llvm::GlobalValue::LinkageTypes::InternalLinkage,
             NULL, ptlang_rc_deref(decl).name.name);
-        shput(ctx->scope->variables, ptlang_rc_deref(decl).name.name, var);
+        shput(ctx->scope->variables, ptlang_rc_deref(decl).name.name,
+              (ptlang_ir_builder_scope_entry{var, type}));
+
         var->addDebugInfo(llvm::DIGlobalVariableExpression::get(
             ctx->llvm_ctx,
             llvm::DIGlobalVariable::get(ctx->llvm_ctx, ctx->di_scope, ptlang_rc_deref(decl).name.name,
@@ -160,7 +164,8 @@ extern "C"
                                            : llvm::GlobalValue::LinkageTypes::InternalLinkage,
             0, ptlang_rc_deref(func).name.name, &ctx->module_);
 
-        shput(ctx->scope->variables, ptlang_rc_deref(func).name.name, function);
+        shput(ctx->scope->variables, ptlang_rc_deref(func).name.name,
+              (ptlang_ir_builder_scope_entry{function, function_type}));
 
         llvm::Argument *args = function->args().begin();
 
@@ -193,26 +198,32 @@ extern "C"
             fun_ctx.return_ptr = ctx->builder.CreateAlloca(return_type, NULL, "return_ptr");
         }
 
-        llvm::Value **arg_ptrs =
-            (llvm::Value **)ptlang_malloc(sizeof(llvm::Value *) * arrlenu(ptlang_rc_deref(func).parameters));
+        ptlang_ir_builder_scope_entry *scope_entries = (ptlang_ir_builder_scope_entry *)ptlang_malloc(
+            sizeof(ptlang_ir_builder_scope_entry) * arrlenu(ptlang_rc_deref(func).parameters));
 
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(func).parameters); i++)
         {
 
-            arg_ptrs[i] = ctx->builder.CreateAlloca(
-                ptlang_ir_builder_type(ptlang_rc_deref(ptlang_rc_deref(func).parameters[i]).type, ctx), NULL,
-                "arg_ptr");
+            llvm::Type *type =
+                ptlang_ir_builder_type(ptlang_rc_deref(ptlang_rc_deref(func).parameters[i]).type, ctx);
+
+            scope_entries[i] = {ctx->builder.CreateAlloca(type, NULL, "arg_ptr"), type};
 
             shput(ctx->scope->variables, ptlang_rc_deref(ptlang_rc_deref(func).parameters[i]).name.name,
-                  arg_ptrs[i]);
+                  scope_entries[i]);
         }
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(func).parameters); i++)
         {
-            // TODO: start lifetimes
-            ctx->builder.CreateStore(fun_ctx.func->getArg(i), arg_ptrs[i]);
+            ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
+                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entries[i].type)),
+                 scope_entries[i].ptr});
+
+            ctx->builder.CreateStore(fun_ctx.func->getArg(i), scope_entries[i].ptr);
         }
 
-        ptlang_free(arg_ptrs);
+        ptlang_free(scope_entries);
 
         fun_ctx.return_block = llvm::BasicBlock::Create(ctx->llvm_ctx, "return", llvm_func);
 
@@ -242,7 +253,7 @@ extern "C"
         {
             ptlang_ir_builder_scope_variable *variable = shgetp_null(scope->variables, name);
             if (variable != NULL)
-                return variable->value;
+                return variable->value.ptr;
             scope = scope->parent;
         }
         abort();
@@ -251,6 +262,16 @@ extern "C"
     static void ptlang_ir_builder_scope_deinit(ptlang_ir_builder_context *ctx)
     {
         // TODO end lifetimes
+
+        for (size_t i = 0; i < shlenu(ctx->scope->variables); i++)
+        {
+            ptlang_ir_builder_scope_entry scope_entry = ctx->scope->variables[i].value;
+            ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
+                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entry.type)),
+                 scope_entry.ptr});
+        }
 
         shfree(ctx->scope->variables);
         ctx->scope = ctx->scope->parent;
@@ -622,4 +643,11 @@ extern "C"
     }
 
     static void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx) { shfree(ctx->structs); }
+    void ptlang_ir_builder_store_data_layout(ptlang_context *ctx)
+    {
+        ctx->data_layout = new llvm::DataLayout(
+            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128");
+        ctx->is_big_endian = ctx->data_layout->isBigEndian();
+        ctx->pointer_bytes = ctx->data_layout->getPointerSize();
+    }
 }

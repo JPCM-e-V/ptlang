@@ -43,10 +43,10 @@ int main(void)
     // // LLVMCreateTargetDataLayout
     // LLVMTargetDataRef target_data_layout = LLVMCreateTargetDataLayout(machine);
 
-    ptlang_context ctx = {
-        .is_big_endian = false,
-        .pointer_bytes = 8,
-    };
+    ptlang_context ctx = {0};
+
+    ptlang_ir_builder_store_data_layout(&ctx);
+
     ptlang_error *syntax_errors = ptlang_parser_parse(stdin, &mod);
 
     bool errors = false;
@@ -65,7 +65,8 @@ int main(void)
         errors = true;
     }
 
-    if(errors) { 
+    if (errors)
+    {
         ptlang_rc_remove_ref(mod, ptlang_ast_module_destroy);
         exit(1);
     }

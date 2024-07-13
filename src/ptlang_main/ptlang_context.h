@@ -4,6 +4,10 @@
 #include "ptlang_ast.h"
 #include <llvm-c/Target.h>
 
+typedef struct ptlang_context_s ptlang_context;
+
+#include "ptlang_ir_builder.h"
+
 typedef struct ptlang_context_type_scope_entry_s
 {
     // LLVMTypeRef type;
@@ -26,7 +30,7 @@ typedef struct ptlang_context_type_scope_s
     ptlang_context_type_scope_entry value;
 } ptlang_context_type_scope;
 
-typedef struct ptlang_context_s
+struct ptlang_context_s
 {
     ptlang_context_type_scope *type_scope;
     ptlang_ast_decl
@@ -34,7 +38,8 @@ typedef struct ptlang_context_s
     // LLVMTargetDataRef target_data_layout;
     bool is_big_endian;
     uint32_t pointer_bytes;
-} ptlang_context;
+    llvm_data_layout *data_layout;
+};
 
 void ptlang_context_destory(ptlang_context *ctx);
 

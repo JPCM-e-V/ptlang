@@ -82,6 +82,7 @@ target_include_directories(ptlang_parser
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PRIVATE ${PTLANG_UTILS_SRC_DIR}
+                           PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                            PUBLIC ${PTLANG_STB_DIR}
                            PRIVATE ${PROJECT_BINARY_DIR})
 
@@ -95,6 +96,7 @@ target_include_directories(ptlang_ir_builder
                            PRIVATE ${PTLANG_AST_SRC_DIR}
                            PRIVATE ${PTLANG_MAIN_SRC_DIR}
                            PRIVATE ${PTLANG_UTILS_SRC_DIR}
+                           PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                            PUBLIC ${PTLANG_LLVM_INCLUDEDIR}
                            PUBLIC ${PTLANG_STB_DIR}
                            )
@@ -107,6 +109,7 @@ target_include_directories(ptlang_verify
                             PRIVATE ${PTLANG_MAIN_SRC_DIR}
                             PRIVATE ${PTLANG_UTILS_SRC_DIR}
                             PRIVATE ${PTLANG_EVAL_SRC_DIR}
+                            PRIVATE ${PTLANG_IR_BUILDER_SRC_DIR}
                             PUBLIC ${PTLANG_STB_DIR}
                             )
 

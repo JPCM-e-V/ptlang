@@ -17,10 +17,16 @@ extern "C"
 {
 #include <stddef.h>
 
+    typedef struct ptlang_ir_builder_scope_entry_s
+    {
+        llvm::Value *ptr;
+        llvm::Type *type;
+    } ptlang_ir_builder_scope_entry;
+
     typedef struct ptlang_ir_builder_scope_variable_s
     {
         char *key;
-        llvm::Value *value;
+        ptlang_ir_builder_scope_entry value;
     } ptlang_ir_builder_scope_variable;
 
     typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
