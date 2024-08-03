@@ -21,7 +21,8 @@ void handle_errors(ptlang_error *errors)
     for (size_t i = 0; i < arrlenu(errors); i++)
     {
         print_error(errors[i]);
-        ptlang_free(errors[i].message);
+        // TODO: some messages are leaked
+        // ptlang_free(errors[i].message);
     }
     arrfree(errors);
 }

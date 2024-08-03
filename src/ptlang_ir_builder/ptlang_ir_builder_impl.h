@@ -93,6 +93,9 @@ extern "C"
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
 
+    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx);
+    static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_fun_ctx *ctx);
+
     static llvm::DIType *ptlang_ir_builder_di_function_type(ptlang_ast_type ast_type,
                                                             ptlang_ir_builder_context *ctx);
     static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx);

@@ -228,6 +228,7 @@ extern "C"
         fun_ctx.return_block = llvm::BasicBlock::Create(ctx->llvm_ctx, "return", llvm_func);
 
         // TODO build statement
+        ptlang_ir_builder_stmt(ptlang_rc_deref(func).stmt, &fun_ctx);
 
         ctx->builder.CreateBr(fun_ctx.return_block);
 
@@ -261,8 +262,6 @@ extern "C"
 
     static void ptlang_ir_builder_scope_deinit(ptlang_ir_builder_context *ctx)
     {
-        // TODO end lifetimes
-
         for (size_t i = 0; i < shlenu(ctx->scope->variables); i++)
         {
             ptlang_ir_builder_scope_entry scope_entry = ctx->scope->variables[i].value;
@@ -354,13 +353,10 @@ extern "C"
 
     static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
     {
-        // TODO: typedef
         size_t type_name_len = ptlang_context_type_to_string(ast_type, NULL, ctx->ctx->type_scope);
         char *type_name_cstr = (char *)ptlang_malloc(type_name_len);
         ptlang_context_type_to_string(ast_type, type_name_cstr, ctx->ctx->type_scope);
         llvm::StringRef type_name = type_name_cstr;
-
-        // ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
 
         llvm::DIType *ret_type;
 
@@ -649,5 +645,121 @@ extern "C"
             "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128");
         ctx->is_big_endian = ctx->data_layout->isBigEndian();
         ctx->pointer_bytes = ctx->data_layout->getPointerSize();
+    }
+
+    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
+    {
+        llvm::Type *type = llvm::IntegerType::get(ctx->ctx->llvm_ctx, 1);
+        return llvm::ConstantInt::get(type, 0, false);
+    }
+
+    static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_fun_ctx *ctx)
+    {
+        switch (ptlang_rc_deref(stmt).type)
+        {
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_BLOCK:
+        {
+            
+            ptlang_ir_builder_scope_init(ctx->ctx);
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(stmt).content.block.stmts); i++)
+            {
+                ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.block.stmts[i], ctx);
+            }
+            ptlang_ir_builder_scope_deinit(ctx->ctx);
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_EXP:
+        {
+            ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.exp, ctx);
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_DECL:
+        {
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_IF:
+        {
+            llvm::Value *cond =
+                ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.control_flow.condition, ctx);
+
+            llvm::BasicBlock *then_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "then", ctx->func);
+            llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "endif", ctx->func);
+
+            ctx->ctx->builder.CreateCondBr(cond, then_block, endif_block);
+            ctx->ctx->builder.SetInsertPoint(then_block);
+
+            ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.control_flow.stmt, ctx);
+
+            ctx->ctx->builder.CreateBr(endif_block);
+
+            ctx->ctx->builder.SetInsertPoint(endif_block);
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_IF_ELSE:
+        {
+            llvm::Value *cond =
+                ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.control_flow2.condition, ctx);
+
+            llvm::BasicBlock *then_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "then", ctx->func);
+            llvm::BasicBlock *else_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "else", ctx->func);
+            llvm::BasicBlock *endif_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "endif", ctx->func);
+
+            ctx->ctx->builder.CreateCondBr(cond, then_block, else_block);
+            ctx->ctx->builder.SetInsertPoint(then_block);
+
+            ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.control_flow2.stmt[0], ctx);
+
+            ctx->ctx->builder.CreateBr(endif_block);
+
+            ctx->ctx->builder.SetInsertPoint(else_block);
+
+            ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.control_flow2.stmt[1], ctx);
+
+            ctx->ctx->builder.CreateBr(endif_block);
+
+            ctx->ctx->builder.SetInsertPoint(endif_block);
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_WHILE:
+        {
+            llvm::BasicBlock *cond_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "cond", ctx->func);
+            llvm::BasicBlock *while_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "while", ctx->func);
+            llvm::BasicBlock *endwhile_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "endwhile", ctx->func);
+
+            ctx->ctx->builder.CreateBr(cond_block);
+            ctx->ctx->builder.SetInsertPoint(cond_block);
+
+            llvm::Value *cond =
+                ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.control_flow.condition, ctx);
+
+            ctx->ctx->builder.CreateCondBr(cond, while_block, endwhile_block);
+
+            ctx->ctx->builder.SetInsertPoint(while_block);
+
+            ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.control_flow.stmt, ctx);
+
+            ctx->ctx->builder.CreateBr(cond_block);
+
+            ctx->ctx->builder.SetInsertPoint(endwhile_block);
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_RETURN:
+        {
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_RET_VAL:
+        {
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_BREAK:
+        {
+            break;
+        }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_CONTINUE:
+        {
+            break;
+        }
+        }
     }
 }

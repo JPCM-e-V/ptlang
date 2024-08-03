@@ -147,7 +147,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
             arrput(*errors, ((ptlang_error){
                                 .type = PTLANG_ERROR_TYPE,
                                 .pos = ptlang_rc_deref(ptlang_rc_deref(condition).pos),
-                                .message = "Control flow condition must be a float or an int.",
+                                .message = "Control flow condition must be a u1.",
                             }));
         }
 
