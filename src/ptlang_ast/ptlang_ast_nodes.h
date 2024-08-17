@@ -104,6 +104,7 @@ struct ptlang_ast_stmt_s
         PTLANG_AST_STMT_IF,
         PTLANG_AST_STMT_IF_ELSE,
         PTLANG_AST_STMT_WHILE,
+        PTLANG_AST_STMT_RETURN_VAL,
         PTLANG_AST_STMT_RETURN,
         PTLANG_AST_STMT_RET_VAL,
         PTLANG_AST_STMT_BREAK,

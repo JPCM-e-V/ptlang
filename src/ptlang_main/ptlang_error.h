@@ -23,6 +23,7 @@ typedef enum ptlang_error_type
     PTLANG_ERROR_CAST_ILLEGAL,
     PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR,
     PTLANG_ERROR_CYCLE_IN_GLOBAL_INITIATORS,
+    PTLANG_ERROR_MISSING_RETURN_VALUE,
 } ptlang_error_type;
 
 #define ptlang_error_type_name(error_type)                                                                   \
@@ -44,6 +45,7 @@ typedef enum ptlang_error_type
     : error_type == PTLANG_ERROR_CAST_ILLEGAL               ? "Illegal Cast Error"                           \
     : error_type == PTLANG_ERROR_NON_CONST_GLOBAL_INITIATOR ? "Non-Const Global Initiator Error"             \
     : error_type == PTLANG_ERROR_CYCLE_IN_GLOBAL_INITIATORS ? "Cycle in Global Initiators Error"             \
+    : error_type == PTLANG_ERROR_MISSING_RETURN_VALUE       ? "Missing Return Value Error"                   \
                                                             : "Unknown Error"
 
 typedef struct ptlang_error_s

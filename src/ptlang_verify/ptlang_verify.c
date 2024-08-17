@@ -85,6 +85,15 @@ static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx
                             ptlang_rc_deref(function).return_type, function_stmt_scope_offset,
                             &has_return_value, &is_unreachable, ctx, errors);
 
+    if (ptlang_rc_deref(ptlang_rc_deref(function).return_type).type != PTLANG_AST_TYPE_VOID &&
+        !has_return_value)
+    {
+        arrput(*errors, ((ptlang_error){
+                            .type = PTLANG_ERROR_MISSING_RETURN_VALUE,
+                            .pos = ptlang_rc_deref(ptlang_rc_deref(function).pos),
+                            .message = "Non void function must always have a return value.",
+                        }));
+    }
     // arrsetlen(ctx->scope, function_stmt_scope_offset);
     arrsetlen(ctx->scope, function_scope_offset);
 }
@@ -182,10 +191,14 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
     }
     case PTLANG_AST_STMT_RETURN:
         *is_unreachable = true;
+        break;
+    case PTLANG_AST_STMT_RETURN_VAL:
+        *is_unreachable = true;
     case PTLANG_AST_STMT_RET_VAL:
-        *has_return_value = false;
-        ptlang_verify_exp(ptlang_rc_deref(statement).content.exp, ctx, errors);
-        if (validate_return_type)
+        *has_return_value = true;
+        if (ptlang_rc_deref(statement).content.exp != NULL)
+            ptlang_verify_exp(ptlang_rc_deref(statement).content.exp, ctx, errors);
+        if (validate_return_type && ptlang_rc_deref(statement).content.exp != NULL)
         {
             ptlang_ast_type return_type = ptlang_rc_deref(ptlang_rc_deref(statement).content.exp).ast_type;
             ptlang_verify_check_implicit_cast(return_type, wanted_return_type,
@@ -1269,13 +1282,13 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
             size_t type_str_size =
                 ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, NULL, ctx->type_scope);
             char *message = ptlang_malloc(sizeof("Dereferenced expression must be a reference, but is a ") -
-                                          1 + type_str_size - 1 + sizeof("."));
+                                          1 + type_str_size + sizeof("."));
             char *message_ptr = message;
             memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
                    sizeof("Dereferenced expression must be a reference, but is a ") - 1);
             message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
-            ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, message_ptr, ctx->type_scope);
-            *message_ptr += type_str_size;
+            message_ptr +=
+                ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, message_ptr, ctx->type_scope);
             memcpy(message_ptr, ".", 2);
             {
                 arrput(*errors, ((ptlang_error){
@@ -1774,12 +1787,13 @@ static void ptlang_verify_check_implicit_cast(ptlang_ast_type from, ptlang_ast_t
         char *message_ptr = message;
 
         // Generate the message
-        message_ptr += ptlang_context_type_to_string(to, message_ptr, ctx->type_scope);
+        message_ptr += ptlang_context_type_to_string(from, message_ptr, ctx->type_scope);
         memcpy(message_ptr, " cannot be casted to the expected type ",
                sizeof(" cannot be casted to the expected type ") - 1);
         message_ptr += sizeof(" cannot be casted to the expected type ") - 1;
-        message_ptr += ptlang_context_type_to_string(from, message_ptr, ctx->type_scope);
+        message_ptr += ptlang_context_type_to_string(to, message_ptr, ctx->type_scope);
         *message_ptr = '.';
+        message_ptr[1] = '\0';
 
         // Add the error to the errors array
         arrput(*errors, ((ptlang_error){
@@ -1795,7 +1809,7 @@ static ptlang_utils_str ptlang_verify_type_to_string(ptlang_ast_type type,
 {
     size_t str_size = ptlang_context_type_to_string(type, NULL, type_scope);
     assert(str_size > 0);
-    char *type_str = ptlang_malloc(str_size);
+    char *type_str = ptlang_malloc(str_size + 1);
     ptlang_context_type_to_string(type, type_str, type_scope);
     return ALLOCATED_STR(type_str);
 }

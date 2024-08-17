@@ -71,7 +71,8 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident
 }
 
 ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
-                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported)
+                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported,
+                                    ptlang_ast_code_position pos)
 {
     ptlang_ast_func function;
     ptlang_rc_alloc(function);
@@ -81,6 +82,7 @@ ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type retur
         .parameters = parameters,
         .stmt = stmt,
         .exported = exported,
+        .pos = pos,
     };
     return function;
 }
@@ -623,13 +625,23 @@ ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_s
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos)
+ptlang_ast_stmt ptlang_ast_stmt_return_value_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos)
+{
+    ptlang_ast_stmt stmt;
+    ptlang_rc_alloc(stmt);
+    ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
+        .type = PTLANG_AST_STMT_RETURN_VAL,
+        .content.exp = return_ptr,
+        .pos = pos,
+    };
+    return stmt;
+}
+ptlang_ast_stmt ptlang_ast_stmt_return_new( ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt;
     ptlang_rc_alloc(stmt);
     ptlang_rc_deref(stmt) = (struct ptlang_ast_stmt_s){
         .type = PTLANG_AST_STMT_RETURN,
-        .content.exp = return_ptr,
         .pos = pos,
     };
     return stmt;
@@ -805,7 +817,7 @@ void ptlang_ast_stmt_destroy(struct ptlang_ast_stmt_s *stmt)
         arrfree(stmt->content.block.stmts);
         break;
     case PTLANG_AST_STMT_EXP:
-    case PTLANG_AST_STMT_RETURN:
+    case PTLANG_AST_STMT_RETURN_VAL:
     case PTLANG_AST_STMT_RET_VAL:
         ptlang_rc_remove_ref(stmt->content.exp, ptlang_ast_exp_destroy);
         break;

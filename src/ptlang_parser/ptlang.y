@@ -218,8 +218,8 @@ struct_members: { $$ = NULL; }
 one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
       | one_or_more_struct_members COMMA non_const_decl { $$ = $1; arrput($$, $3); }
 
-func: type_and_ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($1.ident, $1.type, $3, $5, false); }
-    | void ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($2, $1, $4, $6, false);}
+func: type_and_ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($1.ident, $1.type, $3, $5, false, ppcpft(&@$, &@4)); }
+    | void ident OPEN_BRACKET params CLOSE_BRACKET stmt {$$ = ptlang_ast_func_new($2, $1, $4, $6, false, ppcpft(&@$, &@5));}
 
 
 params: { $$ = NULL; }
@@ -282,8 +282,8 @@ stmt: OPEN_CURLY_BRACE block CLOSE_CURLY_BRACE { $$ = $2; }
     | IF OPEN_BRACKET exp CLOSE_BRACKET stmt ELSE stmt { $$ = ptlang_ast_stmt_if_else_new($3, $5, $7, ppcp(&@$)); }
     | WHILE OPEN_BRACKET exp CLOSE_BRACKET stmt { $$ = ptlang_ast_stmt_while_new($3, $5, ppcp(&@$)); }
     | RET_VAL exp SEMICOLON {$$ = ptlang_ast_stmt_ret_val_new($2, ppcp(&@$)); }
-    | RETURN exp SEMICOLON {$$ = ptlang_ast_stmt_return_new($2, ppcp(&@$)); }
-    | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new(NULL, ppcp(&@$)); }
+    | RETURN exp SEMICOLON {$$ = ptlang_ast_stmt_return_value_new($2, ppcp(&@$)); }
+    | RETURN SEMICOLON {$$ = ptlang_ast_stmt_return_new( ppcp(&@$)); }
     | BREAK SEMICOLON { $$ = ptlang_ast_stmt_break_new(1, ppcp(&@$)); }
     | CONTINUE SEMICOLON { $$ = ptlang_ast_stmt_continue_new(1, ppcp(&@$)); }
     | BREAK INT SEMICOLON { $$ = ptlang_ast_stmt_break_new(ptlang_parser_strtouint64($2, &@2, syntax_errors), ppcp(&@$)); }

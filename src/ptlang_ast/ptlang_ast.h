@@ -20,7 +20,8 @@ void ptlang_ast_module_add_type_alias(ptlang_ast_module module, ptlang_ast_ident
                                       ptlang_ast_code_position pos);
 
 ptlang_ast_func ptlang_ast_func_new(ptlang_ast_ident name, ptlang_ast_type return_type,
-                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported);
+                                    ptlang_ast_decl *parameters, ptlang_ast_stmt stmt, bool exported,
+                                    ptlang_ast_code_position pos);
 
 ptlang_ast_decl ptlang_ast_decl_new(ptlang_ast_type type, ptlang_ast_ident name, bool writable,
                                     ptlang_ast_code_position pos);
@@ -130,7 +131,8 @@ ptlang_ast_stmt ptlang_ast_stmt_if_else_new(ptlang_ast_exp condition, ptlang_ast
                                             ptlang_ast_stmt else_stmt, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_while_new(ptlang_ast_exp condition, ptlang_ast_stmt stmt,
                                           ptlang_ast_code_position pos);
-ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos);
+ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_code_position pos);
+ptlang_ast_stmt ptlang_ast_stmt_return_value_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_ret_val_new(ptlang_ast_exp return_ptr, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_break_new(uint64_t nesting_level, ptlang_ast_code_position pos);
 ptlang_ast_stmt ptlang_ast_stmt_continue_new(uint64_t nesting_level, ptlang_ast_code_position pos);

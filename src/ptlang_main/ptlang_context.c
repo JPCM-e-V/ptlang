@@ -83,161 +83,156 @@ bool ptlang_context_type_equals(ptlang_ast_type type_1, ptlang_ast_type type_2,
 
 size_t ptlang_context_type_to_string(ptlang_ast_type type, char *out, ptlang_context_type_scope *type_scope)
 {
-    size_t size;
     if (type == NULL)
     {
-        size = sizeof("Error Type");
         if (out != NULL)
         {
-            memcpy(out, "Error Type", size);
+            memcpy(out, "Error Type", sizeof("Error Type"));
         }
 
-        return size;
+        return sizeof("Error Type") - 1;
     }
     switch (ptlang_rc_deref(type).type)
     {
     case PTLANG_AST_TYPE_VOID:
-        size = sizeof("void");
         if (out != NULL)
         {
-            *(out + 0) = 'v';
-            *(out + 1) = 'o';
-            *(out + 2) = 'i';
-            *(out + 3) = 'd';
+            memcpy(out, "void", sizeof("void"));
         }
-        break;
+
+        return sizeof("void") - 1;
     case PTLANG_AST_TYPE_INTEGER:
     {
-        size = sizeof("?8388607");
         if (out != NULL)
         {
-            snprintf(out, size, "%c%" PRIu32, ptlang_rc_deref(type).content.integer.is_signed ? 's' : 'u',
-                     ptlang_rc_deref(type).content.integer.size);
+            return snprintf(out, sizeof("?8388607"), "%c%" PRIu32,
+                            ptlang_rc_deref(type).content.integer.is_signed ? 's' : 'u',
+                            ptlang_rc_deref(type).content.integer.size);
         }
-        break;
+        return sizeof("?8388607") - 1;
     }
     case PTLANG_AST_TYPE_FLOAT:
     {
-        size = sizeof("f128");
         if (out != NULL)
         {
-            snprintf(out, size, "f%d", ptlang_rc_deref(type).content.float_size);
+            return snprintf(out, sizeof("f128"), "f%d", ptlang_rc_deref(type).content.float_size);
         }
-        break;
+        return sizeof("f128") - 1;
     }
     case PTLANG_AST_TYPE_FUNCTION:
     {
-        size = sizeof("(): ") - 1 +
-               ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.return_type, NULL,
-                                             type_scope);
+        if (out != NULL)
+        {
+            size_t len = 0;
+            out[len] = '(';
+            len++;
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(type).content.function.parameters); i++)
+            {
+                len += ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.parameters[i],
+                                                     out + len, type_scope);
+                if (i < arrlenu(ptlang_rc_deref(type).content.function.parameters) - 1)
+                {
+                    out[len] = ',';
+                    len++;
+                    out[len] = ' ';
+                    len++;
+                }
+            }
+            memcpy(&out[len], "): ", sizeof("): "));
+            len += sizeof("): ") - 1;
+
+            len += ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.return_type, out,
+                                                 type_scope);
+            return len;
+        }
+
+        size_t size = sizeof("(): ") - 1 +
+                      ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.return_type, NULL,
+                                                    type_scope);
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(type).content.function.parameters); i++)
         {
             size += ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.parameters[i], NULL,
-                                                  type_scope) -
-                    1 + sizeof(", ") - 1;
+                                                  type_scope) +
+                    sizeof(", ") - 1;
         }
         if (arrlenu(ptlang_rc_deref(type).content.function.parameters) != 0)
         {
             size -= sizeof(", ") - 1;
         }
-
-        if (out != NULL)
-        {
-            *out = '(';
-            out++;
-            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(type).content.function.parameters); i++)
-            {
-                out += ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.parameters[i],
-                                                     out, type_scope) -
-                       1;
-                if (i < arrlenu(ptlang_rc_deref(type).content.function.parameters) - 1)
-                {
-                    *out = ',';
-                    out++;
-                    *out = ' ';
-                    out++;
-                }
-            }
-            memcpy(out, "): ", sizeof("): ") - 1);
-            out += sizeof("): ") - 1;
-
-            ptlang_context_type_to_string(ptlang_rc_deref(type).content.function.return_type, out,
-                                          type_scope);
-        }
-
+        return size;
         break;
     }
     case PTLANG_AST_TYPE_HEAP_ARRAY:
     {
 
-        size = ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out, type_scope) +
-               sizeof("[]") - 1;
-
         if (out != NULL)
         {
-            memcpy(out, "[]", sizeof("[]") - 1);
-            ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out + sizeof("[]") - 1,
-                                          type_scope);
+            memcpy(out, "[]", sizeof("[]"));
+            return 2 + ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type,
+                                                     out + sizeof("[]") - 1, type_scope);
         }
-        break;
+        return ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out, type_scope) +
+               sizeof("[]") - 1;
     }
     case PTLANG_AST_TYPE_ARRAY:
     {
-        size_t element_size =
-            ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out, type_scope);
-
-        size = element_size + sizeof("[18446744073709551615]") - 1;
 
         if (out != NULL)
         {
-            size_t prefix_len =
-                snprintf(out, size - element_size, "[%" PRIu64 "]", ptlang_rc_deref(type).content.array.len);
-            ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out + prefix_len,
-                                          type_scope);
+            size_t prefix_len = snprintf(out, sizeof("[18446744073709551615]"), "[%" PRIu64 "]",
+                                         ptlang_rc_deref(type).content.array.len);
+            return prefix_len + ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type,
+                                                              out + prefix_len, type_scope);
         }
-        break;
+
+        return ptlang_context_type_to_string(ptlang_rc_deref(type).content.array.type, out, type_scope) +
+               sizeof("[18446744073709551615]") - 1;
     }
     case PTLANG_AST_TYPE_REFERENCE:
     {
-        size = ptlang_context_type_to_string(ptlang_rc_deref(type).content.reference.type, NULL, type_scope) +
-               sizeof("&") - 1;
+
+        if (out != NULL)
+        {
+            size_t len = 0;
+            *out = '&';
+            len++;
+            if (!ptlang_rc_deref(type).content.reference.writable)
+            {
+                memcpy(&out[len], "const ", sizeof("const "));
+                out += sizeof("const ") - 1;
+            }
+            len += ptlang_context_type_to_string(ptlang_rc_deref(type).content.reference.type, out + len,
+                                                 type_scope);
+            return len;
+        }
+
+        size_t size =
+            ptlang_context_type_to_string(ptlang_rc_deref(type).content.reference.type, NULL, type_scope) +
+            sizeof("&") - 1;
         if (!ptlang_rc_deref(type).content.reference.writable)
         {
             size += sizeof("const ") - 1;
         }
-        if (out != NULL)
-        {
-            *out = '&';
-            out++;
-            if (!ptlang_rc_deref(type).content.reference.writable)
-            {
-                memcpy(out + 1, "const ", sizeof("const ") - 1);
-                out += sizeof("const ") - 1;
-            }
-            ptlang_context_type_to_string(ptlang_rc_deref(type).content.reference.type, out, type_scope);
-        }
-
-        break;
+        return size;
     }
     case PTLANG_AST_TYPE_NAMED:
     {
         // ptlang_ast_type unnamed_type = ptlang_context_unname_type(type, type_scope);
         // if (unnamed_type == type)
         // {
-        size = strlen(ptlang_rc_deref(type).content.name) + 1;
+        size_t size = strlen(ptlang_rc_deref(type).content.name);
         if (out != NULL)
         {
-            memcpy(out, ptlang_rc_deref(type).content.name, size);
+            memcpy(out, ptlang_rc_deref(type).content.name, size + 1);
         }
+        return size;
         // }
         // else
         // {
         //     size = ptlang_context_type_to_string(unnamed_type, out, type_scope);
         // }
-        break;
     }
     }
-    return size;
 }
 
 ptlang_ast_struct_def ptlang_context_get_struct_def(char *name, ptlang_context_type_scope *type_scope)

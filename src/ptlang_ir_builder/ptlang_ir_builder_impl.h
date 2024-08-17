@@ -58,13 +58,25 @@ extern "C"
         ptlang_ir_builder_struct *structs;
     } ptlang_ir_builder_context;
 
+    typedef struct ptlang_ir_builder_break_continue_entry_s ptlang_ir_builder_break_continue_entry;
+
     typedef struct ptlang_ir_builder_fun_ctx_s
     {
         ptlang_ir_builder_context *ctx;
         llvm::Function *func;
+        ptlang_ir_builder_scope *func_scope;
         llvm::BasicBlock *return_block;
         llvm::Value *return_ptr;
+        ptlang_ir_builder_break_continue_entry *break_continue;
     } ptlang_ir_builder_fun_ctx;
+
+    struct ptlang_ir_builder_break_continue_entry_s
+    {
+        ptlang_ir_builder_break_continue_entry *parent;
+        llvm::BasicBlock *break_target;
+        llvm::BasicBlock *continue_target;
+        ptlang_ir_builder_scope *scope;
+    };
 
     static void ptlang_ir_builder_module(ptlang_ast_module module, ptlang_ir_builder_context *ctx);
 
@@ -99,4 +111,8 @@ extern "C"
     static llvm::DIType *ptlang_ir_builder_di_function_type(ptlang_ast_type ast_type,
                                                             ptlang_ir_builder_context *ctx);
     static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx);
+
+    static void ptlang_ir_builder_scope_end(ptlang_ir_builder_scope* scope, ptlang_ir_builder_context* ctx);
+
+    static void ptlang_ir_builder_scope_end_children(ptlang_ir_builder_scope* scope, ptlang_ir_builder_context* ctx);
 }

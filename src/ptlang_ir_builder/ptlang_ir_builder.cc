@@ -181,13 +181,14 @@ extern "C"
                                             ptlang_ir_builder_context *ctx)
 
     {
-        ptlang_ir_builder_fun_ctx fun_ctx = {ctx, llvm_func};
 
         llvm::BasicBlock::Create(ctx->llvm_ctx, "entry", llvm_func);
 
-        ctx->builder.SetInsertPointPastAllocas(fun_ctx.func);
-
         ptlang_ir_builder_scope_init(ctx);
+
+        ptlang_ir_builder_fun_ctx fun_ctx = {ctx, llvm_func, ctx->scope};
+
+        ctx->builder.SetInsertPointPastAllocas(fun_ctx.func);
 
         llvm::Type *return_type;
 
@@ -262,15 +263,7 @@ extern "C"
 
     static void ptlang_ir_builder_scope_deinit(ptlang_ir_builder_context *ctx)
     {
-        for (size_t i = 0; i < shlenu(ctx->scope->variables); i++)
-        {
-            ptlang_ir_builder_scope_entry scope_entry = ctx->scope->variables[i].value;
-            ctx->builder.CreateIntrinsic(
-                llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
-                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entry.type)),
-                 scope_entry.ptr});
-        }
+        ptlang_ir_builder_scope_end(ctx->scope, ctx);
 
         shfree(ctx->scope->variables);
         ctx->scope = ctx->scope->parent;
@@ -354,7 +347,7 @@ extern "C"
     static llvm::DIType *ptlang_ir_builder_di_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
     {
         size_t type_name_len = ptlang_context_type_to_string(ast_type, NULL, ctx->ctx->type_scope);
-        char *type_name_cstr = (char *)ptlang_malloc(type_name_len);
+        char *type_name_cstr = (char *)ptlang_malloc(type_name_len + 1);
         ptlang_context_type_to_string(ast_type, type_name_cstr, ctx->ctx->type_scope);
         llvm::StringRef type_name = type_name_cstr;
 
@@ -659,7 +652,7 @@ extern "C"
         {
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_BLOCK:
         {
-            
+
             ptlang_ir_builder_scope_init(ctx->ctx);
             for (size_t i = 0; i < arrlenu(ptlang_rc_deref(stmt).content.block.stmts); i++)
             {
@@ -675,6 +668,28 @@ extern "C"
         }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_DECL:
         {
+            llvm::BasicBlock* insert_point = ctx->ctx->builder.GetInsertBlock();
+            llvm::Type *type =
+                ptlang_ir_builder_type((ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).type), ctx->ctx);
+            ctx->ctx->builder.SetInsertPointPastAllocas(ctx->func);
+            llvm::AllocaInst *ptr = ctx->ctx->builder.CreateAlloca(
+                type, NULL, ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).name.name);
+            ctx->ctx->builder.SetInsertPoint(insert_point);
+
+            ptlang_ir_builder_scope_entry entry = {ptr, type};
+
+            shput(ctx->ctx->scope->variables, ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).name.name,
+                  entry);
+
+            ctx->ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(type)),
+                 ptr});
+
+            llvm::Value *init =
+                ptlang_ir_builder_exp(ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).init, ctx);
+            ctx->ctx->builder.CreateStore(init, ptr);
             break;
         }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_IF:
@@ -737,29 +752,80 @@ extern "C"
 
             ctx->ctx->builder.SetInsertPoint(while_block);
 
+            ptlang_ir_builder_break_continue_entry break_continue = {
+                ctx->break_continue,
+                endwhile_block,
+                cond_block,
+                ctx->ctx->scope,
+            };
+            ctx->break_continue = &break_continue;
             ptlang_ir_builder_stmt(ptlang_rc_deref(stmt).content.control_flow.stmt, ctx);
+            ctx->break_continue = ctx->break_continue->parent;
 
             ctx->ctx->builder.CreateBr(cond_block);
 
             ctx->ctx->builder.SetInsertPoint(endwhile_block);
             break;
         }
+        case ptlang_ast_stmt_s::PTLANG_AST_STMT_RETURN_VAL:
+        {
+            llvm::Value *ret_val = ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.exp, ctx);
+            ctx->ctx->builder.CreateStore(ret_val, ctx->return_ptr);
+        }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_RETURN:
         {
+
+            ptlang_ir_builder_scope_end_children(ctx->func_scope, ctx->ctx);
+            ctx->ctx->builder.CreateBr(ctx->return_block);
+            ctx->ctx->builder.SetInsertPoint(
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "unreachable", ctx->func));
             break;
         }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_RET_VAL:
         {
+            llvm::Value *ret_val = ptlang_ir_builder_exp(ptlang_rc_deref(stmt).content.exp, ctx);
+            ctx->ctx->builder.CreateStore(ret_val, ctx->return_ptr);
             break;
         }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_BREAK:
-        {
-            break;
-        }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_CONTINUE:
         {
+            ptlang_ir_builder_break_continue_entry *break_continue = ctx->break_continue;
+            for (uint64_t i = 0; i < ptlang_rc_deref(stmt).content.nesting_level - 1; i++)
+            {
+                break_continue = break_continue->parent;
+            }
+            ptlang_ir_builder_scope_end_children(break_continue->scope, ctx->ctx);
+
+            ctx->ctx->builder.CreateBr(ptlang_rc_deref(stmt).type == ptlang_ast_stmt_s::PTLANG_AST_STMT_BREAK
+                                           ? break_continue->break_target
+                                           : break_continue->continue_target);
+
+            ctx->ctx->builder.SetInsertPoint(
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "unreachable", ctx->func));
             break;
         }
         }
+    }
+
+    static void ptlang_ir_builder_scope_end(ptlang_ir_builder_scope *scope, ptlang_ir_builder_context *ctx)
+    {
+        for (size_t i = 0; i < shlenu(scope->variables); i++)
+        {
+            ptlang_ir_builder_scope_entry scope_entry = scope->variables[i].value;
+            ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
+                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entry.type)),
+                 scope_entry.ptr});
+        }
+    }
+
+    static void ptlang_ir_builder_scope_end_children(ptlang_ir_builder_scope *scope,
+                                                     ptlang_ir_builder_context *ctx)
+    {
+        for (ptlang_ir_builder_scope *cur_scope = ctx->scope; cur_scope != scope;
+             cur_scope = cur_scope->parent)
+            ptlang_ir_builder_scope_end(cur_scope, ctx);
     }
 }
