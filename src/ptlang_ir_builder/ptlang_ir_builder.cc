@@ -490,9 +490,9 @@ extern "C"
         llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx);
         switch (ptlang_rc_deref(exp).type)
         {
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
-        {
-        }
+        // case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
+        // {
+        // }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT:
         {
             size_t val_count = arrlenu(ptlang_rc_deref(exp).content.struct_.members);
@@ -640,10 +640,127 @@ extern "C"
         ctx->pointer_bytes = ctx->data_layout->getPointerSize();
     }
 
-    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
+    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
     {
+        switch (ptlang_rc_deref(exp).type)
+        {
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ASSIGNMENT:
+        {
+            llvm::Value *val = ptlang_ir_builder_exp_and_cast(
+                ptlang_rc_deref(exp).content.binary_operator.right_value,
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).ast_type, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).type !=
+                ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH)
+            {
+                llvm::Value *ptr =
+                    ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+                ctx->builder.CreateStore(val, ptr);
+            } else {
+                // TODO
+            }
+            break;
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ADDITION:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_SUBTRACTION:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_NEGATION:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_MULTIPLICATION:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_DIVISION:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_MODULO:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_REMAINDER:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_EQUAL:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_NOT_EQUAL:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_GREATER:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_GREATER_EQUAL:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_LESS:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_LESS_EQUAL:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_LEFT_SHIFT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_RIGHT_SHIFT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_AND:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_OR:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_NOT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_AND:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_OR:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_XOR:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_INVERSE:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_FUNCTION_CALL:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_TERNARY:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_CAST:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_REFERENCE:
+            return ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.reference.value, ctx);
+            break;
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_DEREFERENCE:
+            return ctx->builder.CreateLoad(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx),
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx), "deref");
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BINARY:
+        {
+            return ptlang_ir_builder_exp_const(exp, ctx);
+        }
+        }
+
         llvm::Type *type = llvm::IntegerType::get(ctx->ctx->llvm_ctx, 1);
         return llvm::ConstantInt::get(type, 0, false);
+    }
+
+    static llvm::Value *ptlang_ir_builder_exp_and_cast(ptlang_ast_exp exp, ptlang_ast_type type,
+                                                       ptlang_ir_builder_context *ctx)
+    {
+        llvm::Value *uncasted = ptlang_ir_builder_exp(exp, ctx);
+        return ptlang_ir_builder_cast(uncasted, ptlang_rc_deref(exp).ast_type, type, ctx);
+    }
+
+    static llvm::Value *ptlang_ir_builder_cast(llvm::Value *input, ptlang_ast_type from, ptlang_ast_type to,
+                                               ptlang_ir_builder_context *ctx)
+    {
+        // TODO
+        return NULL;
+    }
+
+    static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
+    {
+        // TODO
+        return NULL;
     }
 
     static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_fun_ctx *ctx)
@@ -668,7 +785,7 @@ extern "C"
         }
         case ptlang_ast_stmt_s::PTLANG_AST_STMT_DECL:
         {
-            llvm::BasicBlock* insert_point = ctx->ctx->builder.GetInsertBlock();
+            llvm::BasicBlock *insert_point = ctx->ctx->builder.GetInsertBlock();
             llvm::Type *type =
                 ptlang_ir_builder_type((ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).type), ctx->ctx);
             ctx->ctx->builder.SetInsertPointPastAllocas(ctx->func);

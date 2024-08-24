@@ -1247,6 +1247,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 
     case PTLANG_AST_EXP_REFERENCE:
     {
+        // TODO check whether ptlang_rc_deref(exp).content.reference.value is referenceable
+        // maybe in parser
         ptlang_verify_exp(ptlang_rc_deref(exp).content.reference.value, ctx, errors);
         if (ptlang_rc_deref(exp).content.reference.writable &&
             !ptlang_verify_exp_is_mutable(ptlang_rc_deref(exp).content.reference.value, ctx))
