@@ -36,10 +36,16 @@ extern "C"
         ptlang_ir_builder_scope *parent;
     };
 
+    struct ptlang_ir_builder_struct_entry_s
+    {
+        llvm::StructType *type;
+        ptlang_ast_struct_def def;
+    };
+
     typedef struct ptlang_ir_builder_struct_s
     {
         char *key;
-        llvm::StructType *value;
+        struct ptlang_ir_builder_struct_entry_s value;
     } ptlang_ir_builder_struct;
 
     typedef struct ptlang_ir_builder_context_s
@@ -56,6 +62,13 @@ extern "C"
         llvm::DIScope *di_scope;
 
         ptlang_ir_builder_struct *structs;
+
+        llvm::Type* integer_ptrsize_type;
+
+        llvm::FunctionCallee malloc_func;
+        llvm::FunctionCallee realloc_func;
+        llvm::FunctionCallee free_func;
+
     } ptlang_ir_builder_context;
 
     typedef struct ptlang_ir_builder_break_continue_entry_s ptlang_ir_builder_break_continue_entry;
@@ -105,12 +118,12 @@ extern "C"
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
 
-    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
+    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx);
     static llvm::Value *ptlang_ir_builder_exp_and_cast(ptlang_ast_exp exp, ptlang_ast_type type,
-                                                       ptlang_ir_builder_context *ctx);
+                                                       ptlang_ir_builder_fun_ctx *ctx);
     static llvm::Value *ptlang_ir_builder_cast(llvm::Value *input, ptlang_ast_type from, ptlang_ast_type to,
                                                ptlang_ir_builder_context *ctx);
-    static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
+    static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx);
     static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_fun_ctx *ctx);
 
     static llvm::DIType *ptlang_ir_builder_di_function_type(ptlang_ast_type ast_type,

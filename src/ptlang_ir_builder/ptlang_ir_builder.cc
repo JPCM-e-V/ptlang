@@ -60,6 +60,23 @@ extern "C"
 
     static void ptlang_ir_builder_module(ptlang_ast_module module, ptlang_ir_builder_context *ctx)
     {
+        // Add external (memory) functions
+
+        ctx->integer_ptrsize_type = llvm::IntegerType::get(ctx->llvm_ctx, ctx->ctx->pointer_bytes >> 3);
+
+        llvm::Type *ptr_type = llvm::PointerType::getUnqual(ctx->llvm_ctx);
+
+        ctx->malloc_func = ctx->module_.getOrInsertFunction(
+            "malloc", llvm::FunctionType::get(ptr_type, ctx->integer_ptrsize_type, false));
+
+        ctx->realloc_func = ctx->module_.getOrInsertFunction(
+            "realloc", llvm::FunctionType::get(ptr_type, {ptr_type, ctx->integer_ptrsize_type}, false));
+
+        ctx->free_func = ctx->module_.getOrInsertFunction(
+            "free", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx->llvm_ctx), ptr_type, false));
+
+        // Building the module (structs, globals, functions)
+
         ptlang_ir_builder_struct_defs(ptlang_rc_deref(module).struct_defs, ctx);
 
         llvm::GlobalVariable **glob_vars = (llvm::GlobalVariable **)ptlang_malloc(
@@ -100,7 +117,9 @@ extern "C"
         {
             llvm::StringRef name = llvm::StringRef(ptlang_rc_deref(struct_defs[i]).name.name);
             llvm::StructType *llvmStructType = llvm::StructType::create(ctx->llvm_ctx, name);
-            shput(ctx->structs, ptlang_rc_deref(struct_defs[i]).name.name, llvmStructType);
+
+            shput(ctx->structs, ptlang_rc_deref(struct_defs[i]).name.name,
+                  ((struct ptlang_ir_builder_struct_entry_s){llvmStructType, struct_defs[i]}));
         }
 
         // Fill Struct Types
@@ -114,7 +133,8 @@ extern "C"
                     ptlang_rc_deref(ptlang_rc_deref(struct_defs[i]).members[j]).type, ctx);
             }
             shget(ctx->structs, ptlang_rc_deref(struct_defs[i]).name.name)
-                ->setBody(llvm::ArrayRef(member_types, arrlenu(ptlang_rc_deref(struct_defs[i]).members)));
+                .type->setBody(
+                    llvm::ArrayRef(member_types, arrlenu(ptlang_rc_deref(struct_defs[i]).members)));
 
             ptlang_free(member_types);
         }
@@ -182,7 +202,7 @@ extern "C"
 
     {
 
-        llvm::BasicBlock::Create(ctx->llvm_ctx, "entry", llvm_func);
+        (ctx->llvm_ctx, "entry", llvm_func);
 
         ptlang_ir_builder_scope_init(ctx);
 
@@ -307,10 +327,9 @@ extern "C"
         }
         case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
         {
-            llvm::Type *member_types[2] = {
-                llvm::PointerType::getUnqual(
-                    ptlang_ir_builder_type(ptlang_rc_deref(ast_type).content.heap_array.type, ctx)),
-                llvm::IntegerType::get(ctx->llvm_ctx, ctx->ctx->pointer_bytes >> 3)};
+            llvm::Type *member_types[2] = {llvm::PointerType::getUnqual(ptlang_ir_builder_type(
+                                               ptlang_rc_deref(ast_type).content.heap_array.type, ctx)),
+                                           ctx->integer_ptrsize_type};
             return llvm::StructType::get(ctx->llvm_ctx, llvm::ArrayRef(member_types, 2), false);
         }
         case ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY:
@@ -321,7 +340,7 @@ extern "C"
             return llvm::PointerType::getUnqual(
                 ptlang_ir_builder_type(ptlang_rc_deref(ast_type).content.reference.type, ctx));
         case ptlang_ast_type_s::PTLANG_AST_TYPE_NAMED:
-            return shget(ctx->structs, ptlang_rc_deref(ast_type).content.name);
+            return shget(ctx->structs, ptlang_rc_deref(ast_type).content.name).type;
         }
         abort();
     }
@@ -493,6 +512,12 @@ extern "C"
         // case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
         // {
         // }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
+            return llvm::ConstantInt::get((llvm::IntegerType *)type,
+                                          ptlang_rc_deref(exp).content.str_prepresentation, 10);
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
+            return llvm::ConstantFP::get(type, ptlang_rc_deref(exp).content.str_prepresentation);
+
         case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT:
         {
             size_t val_count = arrlenu(ptlang_rc_deref(exp).content.struct_.members);
@@ -566,8 +591,7 @@ extern "C"
                            strcmp(name, ptlang_rc_deref(ptlang_rc_deref(struct_def).members[j]).name.name))
                         j++;
 
-                    indices[i] = llvm::ConstantInt::get(
-                        llvm::IntegerType::get(ctx->llvm_ctx, ctx->ctx->pointer_bytes >> 3), j, false);
+                    indices[i] = llvm::ConstantInt::get(ctx->integer_ptrsize_type, j, false);
 
                     current_exp = ptlang_rc_deref(current_exp).content.struct_member.struct_;
                     break;
@@ -640,8 +664,15 @@ extern "C"
         ctx->pointer_bytes = ctx->data_layout->getPointerSize();
     }
 
-    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
+    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
     {
+        llvm::Value *ptr = ptlang_ir_builder_exp_ptr(exp, ctx);
+        if (ptr != NULL)
+        {
+            return ctx->ctx->builder.CreateLoad(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx), ptr, "ptrtoval");
+        }
+
         switch (ptlang_rc_deref(exp).type)
         {
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ASSIGNMENT:
@@ -654,14 +685,104 @@ extern "C"
             {
                 llvm::Value *ptr =
                     ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
-                ctx->builder.CreateStore(val, ptr);
-            } else {
-                // TODO
+                ctx->ctx->builder.CreateStore(val, ptr);
             }
-            break;
+            else
+            {
+                // Set Length
+                // TODO init functions
+
+                llvm::BasicBlock *lens_not_equal_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_not_equal_block", ctx->func);
+                llvm::BasicBlock *already_allocated_block = llvm::BasicBlock::Create(
+                    ctx->ctx->llvm_ctx, "setlength_already_allocated_block", ctx->func);
+                llvm::BasicBlock *malloc_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_malloc_block", ctx->func);
+                llvm::BasicBlock *realloc_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_realloc_block", ctx->func);
+                llvm::BasicBlock *free_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_free_block", ctx->func);
+                llvm::BasicBlock *end_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_end_block", ctx->func);
+
+                // Are new and old length equal?
+                llvm::Type *heap_array_type = ptlang_ir_builder_type(
+                    ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).ast_type,
+                    ctx->ctx);
+                llvm::Value *heap_array_ptr =
+                    ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+                llvm::Value *len_ptr = ctx->ctx->builder.CreateStructGEP(heap_array_type, heap_array_ptr, 1,
+                                                                         "setlength_old_len_ptr");
+                llvm::Value *old_len = ctx->ctx->builder.CreateLoad(ctx->ctx->integer_ptrsize_type, len_ptr,
+                                                                    "setlength_old_len");
+                llvm::Value *new_len =
+                    ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+                llvm::Value *are_equal =
+                    ctx->ctx->builder.CreateICmpEQ(old_len, new_len, "setlength_lens_are_equal");
+                ctx->ctx->builder.CreateCondBr(are_equal, end_block, lens_not_equal_block);
+
+                // Is old length zero ?
+                ctx->ctx->builder.SetInsertPoint(lens_not_equal_block);
+                llvm::Value *elements_ptr_ptr = ctx->ctx->builder.CreateStructGEP(
+                    heap_array_type, heap_array_ptr, 0, "setlength_elements_ptr_ptr");
+                ctx->ctx->builder.CreateStore(new_len, len_ptr); // Set new length
+                llvm::Value *zero = llvm::ConstantInt::get(ctx->ctx->integer_ptrsize_type, 0, false);
+                llvm::Value *old_len_is_zero =
+                    ctx->ctx->builder.CreateICmpEQ(old_len, zero, "setlength_old_len_is_zero");
+                ctx->ctx->builder.CreateCondBr(old_len_is_zero, malloc_block, already_allocated_block);
+
+                // Is new length zero ?
+                ctx->ctx->builder.SetInsertPoint(already_allocated_block);
+                llvm::Value *old_elements_ptr =
+                    ctx->ctx->builder.CreateLoad(llvm::PointerType::getUnqual(ctx->ctx->llvm_ctx),
+                                                 elements_ptr_ptr, "setlength_old_elements_ptr");
+                llvm::Value *new_len_is_zero =
+                    ctx->ctx->builder.CreateICmpEQ(new_len, zero, "setlength_new_len_is_zero");
+                ctx->ctx->builder.CreateCondBr(new_len_is_zero, free_block, realloc_block);
+
+                // New alloc
+                ctx->ctx->builder.SetInsertPoint(malloc_block);
+                llvm::Value *malloc =
+                    ctx->ctx->builder.CreateCall(ctx->ctx->malloc_func, new_len, "setlength_malloc");
+                ctx->ctx->builder.CreateStore(elements_ptr_ptr, malloc);
+                ctx->ctx->builder.CreateBr(end_block);
+
+                // Realloc
+                ctx->ctx->builder.SetInsertPoint(realloc_block);
+                llvm::Value *realloc = ctx->ctx->builder.CreateCall(
+                    ctx->ctx->realloc_func, {old_elements_ptr, new_len}, "setlength_malloc");
+                ctx->ctx->builder.CreateStore(elements_ptr_ptr, realloc);
+                ctx->ctx->builder.CreateBr(end_block);
+
+                // Free
+                ctx->ctx->builder.SetInsertPoint(free_block);
+                ctx->ctx->builder.CreateCall(ctx->ctx->free_func, old_elements_ptr, "setlength_free");
+                ctx->ctx->builder.CreateStore(
+                    elements_ptr_ptr,
+                    llvm::PoisonValue::get(llvm::PointerType::getUnqual(ctx->ctx->llvm_ctx)));
+                ctx->ctx->builder.CreateBr(end_block);
+
+                ctx->ctx->builder.SetInsertPoint(end_block);
+            }
+            return val;
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ADDITION:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
+                return ctx->ctx->builder.CreateAdd(left_operand, right_operand, "add", false, is_signed);
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFAdd(left_operand, right_operand, "fadd");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_SUBTRACTION:
             break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_NEGATION:
@@ -707,36 +828,170 @@ extern "C"
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH:
             break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FUNCTION_CALL:
-            break;
+        {
+            llvm::FunctionType *function_type = (llvm::FunctionType *)ptlang_ir_builder_type(
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.function_call.function).ast_type, ctx->ctx);
+
+            llvm::Value *func =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.function_call.function, ctx);
+
+            llvm::Value **args = (llvm::Value **)ptlang_malloc(
+                sizeof(llvm::Value *) * arrlenu(ptlang_rc_deref(exp).content.function_call.parameters));
+
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(exp).content.function_call.parameters); i++)
+            {
+                args[i] =
+                    ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.function_call.parameters[i], ctx);
+            }
+
+            llvm::Value *ret_val = ctx->ctx->builder.CreateCall(
+                function_type, func,
+                llvm::ArrayRef(args, arrlenu(ptlang_rc_deref(exp).content.function_call.parameters)),
+                "funccall");
+
+            ptlang_free(args);
+            return ret_val;
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
-            break;
+        {
+            abort();
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
-            break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_TERNARY:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_CAST:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_REFERENCE:
-            return ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.reference.value, ctx);
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_DEREFERENCE:
-            return ctx->builder.CreateLoad(
-                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx),
-                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx), "deref");
         case ptlang_ast_exp_s::PTLANG_AST_EXP_BINARY:
         {
-            return ptlang_ir_builder_exp_const(exp, ctx);
+            return ptlang_ir_builder_exp_const(exp, ctx->ctx);
         }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT:
+        {
+            llvm::Value *struct_ = llvm::PoisonValue::get(
+                shget(ctx->ctx->structs, ptlang_rc_deref(exp).content.struct_.type.name).type);
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(exp).content.struct_.members); i++)
+            {
+                struct_ = ctx->ctx->builder.CreateInsertValue(
+                    struct_, ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.struct_.members[i].exp, ctx),
+                    i, "buildstruct");
+            }
+
+            return struct_;
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY:
+        {
+            llvm::Value *arr = llvm::PoisonValue::get(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).content.array.type, ctx->ctx));
+            for (size_t i = 0; i < arrlenu(ptlang_rc_deref(exp).content.array.values); i++)
+            {
+                arr = ctx->ctx->builder.CreateInsertValue(
+                    arr, ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array.values[i], ctx), i,
+                    "buildarray");
+            }
+
+            return arr;
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_TERNARY:
+        {
+            llvm::Value *cond =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.ternary_operator.condition, ctx);
+
+            llvm::BasicBlock *ternary_then_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "ternary_then", ctx->func);
+            llvm::BasicBlock *ternary_else_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "ternary_else", ctx->func);
+            llvm::BasicBlock *ternary_end_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "ternary_end", ctx->func);
+
+            ctx->ctx->builder.CreateCondBr(cond, ternary_then_block, ternary_else_block);
+
+            ctx->ctx->builder.SetInsertPoint(ternary_then_block);
+            llvm::Value *then_val =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.ternary_operator.if_value, ctx);
+            ctx->ctx->builder.CreateBr(ternary_end_block);
+
+            ctx->ctx->builder.SetInsertPoint(ternary_else_block);
+            llvm::Value *else_val =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.ternary_operator.else_value, ctx);
+            ctx->ctx->builder.CreateBr(ternary_end_block);
+
+            ctx->ctx->builder.SetInsertPoint(ternary_end_block);
+            llvm::PHINode *phi = ctx->ctx->builder.CreatePHI(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx), 2, "ternary_phi");
+
+            phi->addIncoming(then_val, ternary_then_block);
+            phi->addIncoming(else_val, ternary_else_block);
+            return phi;
+        }
+
+            // ctx->ctx->builder.getinser
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_CAST:
+            return ptlang_ir_builder_exp_and_cast(ptlang_rc_deref(exp).content.cast.value,
+                                                  ptlang_rc_deref(exp).content.cast.type, ctx);
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
+        {
+            ptlang_ast_type ast_type = ptlang_context_unname_type(
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type,
+                ctx->ctx->ctx->type_scope);
+
+            ptlang_ast_struct_def def = shget(ctx->ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
+
+            unsigned int index = 0;
+            for (; index < arrlenu(ptlang_rc_deref(def).members); index++)
+            {
+                if (strcmp(ptlang_rc_deref(ptlang_rc_deref(def).members[index]).name.name,
+                           ptlang_rc_deref(exp).content.struct_member.member_name.name) == 0)
+                {
+                    break;
+                }
+            }
+
+            return ctx->ctx->builder.CreateExtractValue(
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.struct_member.struct_, ctx), index,
+                "structmember");
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
+        {
+            llvm::BasicBlock *insert_point = ctx->ctx->builder.GetInsertBlock();
+
+            ctx->ctx->builder.SetInsertPointPastAllocas(ctx->func);
+
+            llvm::Type *arr_type = ptlang_ir_builder_type(
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type, ctx->ctx);
+
+            llvm::Value *arr_ptr = ctx->ctx->builder.CreateAlloca(arr_type, NULL, "tmpalloca");
+
+            ctx->ctx->builder.SetInsertPoint(insert_point);
+
+            llvm::Value *arr_val =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.array, ctx);
+
+            ctx->ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(arr_type)),
+                 arr_ptr});
+
+            ctx->ctx->builder.CreateStore(arr_val, arr_ptr);
+
+            llvm::Type *elem_type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
+
+            llvm::Value *elem_ptr = ctx->ctx->builder.CreateInBoundsGEP(
+                elem_type, arr_ptr,
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.index, ctx), "arrayelement");
+
+            llvm::Value *elem_val = ctx->ctx->builder.CreateLoad(elem_type, elem_ptr, "loadtmpalloca");
+
+            ctx->ctx->builder.CreateIntrinsic(
+                llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
+                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(arr_type)),
+                 arr_ptr});
+            return elem_val;
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_REFERENCE:
+            return ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.reference.value, ctx);
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_DEREFERENCE:
+            return ctx->ctx->builder.CreateLoad(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx),
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx), "deref");
         }
 
         llvm::Type *type = llvm::IntegerType::get(ctx->ctx->llvm_ctx, 1);
@@ -744,10 +999,10 @@ extern "C"
     }
 
     static llvm::Value *ptlang_ir_builder_exp_and_cast(ptlang_ast_exp exp, ptlang_ast_type type,
-                                                       ptlang_ir_builder_context *ctx)
+                                                       ptlang_ir_builder_fun_ctx *ctx)
     {
         llvm::Value *uncasted = ptlang_ir_builder_exp(exp, ctx);
-        return ptlang_ir_builder_cast(uncasted, ptlang_rc_deref(exp).ast_type, type, ctx);
+        return ptlang_ir_builder_cast(uncasted, ptlang_rc_deref(exp).ast_type, type, ctx->ctx);
     }
 
     static llvm::Value *ptlang_ir_builder_cast(llvm::Value *input, ptlang_ast_type from, ptlang_ast_type to,
@@ -757,7 +1012,7 @@ extern "C"
         return NULL;
     }
 
-    static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
+    static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
     {
         // TODO
         return NULL;
