@@ -693,17 +693,17 @@ extern "C"
                 // TODO init functions
 
                 llvm::BasicBlock *lens_not_equal_block =
-                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_not_equal_block", ctx->func);
-                llvm::BasicBlock *already_allocated_block = llvm::BasicBlock::Create(
-                    ctx->ctx->llvm_ctx, "setlength_already_allocated_block", ctx->func);
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_not_equal", ctx->func);
+                llvm::BasicBlock *already_allocated_block =
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_already_allocated", ctx->func);
                 llvm::BasicBlock *malloc_block =
-                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_malloc_block", ctx->func);
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_malloc", ctx->func);
                 llvm::BasicBlock *realloc_block =
-                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_realloc_block", ctx->func);
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_realloc", ctx->func);
                 llvm::BasicBlock *free_block =
-                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_free_block", ctx->func);
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_free", ctx->func);
                 llvm::BasicBlock *end_block =
-                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_end_block", ctx->func);
+                    llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "setlength_end", ctx->func);
 
                 // Are new and old length equal?
                 llvm::Type *heap_array_type = ptlang_ir_builder_type(
@@ -784,47 +784,270 @@ extern "C"
             }
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_SUBTRACTION:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
+                return ctx->ctx->builder.CreateSub(left_operand, right_operand, "sub", false, is_signed);
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFSub(left_operand, right_operand, "fsub");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_NEGATION:
-            break;
+        {
+            llvm::Value *operand = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
+                return ctx->ctx->builder.CreateNeg(operand, "neg", false, is_signed);
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFNeg(operand, "fneg");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_MULTIPLICATION:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
+                return ctx->ctx->builder.CreateMul(left_operand, right_operand, "add", false, is_signed);
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFMul(left_operand, right_operand, "fmul");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_DIVISION:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed)
+                    return ctx->ctx->builder.CreateSDiv(left_operand, right_operand, "div");
+                else
+                    return ctx->ctx->builder.CreateUDiv(left_operand, right_operand, "div");
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFDiv(left_operand, right_operand, "fdiv");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_MODULO:
-            break;
+        {
+            llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
+            llvm::Value *left_operand = ptlang_ir_builder_exp_and_cast(
+                ptlang_rc_deref(exp).content.binary_operator.left_value, ptlang_rc_deref(exp).ast_type, ctx);
+            llvm::Value *right_operand = ptlang_ir_builder_exp_and_cast(
+                ptlang_rc_deref(exp).content.binary_operator.right_value, ptlang_rc_deref(exp).ast_type, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed)
+                {
+                    llvm::Constant *zero = llvm::ConstantInt::get(type, 0, true);
+                    llvm::Value *rem = ctx->ctx->builder.CreateSRem(left_operand, right_operand, "modrem");
+                    llvm::Value *x_or = ctx->ctx->builder.CreateXor(left_operand, right_operand, "modxor");
+                    llvm::Value *is_pos = ctx->ctx->builder.CreateICmpSGT(x_or, zero, "modispos");
+                    llvm::Value *is_multiple = ctx->ctx->builder.CreateICmpEQ(rem, zero, "modismultiple");
+                    llvm::Value *is_pos_or_multiple =
+                        ctx->ctx->builder.CreateOr(is_pos, is_multiple, "modisposormultiple");
+
+                    llvm::Value *rem_difference = ctx->ctx->builder.CreateSelect(
+                        is_pos_or_multiple, zero, right_operand, "modremdifference");
+
+                    return ctx->ctx->builder.CreateNSWAdd(rem, rem_difference, "mod");
+                }
+                else
+                    return ctx->ctx->builder.CreateURem(left_operand, right_operand, "mod");
+            }
+            else
+            {
+                llvm::Value *mod_1 = ctx->ctx->builder.CreateFRem(left_operand, right_operand, "mod");
+                llvm::Value *mod_2 = ctx->ctx->builder.CreateFRem(left_operand, right_operand, "mod_add");
+                mod_2 = ctx->ctx->builder.CreateFRem(left_operand, right_operand, "mod_add_mod");
+                llvm::Value *is_neg = ctx->ctx->builder.CreateFCmpOLT(
+                    left_operand, llvm::ConstantFP::get(type, 0.), "mod_is_neg");
+                return ctx->ctx->builder.CreateSelect(is_neg, mod_2, mod_1, "mod_select");
+            }
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_REMAINDER:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
+                ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+            {
+                if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed)
+                    return ctx->ctx->builder.CreateSRem(left_operand, right_operand, "rem");
+                else
+                    return ctx->ctx->builder.CreateURem(left_operand, right_operand, "rem");
+            }
+            else
+            { // PTLANG_AST_TYPE_FLOAT
+                return ctx->ctx->builder.CreateFRem(left_operand, right_operand, "frem");
+            }
+        }
+
+#define ptlang_ir_builder_exp_comparison(name, signed_pred, unsigned_pred, float_pred)                       \
+    {                                                                                                        \
+        llvm::Value *left_operand =                                                                          \
+            ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);             \
+        llvm::Value *right_operand =                                                                         \
+            ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);            \
+        if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==                                           \
+            ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)                                                      \
+        {                                                                                                    \
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed)                    \
+                return ctx->ctx->builder.CreateICmp(signed_pred, left_operand, right_operand, name);         \
+            else                                                                                             \
+                return ctx->ctx->builder.CreateICmp(unsigned_pred, left_operand, right_operand, name);       \
+        }                                                                                                    \
+        else                                                                                                 \
+        {                                                                                                    \
+            return ctx->ctx->builder.CreateFCmp(float_pred, left_operand, right_operand, name);              \
+        }                                                                                                    \
+    }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_EQUAL:
-            break;
+            ptlang_ir_builder_exp_comparison("eq", llvm::ICmpInst::ICMP_EQ, llvm::ICmpInst::ICMP_EQ,
+                                             llvm::FCmpInst::FCMP_OEQ);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_NOT_EQUAL:
-            break;
+            ptlang_ir_builder_exp_comparison("ne", llvm::ICmpInst::ICMP_NE, llvm::ICmpInst::ICMP_NE,
+                                             llvm::FCmpInst::FCMP_UNE);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_GREATER:
-            break;
+            ptlang_ir_builder_exp_comparison("gt", llvm::ICmpInst::ICMP_SGT, llvm::ICmpInst::ICMP_UGT,
+                                             llvm::FCmpInst::FCMP_OGT);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_GREATER_EQUAL:
-            break;
+            ptlang_ir_builder_exp_comparison("ge", llvm::ICmpInst::ICMP_SGE, llvm::ICmpInst::ICMP_UGE,
+                                             llvm::FCmpInst::FCMP_OGE);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LESS:
-            break;
+            ptlang_ir_builder_exp_comparison("lt", llvm::ICmpInst::ICMP_SLT, llvm::ICmpInst::ICMP_ULT,
+                                             llvm::FCmpInst::FCMP_OLT);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LESS_EQUAL:
-            break;
+            ptlang_ir_builder_exp_comparison("le", llvm::ICmpInst::ICMP_SLE, llvm::ICmpInst::ICMP_ULE,
+                                             llvm::FCmpInst::FCMP_OLE);
+
+#undef ptlang_ir_builder_exp_comparison
+
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LEFT_SHIFT:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
+            return ctx->ctx->builder.CreateShl(left_operand, right_operand, "shl", false, is_signed);
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_RIGHT_SHIFT:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed)
+                return ctx->ctx->builder.CreateAShr(left_operand, right_operand, "shr", true);
+            else
+                return ctx->ctx->builder.CreateLShr(left_operand, right_operand, "shr", true);
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_AND:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+
+            llvm::BasicBlock *start_block = ctx->ctx->builder.GetInsertBlock();
+
+            llvm::BasicBlock *second_operand_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "second_operand", ctx->func);
+            llvm::BasicBlock *end_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "end", ctx->func);
+
+            ctx->ctx->builder.CreateCondBr(left_operand, second_operand_block, end_block);
+
+            ctx->ctx->builder.SetInsertPoint(second_operand_block);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+
+            ctx->ctx->builder.SetInsertPoint(end_block);
+
+            llvm::PHINode *phi = ctx->ctx->builder.CreatePHI(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx), 2);
+            phi->addIncoming(right_operand, second_operand_block);
+            phi->addIncoming(llvm::ConstantInt::getFalse(ctx->ctx->llvm_ctx), start_block);
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_OR:
-            break;
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+
+            llvm::BasicBlock *start_block = ctx->ctx->builder.GetInsertBlock();
+
+            llvm::BasicBlock *second_operand_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "second_operand", ctx->func);
+            llvm::BasicBlock *end_block = llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "end", ctx->func);
+
+            ctx->ctx->builder.CreateCondBr(left_operand, end_block, second_operand_block);
+
+            ctx->ctx->builder.SetInsertPoint(second_operand_block);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+
+            ctx->ctx->builder.SetInsertPoint(end_block);
+
+            llvm::PHINode *phi = ctx->ctx->builder.CreatePHI(
+                ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx), 2);
+            phi->addIncoming(right_operand, second_operand_block);
+            phi->addIncoming(llvm::ConstantInt::getTrue(ctx->ctx->llvm_ctx), start_block);
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_NOT:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_AND:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_OR:
-            break;
-        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_XOR:
-            break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_INVERSE:
-            break;
+        {
+            llvm::Value *operand = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx);
+            return ctx->ctx->builder.CreateNot(operand, "notorinverse");
+        }
+
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_AND:
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            return ctx->ctx->builder.CreateAnd(left_operand, right_operand, "and");
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_OR:
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            return ctx->ctx->builder.CreateOr(left_operand, right_operand, "or");
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_BITWISE_XOR:
+        {
+            llvm::Value *left_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
+            llvm::Value *right_operand =
+                ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.binary_operator.right_value, ctx);
+            return ctx->ctx->builder.CreateXor(left_operand, right_operand, "xor");
+        }
+        break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH:
             break;
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FUNCTION_CALL:
