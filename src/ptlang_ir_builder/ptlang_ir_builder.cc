@@ -1048,8 +1048,17 @@ extern "C"
             return ctx->ctx->builder.CreateXor(left_operand, right_operand, "xor");
         }
         break;
+
         case ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH:
-            break;
+        {
+            llvm::Type *heap_array_type = ptlang_ir_builder_type(
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).ast_type, ctx->ctx);
+            llvm::Value *heap_array_ptr =
+                ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.unary_operator, ctx);
+            llvm::Value *len_ptr =
+                ctx->ctx->builder.CreateStructGEP(heap_array_type, heap_array_ptr, 1, "len_ptr");
+            return ctx->ctx->builder.CreateLoad(ctx->ctx->integer_ptrsize_type, len_ptr, "len");
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FUNCTION_CALL:
         {
             llvm::FunctionType *function_type = (llvm::FunctionType *)ptlang_ir_builder_type(
@@ -1077,6 +1086,7 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
         {
+            // should have been loaded by pointer already
             abort();
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
@@ -1166,6 +1176,9 @@ extern "C"
                 }
             }
 
+            // ctx->ctx->builder.CreateStructGEP();
+            // ctx->ctx->builder.CreateConstInBoundsGEP1_64
+
             return ctx->ctx->builder.CreateExtractValue(
                 ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.struct_member.struct_, ctx), index,
                 "structmember");
@@ -1237,7 +1250,42 @@ extern "C"
 
     static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
     {
-        // TODO
+        switch (ptlang_rc_deref(exp).type)
+        {
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
+        {
+            return ptlang_ir_builder_scope_get(ptlang_rc_deref(exp).content.str_prepresentation,
+                                               ctx->ctx->scope);
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
+        {
+            llvm::Value *struct_ptr =
+                ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.struct_member.struct_, ctx);
+                if(struct_ptr==NULL)return NULL;
+            llvm::Type *struct_type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
+            return ctx->ctx->builder.CreateStructGEP(struct_type, struct_ptr, ?, "struct_member_ptr");
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
+        {
+            llvm::Value *arr_ptr =
+                ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.array_element.array, ctx);
+            if (arr_ptr == NULL)
+                return NULL;
+
+            llvm::Value *index = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.index, ctx);
+            ctx->ctx->builder.CreateInBoundsGEP(
+                ptlang_ir_builder_type(
+                    ptlang_rc_deref(
+                        ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type)
+                        .content.array.type,
+                    ctx->ctx),
+                arr_ptr, index, "arrayelementgep");
+        }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_DEREFERENCE:
+        {
+            return ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx);
+        }
+        }
         return NULL;
     }
 
