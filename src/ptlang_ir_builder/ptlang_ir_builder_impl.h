@@ -134,4 +134,5 @@ extern "C"
 
     static void ptlang_ir_builder_scope_end_children(ptlang_ir_builder_scope *scope,
                                                      ptlang_ir_builder_context *ctx);
+    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_decl *members);
 }

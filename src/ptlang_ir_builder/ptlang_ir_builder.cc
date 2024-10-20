@@ -1166,15 +1166,18 @@ extern "C"
 
             ptlang_ast_struct_def def = shget(ctx->ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
 
-            unsigned int index = 0;
-            for (; index < arrlenu(ptlang_rc_deref(def).members); index++)
-            {
-                if (strcmp(ptlang_rc_deref(ptlang_rc_deref(def).members[index]).name.name,
-                           ptlang_rc_deref(exp).content.struct_member.member_name.name) == 0)
-                {
-                    break;
-                }
-            }
+            // unsigned int index = 0;
+            // for (; index < arrlenu(ptlang_rc_deref(def).members); index++)
+            // {
+            //     if (strcmp(ptlang_rc_deref(ptlang_rc_deref(def).members[index]).name.name,
+            //                ptlang_rc_deref(exp).content.struct_member.member_name.name) == 0)
+            //     {
+            //         break;
+            //     }
+            // }
+
+            unsigned int index = ptlang_ir_builder_get_struct_index(
+                ptlang_rc_deref(exp).content.struct_member.member_name.name, ptlang_rc_deref(def).members);
 
             // ctx->ctx->builder.CreateStructGEP();
             // ctx->ctx->builder.CreateConstInBoundsGEP1_64
@@ -1244,7 +1247,32 @@ extern "C"
     static llvm::Value *ptlang_ir_builder_cast(llvm::Value *input, ptlang_ast_type from, ptlang_ast_type to,
                                                ptlang_ir_builder_context *ctx)
     {
-        // TODO
+        to = ptlang_context_unname_type(to, ctx->ctx->type_scope);
+        from = ptlang_context_unname_type(from, ctx->ctx->type_scope);
+        llvm::Type *to_llvm = ptlang_ir_builder_type(to, ctx);
+
+        if (ptlang_rc_deref(from).type == ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER &&
+            ptlang_rc_deref(to).type == ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+        {
+            if (ptlang_rc_deref(from).content.integer.size > ptlang_rc_deref(to).content.integer.size)
+            {
+                return ctx->builder.CreateTrunc(input, to_llvm, "cast_int_trunc");
+            }
+            else if (ptlang_rc_deref(from).content.integer.size < ptlang_rc_deref(to).content.integer.size)
+            {
+                if (ptlang_rc_deref(from).content.integer.is_signed)
+                {
+                    return ctx->builder.CreateSExt(input, to_llvm, "cast_int_signed_ext");
+                }
+                else
+                {
+                    return ctx->builder.CreateZExt(input, to_llvm, "cast_int_unsigned_ext");
+                }
+            }
+            else
+                return input;
+        }
+        // TODO else if ... (see  src/ptlang_ir_builder_old/ptlang_ir_builder.c:723)
         return NULL;
     }
 
@@ -1261,9 +1289,20 @@ extern "C"
         {
             llvm::Value *struct_ptr =
                 ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.struct_member.struct_, ctx);
-                if(struct_ptr==NULL)return NULL;
+            if (struct_ptr == NULL)
+                return NULL;
             llvm::Type *struct_type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
-            return ctx->ctx->builder.CreateStructGEP(struct_type, struct_ptr, ?, "struct_member_ptr");
+
+            ptlang_ast_type ast_type = ptlang_context_unname_type(
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type,
+                ctx->ctx->ctx->type_scope);
+
+            ptlang_ast_struct_def def = shget(ctx->ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
+
+            unsigned int index = ptlang_ir_builder_get_struct_index(
+                ptlang_rc_deref(exp).content.struct_member.member_name.name, ptlang_rc_deref(def).members);
+
+            return ctx->ctx->builder.CreateStructGEP(struct_type, struct_ptr, index, "struct_member_ptr");
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
         {
@@ -1470,5 +1509,16 @@ extern "C"
         for (ptlang_ir_builder_scope *cur_scope = ctx->scope; cur_scope != scope;
              cur_scope = cur_scope->parent)
             ptlang_ir_builder_scope_end(cur_scope, ctx);
+    }
+
+    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_decl *members)
+    {
+        for (unsigned int index = 0; index < arrlenu(members); index++)
+        {
+            if (strcmp(ptlang_rc_deref(members[index]).name.name, member_name) == 0)
+            {
+                return index;
+            }
+        }
     }
 }
