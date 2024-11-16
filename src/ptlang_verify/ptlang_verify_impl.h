@@ -167,10 +167,7 @@ static void ptlang_verify_eval_globals(ptlang_ast_module module, ptlang_context 
 
 static void ptlang_verify_decl_init(ptlang_ast_decl decl, size_t scope_offset, ptlang_context *ctx,
                                     ptlang_error **errors);
-
-static void ptlang_verify_global_decls(ptlang_ast_decl *declarations, ptlang_context *ctx,
-                                       ptlang_error **errors);
-
+static void ptlang_verify_global_decls(ptlang_ast_module module, ptlang_context *ctx, ptlang_error **errors);
 static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_ast_exp init,
                                    ptlang_context *ctx);
 

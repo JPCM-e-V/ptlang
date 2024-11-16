@@ -2,6 +2,12 @@
 
 void ptlang_context_destory(ptlang_context *ctx)
 {
+    // Maybe only used in verifyer
+
+    for (size_t i = 0; i < arrlenu(ctx->scope); i++)
+    {
+        ptlang_rc_remove_ref(ctx->scope[i], ptlang_ast_decl_destroy);
+    }
     arrfree(ctx->scope);
     shfree(ctx->type_scope);
 }

@@ -24,6 +24,9 @@ extern "C"
             /*.di_file =*/llvm::DIFile::get(llvm_ctx, "test.ptl", "/tmp"),
         };
 
+        ctx.module_.setDataLayout(context->target_machine->createDataLayout());
+        ctx.module_.setTargetTriple(context->target_machine->getTargetTriple().str());
+
         ctx.di_scope = llvm::DICompileUnit::getDistinct(
             llvm_ctx, 0, ctx.di_file, "ptlang 0.0.0", false, "", 0, "",
             llvm::DICompileUnit::DebugEmissionKind::FullDebug, llvm::DICompositeTypeArray(),
@@ -44,6 +47,11 @@ extern "C"
 #endif
 
         ctx.module_.print(llvm::dbgs(), NULL, false, true);
+        // ctx.module_.
+
+        // llvm::TargetMachine
+
+        // llvm::Ra
 
         // builder->Context
 
@@ -51,7 +59,22 @@ extern "C"
         // delete ctx.module_;
         // delete llvm_ctx;
 
-        delete ctx.ctx->data_layout;
+        std::error_code EC;
+        llvm::raw_fd_ostream dest = llvm::raw_fd_ostream("output.o", EC);
+
+        if (EC)
+        {
+            llvm::errs() << "Could not open file: " << EC.message();
+            abort();
+        }
+
+        llvm::legacy::PassManager pm;
+        ctx.ctx->target_machine->addPassesToEmitFile(pm, dest, NULL, llvm::CodeGenFileType::ObjectFile);
+
+        pm.run(ctx.module_);
+        dest.flush();
+
+        delete ctx.ctx->target_machine;
 
         shfree(global_scope.variables);
 
@@ -118,8 +141,9 @@ extern "C"
             llvm::StringRef name = llvm::StringRef(ptlang_rc_deref(struct_defs[i]).name.name);
             llvm::StructType *llvmStructType = llvm::StructType::create(ctx->llvm_ctx, name);
 
-            shput(ctx->structs, ptlang_rc_deref(struct_defs[i]).name.name,
-                  ((struct ptlang_ir_builder_struct_entry_s){llvmStructType, struct_defs[i]}));
+            struct ptlang_ir_builder_struct_entry_s entry = {llvmStructType, struct_defs[i]};
+
+            shput(ctx->structs, ptlang_rc_deref(struct_defs[i]).name.name, entry);
         }
 
         // Fill Struct Types
@@ -151,7 +175,7 @@ extern "C"
                                            : llvm::GlobalValue::LinkageTypes::InternalLinkage,
             NULL, ptlang_rc_deref(decl).name.name);
         shput(ctx->scope->variables, ptlang_rc_deref(decl).name.name,
-              (ptlang_ir_builder_scope_entry{var, type}));
+              (ptlang_ir_builder_scope_entry{var, type, false}));
 
         var->addDebugInfo(llvm::DIGlobalVariableExpression::get(
             ctx->llvm_ctx,
@@ -185,7 +209,7 @@ extern "C"
             0, ptlang_rc_deref(func).name.name, &ctx->module_);
 
         shput(ctx->scope->variables, ptlang_rc_deref(func).name.name,
-              (ptlang_ir_builder_scope_entry{function, function_type}));
+              (ptlang_ir_builder_scope_entry{function, function_type, true}));
 
         llvm::Argument *args = function->args().begin();
 
@@ -201,8 +225,7 @@ extern "C"
                                             ptlang_ir_builder_context *ctx)
 
     {
-
-        (ctx->llvm_ctx, "entry", llvm_func);
+        llvm::BasicBlock::Create(ctx->llvm_ctx, "entry", llvm_func);
 
         ptlang_ir_builder_scope_init(ctx);
 
@@ -237,8 +260,9 @@ extern "C"
         {
             ctx->builder.CreateIntrinsic(
                 llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
-                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entries[i].type)),
+                {llvm::ConstantInt::get(
+                     llvm::Type::getInt64Ty(ctx->llvm_ctx),
+                     ctx->ctx->target_machine->createDataLayout().getTypeStoreSize(scope_entries[i].type)),
                  scope_entries[i].ptr});
 
             ctx->builder.CreateStore(fun_ctx.func->getArg(i), scope_entries[i].ptr);
@@ -269,13 +293,14 @@ extern "C"
         }
     }
 
-    llvm::Value *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope)
+    ptlang_ir_builder_scope_entry *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope)
     {
         while (scope != NULL)
         {
             ptlang_ir_builder_scope_variable *variable = shgetp_null(scope->variables, name);
             if (variable != NULL)
-                return variable->value.ptr;
+
+                return &variable->value;
             scope = scope->parent;
         }
         abort();
@@ -506,6 +531,9 @@ extern "C"
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
     {
+
+        printf("ds %d %s\n", ptlang_rc_deref(exp).type, ptlang_rc_deref(exp).content.str_prepresentation);
+
         llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx);
         switch (ptlang_rc_deref(exp).type)
         {
@@ -513,8 +541,25 @@ extern "C"
         // {
         // }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
-            return llvm::ConstantInt::get((llvm::IntegerType *)type,
-                                          ptlang_rc_deref(exp).content.str_prepresentation, 10);
+        {
+            char *size_str = strchr(ptlang_rc_deref(exp).content.str_prepresentation, 'u');
+            if (size_str == NULL)
+                size_str = strchr(ptlang_rc_deref(exp).content.str_prepresentation, 'U');
+            if (size_str == NULL)
+                size_str = strchr(ptlang_rc_deref(exp).content.str_prepresentation, 's');
+            if (size_str == NULL)
+                size_str = strchrnul(ptlang_rc_deref(exp).content.str_prepresentation, 'S');
+            // if (size_str != NULL)
+            // {
+            //     size = strtoul(size_str + 1, NULL, 10);
+            // }
+
+            return llvm::ConstantInt::get(
+                (llvm::IntegerType *)type,
+                llvm::StringRef(ptlang_rc_deref(exp).content.str_prepresentation,
+                                size_str - ptlang_rc_deref(exp).content.str_prepresentation),
+                10);
+        }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
             return llvm::ConstantFP::get(type, ptlang_rc_deref(exp).content.str_prepresentation);
 
@@ -612,7 +657,8 @@ extern "C"
             llvm::Constant *gep = llvm::ConstantExpr::getGetElementPtr(
                 type,
                 (llvm::Constant *)ptlang_ir_builder_scope_get(
-                    ptlang_rc_deref(current_exp).content.str_prepresentation, ctx->scope),
+                    ptlang_rc_deref(current_exp).content.str_prepresentation, ctx->scope)
+                    ->ptr,
                 llvm::ArrayRef(indices, depth), true);
 
             ptlang_free(indices);
@@ -637,6 +683,7 @@ extern "C"
 
             for (uint32_t i = 0; i < byte_size; i++)
             {
+
                 value = llvm::ConstantExpr::getShl(value, one);
                 value = llvm::ConstantExpr::getAdd(
                     value,
@@ -658,10 +705,29 @@ extern "C"
     static void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx) { shfree(ctx->structs); }
     void ptlang_ir_builder_store_data_layout(ptlang_context *ctx)
     {
-        ctx->data_layout = new llvm::DataLayout(
-            "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128");
-        ctx->is_big_endian = ctx->data_layout->isBigEndian();
-        ctx->pointer_bytes = ctx->data_layout->getPointerSize();
+        std::string triple = llvm::sys::getDefaultTargetTriple();
+
+        llvm::InitializeAllTargetInfos();
+        llvm::InitializeAllTargets();
+        llvm::InitializeAllTargetMCs();
+        llvm::InitializeAllAsmParsers();
+        llvm::InitializeAllAsmPrinters();
+
+        std::string Error;
+        const llvm::Target *target = llvm::TargetRegistry::lookupTarget(triple, Error);
+        if (!target)
+        {
+            llvm::errs() << Error;
+            abort();
+        }
+
+        llvm::TargetOptions options;
+        ctx->target_machine = target->createTargetMachine(triple, "generic", "", options, llvm::Reloc::PIC_);
+
+        // ctx->data_layout = new llvm::DataLayout(
+        //     "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128");
+        ctx->is_big_endian = ctx->target_machine->createDataLayout().isBigEndian();
+        ctx->pointer_bytes = ctx->target_machine->createDataLayout().getPointerSize();
     }
 
     static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
@@ -1086,8 +1152,10 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
         {
-            // should have been loaded by pointer already
-            abort();
+            ptlang_ir_builder_scope_entry *entry = ptlang_ir_builder_scope_get(
+                ptlang_rc_deref(exp).content.str_prepresentation, ctx->ctx->scope);
+            assert(entry->direct);
+            return entry->ptr;
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
@@ -1160,11 +1228,12 @@ extern "C"
                                                   ptlang_rc_deref(exp).content.cast.type, ctx);
         case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
         {
-            ptlang_ast_type ast_type = ptlang_context_unname_type(
-                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type,
-                ctx->ctx->ctx->type_scope);
+            // ptlang_ast_type ast_type = ptlang_context_unname_type(
+            //     ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type,
+            //     ctx->ctx->ctx->type_scope);
 
-            ptlang_ast_struct_def def = shget(ctx->ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
+            // ptlang_ast_struct_def def = shget(ctx->ctx->structs,
+            // ptlang_rc_deref(ast_type).content.name).def;
 
             // unsigned int index = 0;
             // for (; index < arrlenu(ptlang_rc_deref(def).members); index++)
@@ -1177,7 +1246,8 @@ extern "C"
             // }
 
             unsigned int index = ptlang_ir_builder_get_struct_index(
-                ptlang_rc_deref(exp).content.struct_member.member_name.name, ptlang_rc_deref(def).members);
+                ptlang_rc_deref(exp).content.struct_member.member_name.name,
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type, ctx->ctx);
 
             // ctx->ctx->builder.CreateStructGEP();
             // ctx->ctx->builder.CreateConstInBoundsGEP1_64
@@ -1204,8 +1274,9 @@ extern "C"
 
             ctx->ctx->builder.CreateIntrinsic(
                 llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
-                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(arr_type)),
+                {llvm::ConstantInt::get(
+                     llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                     ctx->ctx->ctx->target_machine->createDataLayout().getTypeStoreSize(arr_type)),
                  arr_ptr});
 
             ctx->ctx->builder.CreateStore(arr_val, arr_ptr);
@@ -1220,8 +1291,9 @@ extern "C"
 
             ctx->ctx->builder.CreateIntrinsic(
                 llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
-                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(arr_type)),
+                {llvm::ConstantInt::get(
+                     llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                     ctx->ctx->ctx->target_machine->createDataLayout().getTypeStoreSize(arr_type)),
                  arr_ptr});
             return elem_val;
         }
@@ -1282,8 +1354,13 @@ extern "C"
         {
         case ptlang_ast_exp_s::PTLANG_AST_EXP_VARIABLE:
         {
-            return ptlang_ir_builder_scope_get(ptlang_rc_deref(exp).content.str_prepresentation,
-                                               ctx->ctx->scope);
+            ptlang_ir_builder_scope_entry *entry = ptlang_ir_builder_scope_get(
+                ptlang_rc_deref(exp).content.str_prepresentation, ctx->ctx->scope);
+            if (!entry->direct)
+            {
+                return entry->ptr;
+            }
+            return NULL;
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_STRUCT_MEMBER:
         {
@@ -1293,14 +1370,9 @@ extern "C"
                 return NULL;
             llvm::Type *struct_type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
 
-            ptlang_ast_type ast_type = ptlang_context_unname_type(
-                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type,
-                ctx->ctx->ctx->type_scope);
-
-            ptlang_ast_struct_def def = shget(ctx->ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
-
             unsigned int index = ptlang_ir_builder_get_struct_index(
-                ptlang_rc_deref(exp).content.struct_member.member_name.name, ptlang_rc_deref(def).members);
+                ptlang_rc_deref(exp).content.struct_member.member_name.name,
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_member.struct_).ast_type, ctx->ctx);
 
             return ctx->ctx->builder.CreateStructGEP(struct_type, struct_ptr, index, "struct_member_ptr");
         }
@@ -1324,8 +1396,9 @@ extern "C"
         {
             return ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.unary_operator, ctx);
         }
+        default:
+            return NULL;
         }
-        return NULL;
     }
 
     static void ptlang_ir_builder_stmt(ptlang_ast_stmt stmt, ptlang_ir_builder_fun_ctx *ctx)
@@ -1358,15 +1431,16 @@ extern "C"
                 type, NULL, ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).name.name);
             ctx->ctx->builder.SetInsertPoint(insert_point);
 
-            ptlang_ir_builder_scope_entry entry = {ptr, type};
+            ptlang_ir_builder_scope_entry entry = {ptr, type, false};
 
             shput(ctx->ctx->scope->variables, ptlang_rc_deref(ptlang_rc_deref(stmt).content.decl).name.name,
                   entry);
 
             ctx->ctx->builder.CreateIntrinsic(
                 llvm::Type::getVoidTy(ctx->ctx->llvm_ctx), llvm::Intrinsic::lifetime_start,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
-                                        ctx->ctx->ctx->data_layout->getTypeStoreSize(type)),
+                {llvm::ConstantInt::get(
+                     llvm::Type::getInt64Ty(ctx->ctx->llvm_ctx),
+                     ctx->ctx->ctx->target_machine->createDataLayout().getTypeStoreSize(type)),
                  ptr});
 
             llvm::Value *init =
@@ -1497,8 +1571,9 @@ extern "C"
             ptlang_ir_builder_scope_entry scope_entry = scope->variables[i].value;
             ctx->builder.CreateIntrinsic(
                 llvm::Type::getVoidTy(ctx->llvm_ctx), llvm::Intrinsic::lifetime_end,
-                {llvm::ConstantInt::get(llvm::Type::getInt64Ty(ctx->llvm_ctx),
-                                        ctx->ctx->data_layout->getTypeStoreSize(scope_entry.type)),
+                {llvm::ConstantInt::get(
+                     llvm::Type::getInt64Ty(ctx->llvm_ctx),
+                     ctx->ctx->target_machine->createDataLayout().getTypeStoreSize(scope_entry.type)),
                  scope_entry.ptr});
         }
     }
@@ -1511,14 +1586,21 @@ extern "C"
             ptlang_ir_builder_scope_end(cur_scope, ctx);
     }
 
-    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_decl *members)
+    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_type type,
+                                                           ptlang_ir_builder_context *ctx)
     {
-        for (unsigned int index = 0; index < arrlenu(members); index++)
+        ptlang_ast_type ast_type = ptlang_context_unname_type(type, ctx->ctx->type_scope);
+
+        ptlang_ast_struct_def def = shget(ctx->structs, ptlang_rc_deref(ast_type).content.name).def;
+
+        for (unsigned int index = 0; index < arrlenu(ptlang_rc_deref(def).members); index++)
         {
-            if (strcmp(ptlang_rc_deref(members[index]).name.name, member_name) == 0)
+            if (strcmp(ptlang_rc_deref(ptlang_rc_deref(def).members[index]).name.name, member_name) == 0)
             {
                 return index;
             }
         }
+
+        abort();
     }
 }

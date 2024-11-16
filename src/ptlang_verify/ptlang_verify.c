@@ -23,18 +23,34 @@ ptlang_error *ptlang_verify_module(ptlang_ast_module module, ptlang_context *ctx
     ptlang_error *errors = NULL;
     ptlang_verify_type_resolvability(module, ctx, &errors);
     ptlang_verify_struct_defs(ptlang_rc_deref(module).struct_defs, ctx, &errors);
-    ptlang_verify_global_decls(ptlang_rc_deref(module).declarations, ctx, &errors);
+    ptlang_verify_global_decls(module, ctx, &errors);
     ptlang_verify_eval_globals(module, ctx, &errors);
     ptlang_verify_functions(ptlang_rc_deref(module).functions, ctx, &errors);
     return errors;
 }
 
-static void ptlang_verify_global_decls(ptlang_ast_decl *declarations, ptlang_context *ctx,
-                                       ptlang_error **errors)
+static void ptlang_verify_global_decls(ptlang_ast_module module, ptlang_context *ctx, ptlang_error **errors)
 {
+    ptlang_ast_decl *declarations = ptlang_rc_deref(module).declarations;
+    ptlang_ast_func *functions = ptlang_rc_deref(module).functions;
+    for (size_t i = 0; i < arrlenu(functions); i++)
+    {
+        ptlang_ast_type *params = NULL;
+        for (size_t j = 0; j < arrlenu(ptlang_rc_deref(functions[i]).parameters); j++)
+        {
+            arrpush(params,
+                    ptlang_rc_add_ref(ptlang_rc_deref(ptlang_rc_deref(functions[i]).parameters[j]).type));
+        }
+        ptlang_ast_decl decl = ptlang_ast_decl_new(
+            ptlang_ast_type_function(ptlang_rc_add_ref(ptlang_rc_deref(functions[i]).return_type), params,
+                                     ptlang_rc_add_ref(ptlang_rc_deref(functions[i]).pos)),
+            ptlang_ast_ident_copy(ptlang_rc_deref(functions[i]).name), false,
+            ptlang_rc_add_ref(ptlang_rc_deref(functions[i]).pos));
+        ptlang_verify_decl_header(decl, 0, ctx, errors);
+    }
     for (size_t i = 0; i < arrlenu(declarations); i++)
     {
-        ptlang_verify_decl_header(declarations[i], 0, ctx, errors);
+        ptlang_verify_decl_header(ptlang_rc_add_ref(declarations[i]), 0, ctx, errors);
     }
     for (size_t i = 0; i < arrlenu(declarations); i++)
     {
@@ -518,7 +534,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
                             }));
         }
         else if (ptlang_rc_deref(left).ast_type != NULL && ptlang_rc_deref(right).ast_type != NULL &&
-                 (ptlang_rc_deref(ptlang_rc_deref(left).ast_type).type == PTLANG_AST_TYPE_REFERENCE) ==
+                 (ptlang_rc_deref(ptlang_rc_deref(left).ast_type).type == PTLANG_AST_TYPE_REFERENCE) !=
                      (ptlang_rc_deref(ptlang_rc_deref(right).ast_type).type == PTLANG_AST_TYPE_REFERENCE))
         {
             size_t message_len =

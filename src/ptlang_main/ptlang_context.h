@@ -38,7 +38,8 @@ struct ptlang_context_s
     // LLVMTargetDataRef target_data_layout;
     bool is_big_endian;
     uint32_t pointer_bytes;
-    llvm_data_layout *data_layout;
+    // llvm_data_layout *data_layout;
+    llvm_target_machine *target_machine;
 };
 
 void ptlang_context_destory(ptlang_context *ctx);

@@ -3,9 +3,9 @@
 #ifdef __cplusplus
 extern "C"
 {
-    typedef llvm::DataLayout llvm_data_layout;
+    typedef llvm::TargetMachine llvm_target_machine;
 #else
-typedef struct llvm_data_layout llvm_data_layout;
+typedef struct llvm_target_machine llvm_target_machine;
 #endif
 
 #include "ptlang_ast_nodes.h"

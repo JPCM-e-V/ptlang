@@ -9,6 +9,11 @@
 #include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
 #include <llvm/Support/Debug.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/TargetParser/Host.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/IR/LegacyPassManager.h>
 
 #include "stb_ds.h"
 
@@ -21,6 +26,7 @@ extern "C"
     {
         llvm::Value *ptr;
         llvm::Type *type;
+        bool direct;
     } ptlang_ir_builder_scope_entry;
 
     typedef struct ptlang_ir_builder_scope_variable_s
@@ -63,7 +69,7 @@ extern "C"
 
         ptlang_ir_builder_struct *structs;
 
-        llvm::Type* integer_ptrsize_type;
+        llvm::Type *integer_ptrsize_type;
 
         llvm::FunctionCallee malloc_func;
         llvm::FunctionCallee realloc_func;
@@ -101,8 +107,7 @@ extern "C"
     static llvm::GlobalVariable *ptlang_ir_builder_decl_decl(ptlang_ast_decl decl,
                                                              ptlang_ir_builder_context *ctx);
 
-    llvm::Value *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope);
-
+    ptlang_ir_builder_scope_entry *ptlang_ir_builder_scope_get(char *name, ptlang_ir_builder_scope *scope);
 #define ptlang_ir_builder_scope_init(ctx)                                                                    \
     ptlang_ir_builder_scope scope = {                                                                        \
         /*.variables=*/NULL,                                                                                 \
@@ -134,5 +139,7 @@ extern "C"
 
     static void ptlang_ir_builder_scope_end_children(ptlang_ir_builder_scope *scope,
                                                      ptlang_ir_builder_context *ctx);
-    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_decl *members);
+
+    static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_type type,
+                                                           ptlang_ir_builder_context *ctx);
 }
