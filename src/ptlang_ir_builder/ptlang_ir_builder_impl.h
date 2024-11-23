@@ -1,19 +1,23 @@
 #pragma once
 
+#include <llvm/Analysis/CGSCCPassManager.h>
+#include <llvm/Analysis/LoopAnalysisManager.h>
 #include <llvm/BinaryFormat/Dwarf.h>
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
-#include <llvm/IR/Module.h>
-#include <llvm/IR/Verifier.h>
-#include <llvm/Support/Debug.h>
-#include <llvm/Target/TargetMachine.h>
-#include <llvm/MC/TargetRegistry.h>
-#include <llvm/TargetParser/Host.h>
-#include <llvm/Support/TargetSelect.h>
 #include <llvm/IR/LegacyPassManager.h>
+#include <llvm/IR/Module.h>
+#include <llvm/IR/PassManager.h>
+#include <llvm/IR/Verifier.h>
+#include <llvm/MC/TargetRegistry.h>
+#include <llvm/Passes/PassBuilder.h>
+#include <llvm/Support/Debug.h>
+#include <llvm/Support/TargetSelect.h>
+#include <llvm/Target/TargetMachine.h>
+#include <llvm/TargetParser/Host.h>
 
 #include "stb_ds.h"
 
