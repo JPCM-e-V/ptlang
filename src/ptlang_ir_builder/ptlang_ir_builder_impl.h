@@ -3,10 +3,8 @@
 #include <llvm/Analysis/CGSCCPassManager.h>
 #include <llvm/Analysis/LoopAnalysisManager.h>
 #include <llvm/BinaryFormat/Dwarf.h>
-#include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/Function.h>
 #include <llvm/IR/GlobalValue.h>
-#include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
@@ -16,97 +14,19 @@
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Debug.h>
 #include <llvm/Support/TargetSelect.h>
-#include <llvm/Target/TargetMachine.h>
 #include <llvm/TargetParser/Host.h>
 
 #include "stb_ds.h"
 
-#include "ptlang_ir_builder.h"
+#include "ptlang_ir_builder_llvm.h"
+
 extern "C"
 {
 #include <stddef.h>
-
-    typedef struct ptlang_ir_builder_scope_entry_s
-    {
-        llvm::Value *ptr;
-        llvm::Type *type;
-        bool direct;
-    } ptlang_ir_builder_scope_entry;
-
-    typedef struct ptlang_ir_builder_scope_variable_s
-    {
-        char *key;
-        ptlang_ir_builder_scope_entry value;
-    } ptlang_ir_builder_scope_variable;
-
-    typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
-    struct ptlang_ir_builder_scope_s
-    {
-        ptlang_ir_builder_scope_variable *variables;
-        ptlang_ir_builder_scope *parent;
-    };
-
-    struct ptlang_ir_builder_struct_entry_s
-    {
-        llvm::StructType *type;
-        ptlang_ast_struct_def def;
-    };
-
-    typedef struct ptlang_ir_builder_struct_s
-    {
-        char *key;
-        struct ptlang_ir_builder_struct_entry_s value;
-    } ptlang_ir_builder_struct;
-
-    typedef struct ptlang_ir_builder_context_s
-    {
-        llvm::IRBuilder<> builder;
-        llvm::Module module_;
-        llvm::LLVMContext &llvm_ctx;
-
-        ptlang_context *ctx;
-
-        ptlang_ir_builder_scope *scope;
-
-        llvm::DIFile *di_file;
-        llvm::DIScope *di_scope;
-
-        ptlang_ir_builder_struct *structs;
-
-        llvm::Type *integer_ptrsize_type;
-
-        llvm::FunctionCallee malloc_func;
-        llvm::FunctionCallee realloc_func;
-        llvm::FunctionCallee free_func;
-
-    } ptlang_ir_builder_context;
-
-    typedef struct ptlang_ir_builder_break_continue_entry_s ptlang_ir_builder_break_continue_entry;
-
-    typedef struct ptlang_ir_builder_fun_ctx_s
-    {
-        ptlang_ir_builder_context *ctx;
-        llvm::Function *func;
-        ptlang_ir_builder_scope *func_scope;
-        llvm::BasicBlock *return_block;
-        llvm::Value *return_ptr;
-        ptlang_ir_builder_break_continue_entry *break_continue;
-    } ptlang_ir_builder_fun_ctx;
-
-    struct ptlang_ir_builder_break_continue_entry_s
-    {
-        ptlang_ir_builder_break_continue_entry *parent;
-        llvm::BasicBlock *break_target;
-        llvm::BasicBlock *continue_target;
-        ptlang_ir_builder_scope *scope;
-    };
-
     static void ptlang_ir_builder_module(ptlang_ast_module module, ptlang_ir_builder_context *ctx);
 
     static void ptlang_ir_builder_struct_defs(ptlang_ast_struct_def *struct_defs,
                                               ptlang_ir_builder_context *ctx);
-    static llvm::Type *ptlang_ir_builder_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx);
-    static void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx);
 
     static llvm::GlobalVariable *ptlang_ir_builder_decl_decl(ptlang_ast_decl decl,
                                                              ptlang_ir_builder_context *ctx);
@@ -127,7 +47,6 @@ extern "C"
 
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx);
 
-    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx);
     static llvm::Value *ptlang_ir_builder_exp_and_cast(ptlang_ast_exp exp, ptlang_ast_type type,
                                                        ptlang_ir_builder_fun_ctx *ctx);
     static llvm::Value *ptlang_ir_builder_cast(llvm::Value *input, ptlang_ast_type from, ptlang_ast_type to,

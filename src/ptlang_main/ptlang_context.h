@@ -2,11 +2,20 @@
 #define PTLANG_CONTEXT_H
 
 #include "ptlang_ast.h"
-#include <llvm-c/Target.h>
+// #include <llvm-c/Target.h>
 
 typedef struct ptlang_context_s ptlang_context;
 
+#ifdef __cplusplus
+}
+#endif
+
 #include "ptlang_ir_builder.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
 
 typedef struct ptlang_context_type_scope_entry_s
 {

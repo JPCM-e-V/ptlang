@@ -11,28 +11,30 @@ extern "C"
 
     void ptlang_ir_builder_dump_module(ptlang_ast_module module, ptlang_context *context)
     {
-        llvm::LLVMContext llvm_ctx = llvm::LLVMContext();
+        // llvm::LLVMContext llvm_ctx = llvm::LLVMContext();
 
-        ptlang_ir_builder_scope global_scope = {};
+        // ptlang_ir_builder_scope global_scope = {};
 
-        ptlang_ir_builder_context ctx = {
-            /*.builder =*/llvm::IRBuilder<>(llvm_ctx),
-            /*.module_ =*/llvm::Module("name", llvm_ctx),
-            /*.llvm_ctx =*/llvm_ctx,
-            /*.ctx =*/context,
-            /*.scope =*/&global_scope,
-            /*.di_file =*/llvm::DIFile::get(llvm_ctx, "test.ptl", "/tmp"),
-        };
+        // ptlang_ir_builder_context ctx = {
+        //     /*.builder =*/llvm::IRBuilder<>(llvm_ctx),
+        //     /*.module_ =*/llvm::Module("name", llvm_ctx),
+        //     /*.llvm_ctx =*/llvm_ctx,
+        //     /*.ctx =*/context,
+        //     /*.scope =*/&global_scope,
+        //     /*.di_file =*/llvm::DIFile::get(llvm_ctx, "test.ptl", "/tmp"),
+        // };
 
-        ctx.module_.setDataLayout(context->target_machine->createDataLayout());
-        ctx.module_.setTargetTriple(context->target_machine->getTargetTriple().str());
+        // ctx.module_.setDataLayout(context->target_machine->createDataLayout());
+        // ctx.module_.setTargetTriple(context->target_machine->getTargetTriple().str());
 
-        ctx.di_scope = llvm::DICompileUnit::getDistinct(
-            llvm_ctx, 0, ctx.di_file, "ptlang 0.0.0", false, "", 0, "",
-            llvm::DICompileUnit::DebugEmissionKind::FullDebug, llvm::DICompositeTypeArray(),
-            llvm::DIScopeArray(), llvm::DIGlobalVariableExpressionArray(), llvm::DIImportedEntityArray(),
-            llvm::DIMacroNodeArray(), 0, false, false, llvm::DICompileUnit::DebugNameTableKind::Default,
-            false, "", "");
+        // ctx.di_scope = llvm::DICompileUnit::getDistinct(
+        //     llvm_ctx, 0, ctx.di_file, "ptlang 0.0.0", false, "", 0, "",
+        //     llvm::DICompileUnit::DebugEmissionKind::FullDebug, llvm::DICompositeTypeArray(),
+        //     llvm::DIScopeArray(), llvm::DIGlobalVariableExpressionArray(), llvm::DIImportedEntityArray(),
+        //     llvm::DIMacroNodeArray(), 0, false, false, llvm::DICompileUnit::DebugNameTableKind::Default,
+        //     false, "", "");
+
+        ptlang_ir_builder_make_ctx(ctx, context);
 
         // ctx.ctx = context;
 
@@ -110,27 +112,11 @@ extern "C"
 
         delete ctx.ctx->target_machine;
 
-        shfree(global_scope.variables);
-
         ptlang_ir_builder_context_destroy(&ctx);
     }
 
     static void ptlang_ir_builder_module(ptlang_ast_module module, ptlang_ir_builder_context *ctx)
     {
-        // Add external (memory) functions
-
-        ctx->integer_ptrsize_type = llvm::IntegerType::get(ctx->llvm_ctx, ctx->ctx->pointer_bytes >> 3);
-
-        llvm::Type *ptr_type = llvm::PointerType::getUnqual(ctx->llvm_ctx);
-
-        ctx->malloc_func = ctx->module_.getOrInsertFunction(
-            "malloc", llvm::FunctionType::get(ptr_type, ctx->integer_ptrsize_type, false));
-
-        ctx->realloc_func = ctx->module_.getOrInsertFunction(
-            "realloc", llvm::FunctionType::get(ptr_type, {ptr_type, ctx->integer_ptrsize_type}, false));
-
-        ctx->free_func = ctx->module_.getOrInsertFunction(
-            "free", llvm::FunctionType::get(llvm::Type::getVoidTy(ctx->llvm_ctx), ptr_type, false));
 
         // Building the module (structs, globals, functions)
 
@@ -348,7 +334,7 @@ extern "C"
         ctx->scope = ctx->scope->parent;
     }
 
-    static llvm::Type *ptlang_ir_builder_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
+    llvm::Type *ptlang_ir_builder_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx)
     {
         ast_type = ptlang_context_unname_type(ast_type, ctx->ctx->type_scope);
         switch (ptlang_rc_deref(ast_type).type)
@@ -566,7 +552,7 @@ extern "C"
     static llvm::Constant *ptlang_ir_builder_exp_const(ptlang_ast_exp exp, ptlang_ir_builder_context *ctx)
     {
 
-        printf("ds %d %s\n", ptlang_rc_deref(exp).type, ptlang_rc_deref(exp).content.str_prepresentation);
+        // printf("ds %d %s\n", ptlang_rc_deref(exp).type, ptlang_rc_deref(exp).content.str_prepresentation);
 
         llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx);
         switch (ptlang_rc_deref(exp).type)
@@ -700,11 +686,8 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_BINARY:
         {
-            uint32_t bit_size = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).type ==
-                                        ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER
-                                    ? ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.size
-                                    : ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.float_size;
-            uint32_t byte_size = (bit_size - 1) / 8 + 1;
+            uint32_t byte_size = ptlang_eval_calc_byte_size(ptlang_rc_deref(exp).ast_type);
+            uint32_t bit_size = byte_size >> 3;
 
             // LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
 
@@ -736,7 +719,11 @@ extern "C"
         }
     }
 
-    static void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx) { shfree(ctx->structs); }
+    void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx)
+    {
+        shfree(ctx->scope->variables);
+        shfree(ctx->structs);
+    }
     void ptlang_ir_builder_store_data_layout(ptlang_context *ctx)
     {
         std::string triple = llvm::sys::getDefaultTargetTriple();
@@ -764,7 +751,7 @@ extern "C"
         ctx->pointer_bytes = ctx->target_machine->createDataLayout().getPointerSize();
     }
 
-    static llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
+    llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
     {
         llvm::Value *ptr = ptlang_ir_builder_exp_ptr(exp, ctx);
         if (ptr != NULL)

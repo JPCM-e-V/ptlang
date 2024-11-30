@@ -115,7 +115,7 @@ target_include_directories(ptlang_verify
 
 
 add_library(ptlang_eval OBJECT
-            ${PTLANG_EVAL_SRC_DIR}/ptlang_eval.c)
+            ${PTLANG_EVAL_SRC_DIR}/ptlang_eval.cc)
 
 
 target_include_directories(ptlang_eval

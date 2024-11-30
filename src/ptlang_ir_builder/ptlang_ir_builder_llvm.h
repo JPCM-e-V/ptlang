@@ -1,23 +1,91 @@
-#pragma once
 
-#ifdef __cplusplus
-#    include <llvm/Target/TargetMachine.h>
+#include "ptlang_ir_builder.h"
+
+#include <llvm/IR/DebugInfoMetadata.h>
+#include <llvm/IR/IRBuilder.h>
 
 extern "C"
 {
-    typedef llvm::TargetMachine llvm_target_machine;
-#else
-typedef struct llvm_target_machine llvm_target_machine;
-#endif
 
-#include "ptlang_ast_nodes.h"
-#include "ptlang_context.h"
-    void ptlang_ir_builder_dump_module(ptlang_ast_module module, ptlang_context *ctx);
-    void ptlang_ir_builder_store_data_layout(ptlang_context *ctx);
+    typedef struct ptlang_ir_builder_scope_entry_s
+    {
+        llvm::Value *ptr;
+        llvm::Type *type;
+        bool direct;
+    } ptlang_ir_builder_scope_entry;
 
-#ifdef __cplusplus
+    typedef struct ptlang_ir_builder_scope_variable_s
+    {
+        char *key;
+        ptlang_ir_builder_scope_entry value;
+    } ptlang_ir_builder_scope_variable;
+
+    typedef struct ptlang_ir_builder_scope_s ptlang_ir_builder_scope;
+    struct ptlang_ir_builder_scope_s
+    {
+        ptlang_ir_builder_scope_variable *variables;
+        ptlang_ir_builder_scope *parent;
+    };
+
+    struct ptlang_ir_builder_struct_entry_s
+    {
+        llvm::StructType *type;
+        ptlang_ast_struct_def def;
+    };
+
+    typedef struct ptlang_ir_builder_struct_s
+    {
+        char *key;
+        struct ptlang_ir_builder_struct_entry_s value;
+    } ptlang_ir_builder_struct;
+
+    typedef struct ptlang_ir_builder_context_s
+    {
+        llvm::IRBuilder<> builder;
+        llvm::Module module_;
+        llvm::LLVMContext &llvm_ctx;
+
+        ptlang_context *ctx;
+
+        ptlang_ir_builder_scope *scope;
+
+        llvm::DIFile *di_file;
+        llvm::DIScope *di_scope;
+
+        ptlang_ir_builder_struct *structs;
+
+        llvm::Type *integer_ptrsize_type;
+
+        llvm::FunctionCallee malloc_func;
+        llvm::FunctionCallee realloc_func;
+        llvm::FunctionCallee free_func;
+
+    } ptlang_ir_builder_context;
+
+    typedef struct ptlang_ir_builder_break_continue_entry_s ptlang_ir_builder_break_continue_entry;
+
+    struct ptlang_ir_builder_break_continue_entry_s
+    {
+        ptlang_ir_builder_break_continue_entry *parent;
+        llvm::BasicBlock *break_target;
+        llvm::BasicBlock *continue_target;
+        ptlang_ir_builder_scope *scope;
+    };
+
+    typedef struct ptlang_ir_builder_fun_ctx_s
+    {
+        ptlang_ir_builder_context *ctx;
+        llvm::Function *func;
+        ptlang_ir_builder_scope *func_scope;
+        llvm::BasicBlock *return_block;
+        llvm::Value *return_ptr;
+        ptlang_ir_builder_break_continue_entry *break_continue;
+    } ptlang_ir_builder_fun_ctx;
+
+    llvm::Type *ptlang_ir_builder_type(ptlang_ast_type ast_type, ptlang_ir_builder_context *ctx);
+    void ptlang_ir_builder_context_destroy(ptlang_ir_builder_context *ctx);
+    llvm::Value *ptlang_ir_builder_exp(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx);
 }
-#endif
 
 #define ptlang_ir_builder_make_ctx(variable, ptlang_context)                                                 \
     llvm::LLVMContext llvm_ctx = llvm::LLVMContext();                                                        \

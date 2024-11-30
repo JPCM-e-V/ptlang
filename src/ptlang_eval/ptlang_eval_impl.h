@@ -1,11 +1,16 @@
 #pragma once
 
 #include "ptlang_eval.h"
-#include "ptlang_ir_builder.h"
+#include "ptlang_ir_builder_llvm.h"
 #include "ptlang_utils.h"
 
-#include <llvm-c/Core.h>
-#include <llvm-c/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/ExecutionEngine.h>
+#include <llvm/ExecutionEngine/GenericValue.h>
+#include <llvm/ExecutionEngine/Interpreter.h>
+#include <llvm/Transforms/Utils/Cloning.h>
+
+// #include <llvm-c/Core.h>
+// #include <llvm-c/ExecutionEngine.h>
 
 // typedef struct ptlang_eval_value_s
 // {
