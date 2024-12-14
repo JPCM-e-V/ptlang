@@ -19,6 +19,7 @@
 #include "stb_ds.h"
 
 #include "ptlang_ir_builder_llvm.h"
+#include "ptlang_eval.h"
 
 extern "C"
 {

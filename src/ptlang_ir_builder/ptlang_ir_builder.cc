@@ -687,21 +687,19 @@ extern "C"
         case ptlang_ast_exp_s::PTLANG_AST_EXP_BINARY:
         {
             uint32_t byte_size = ptlang_eval_calc_byte_size(ptlang_rc_deref(exp).ast_type);
-            uint32_t bit_size = byte_size >> 3;
 
             // LLVMValueRef *bytes = ptlang_malloc(sizeof(LLVMValueRef) * byte_size);
 
             // LLVMTypeRef byte = LLVMInt8Type();
 
-            llvm::Type *type = llvm::IntegerType::get(ctx->llvm_ctx, bit_size);
+            llvm::Type *type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx);
 
             llvm::Constant *value = llvm::ConstantInt::get(type, 0, false);
-            llvm::Constant *one = llvm::ConstantInt::get(type, 1, false);
+            llvm::Constant *eight = llvm::ConstantInt::get(type, 8, false);
 
             for (uint32_t i = 0; i < byte_size; i++)
             {
-
-                value = llvm::ConstantExpr::getShl(value, one);
+                value = llvm::ConstantExpr::getShl(value, eight);
                 value = llvm::ConstantExpr::getAdd(
                     value,
                     llvm::ConstantInt::get(
@@ -710,8 +708,8 @@ extern "C"
                         false));
             }
 
-            value = llvm::ConstantExpr::getTruncOrBitCast(
-                value, ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx));
+            // value = llvm::ConstantExpr::getTruncOrBitCast(
+            //     value, ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx));
             return value;
         }
         default:
@@ -1359,6 +1357,7 @@ extern "C"
                 }
                 else
                 {
+                    printf("hi\n");
                     return ctx->builder.CreateZExt(input, to_llvm, "cast_int_unsigned_ext");
                 }
             }

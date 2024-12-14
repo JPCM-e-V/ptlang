@@ -57,11 +57,10 @@ extern "C"
         ir_ctx.module_.print(llvm::dbgs(), NULL, false, true);
 #endif
 
-
         // llvm::clone_module
 
         llvm::EngineBuilder eb = llvm::EngineBuilder(llvm::CloneModule(ir_ctx.module_));
-        ;
+
         eb.setEngineKind(llvm::EngineKind::Interpreter);
         std::string err;
         eb.setErrorStr(&err);
@@ -99,12 +98,12 @@ extern "C"
 
         delete ee;
 
-        for (uint32_t i = 0; i < byte_size; i++)
-        {
+        // for (uint32_t i = 0; i < byte_size; i++)
+        // {
 
-            printf("%x\n", binary[i]);
-        }
-        printf("end\n");
+        //     printf("%x\n", binary[i]);
+        // }
+        // printf("end\n");
 
         ptlang_ir_builder_context_destroy(&ir_ctx);
 

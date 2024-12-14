@@ -171,4 +171,11 @@ static void ptlang_verify_global_decls(ptlang_ast_module module, ptlang_context 
 static void ptlang_verify_set_init(ptlang_verify_node_info *node_info, ptlang_ast_exp init,
                                    ptlang_context *ctx);
 
+static void ptlang_verify_make_and_check_implicit_cast(ptlang_ast_exp *exp, ptlang_ast_type type,
+                                                       ptlang_ast_code_position pos, ptlang_context *ctx,
+                                                       ptlang_error **errors);
+
+static void ptlang_verify_make_implicit_cast(ptlang_ast_exp *exp, ptlang_ast_type type,
+                                             ptlang_ast_code_position pos);
+
 #endif
