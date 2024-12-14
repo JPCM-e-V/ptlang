@@ -9,7 +9,6 @@
 #include <llvm/IR/LegacyPassManager.h>
 #include <llvm/IR/Module.h>
 #include <llvm/IR/PassManager.h>
-#include <llvm/IR/Verifier.h>
 #include <llvm/MC/TargetRegistry.h>
 #include <llvm/Passes/PassBuilder.h>
 #include <llvm/Support/Debug.h>
@@ -18,6 +17,7 @@
 
 #include "stb_ds.h"
 
+#define FOLDER llvm::ConstantFolder
 #include "ptlang_ir_builder_llvm.h"
 #include "ptlang_eval.h"
 

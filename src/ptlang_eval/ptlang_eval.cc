@@ -37,13 +37,29 @@ extern "C"
         // };
         ptlang_ir_builder_fun_ctx fun_ctx = {&ir_ctx, function, ir_ctx.scope};
 
+        uint32_t byte_size = ptlang_eval_calc_byte_size(ptlang_rc_deref(exp).ast_type);
+
         // LLVMPositionBuilderAtEnd(B, entry);
         ir_ctx.builder.SetInsertPointPastAllocas(fun_ctx.func);
 
         // LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
         llvm::Value *value = ptlang_ir_builder_exp(exp, &fun_ctx);
-        // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
-        ir_ctx.builder.CreateStore(value, fun_ctx.func->getArg(0));
+        llvm::Constant *dyn_casted = llvm::dyn_cast<llvm::Constant>(value);
+        if (dyn_casted != NULL)
+        {
+            llvm::Value *global = new llvm::GlobalVariable(
+                type, true, llvm::GlobalValue::LinkageTypes::InternalLinkage, dyn_casted, "evaled_const");
+            // ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt , global, std::nullopt,
+            // llvm::ConstantInt::get(ir_ctx.integer_ptrsize_type, byte_size, false));
+            ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt, global, std::nullopt,
+                                        byte_size);
+        }
+        else
+        {
+            // llvm::dyn_cast
+            // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
+            ir_ctx.builder.CreateStore(value, fun_ctx.func->getArg(0));
+        }
 
         // LLVMBuildRetVoid(B);
         ir_ctx.builder.CreateRetVoid();
@@ -53,8 +69,13 @@ extern "C"
         // LLVMExecutionEngineRef ee;
         // llvm::ExecutionEngine ee = llvm::ExecutionEngine::
 
-#if 0
+#if 1
         ir_ctx.module_.print(llvm::dbgs(), NULL, false, true);
+#endif
+#ifndef NDEBUG
+        bool broken_debug_info;
+        ptlang_assert(!llvm::verifyModule(ir_ctx.module_, &llvm::dbgs(), &broken_debug_info));
+        ptlang_assert(!broken_debug_info);
 #endif
 
         // llvm::clone_module
@@ -80,8 +101,6 @@ extern "C"
         //     ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER
         //         ? ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.size
         //         : ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.float_size;
-
-        uint32_t byte_size = ptlang_eval_calc_byte_size(ptlang_rc_deref(exp).ast_type);
 
         uint8_t *binary = (uint8_t *)memset(ptlang_malloc(byte_size), 0x6b, byte_size);
 

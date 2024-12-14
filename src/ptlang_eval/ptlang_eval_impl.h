@@ -1,9 +1,12 @@
 #pragma once
 
 #include "ptlang_eval.h"
+#include <llvm/IR/NoFolder.h>
+#define FOLDER llvm::NoFolder
 #include "ptlang_ir_builder_llvm.h"
 #include "ptlang_utils.h"
 
+#include <llvm/Support/Casting.h>
 #include <llvm/ExecutionEngine/ExecutionEngine.h>
 #include <llvm/ExecutionEngine/GenericValue.h>
 #include <llvm/ExecutionEngine/Interpreter.h>

@@ -3,6 +3,7 @@
 
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Verifier.h>
 
 extern "C"
 {
@@ -41,7 +42,7 @@ extern "C"
 
     typedef struct ptlang_ir_builder_context_s
     {
-        llvm::IRBuilder<> builder;
+        llvm::IRBuilder<FOLDER> builder;
         llvm::Module module_;
         llvm::LLVMContext &llvm_ctx;
 
@@ -93,7 +94,7 @@ extern "C"
     ptlang_ir_builder_scope global_scope = {};                                                               \
                                                                                                              \
     ptlang_ir_builder_context variable = {                                                                   \
-        /*.builder =*/llvm::IRBuilder<>(llvm_ctx),                                                           \
+        /*.builder =*/llvm::IRBuilder<FOLDER>(llvm_ctx),                                                     \
         /*.module_ =*/llvm::Module("name", llvm_ctx),                                                        \
         /*.llvm_ctx =*/llvm_ctx,                                                                             \
         /*.ctx =*/ptlang_context,                                                                            \

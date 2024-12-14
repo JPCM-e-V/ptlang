@@ -768,6 +768,7 @@ extern "C"
             if (ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).type !=
                 ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH)
             {
+                
                 llvm::Value *ptr =
                     ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
                 ctx->ctx->builder.CreateStore(val, ptr);
@@ -1197,8 +1198,8 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY:
         {
-            llvm::Value *arr = llvm::PoisonValue::get(
-                ptlang_ir_builder_type(ptlang_rc_deref(exp).content.array.type, ctx->ctx));
+            llvm::Value *arr =
+                llvm::PoisonValue::get(ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx));
             for (size_t i = 0; i < arrlenu(ptlang_rc_deref(exp).content.array.values); i++)
             {
                 arr = ctx->ctx->builder.CreateInsertValue(
@@ -1347,25 +1348,68 @@ extern "C"
         {
             if (ptlang_rc_deref(from).content.integer.size > ptlang_rc_deref(to).content.integer.size)
             {
-                return ctx->builder.CreateTrunc(input, to_llvm, "cast_int_trunc");
+                return ctx->builder.CreateTrunc(input, to_llvm, "cast");
             }
             else if (ptlang_rc_deref(from).content.integer.size < ptlang_rc_deref(to).content.integer.size)
             {
                 if (ptlang_rc_deref(from).content.integer.is_signed)
                 {
-                    return ctx->builder.CreateSExt(input, to_llvm, "cast_int_signed_ext");
+                    return ctx->builder.CreateSExt(input, to_llvm, "cast");
                 }
                 else
                 {
-                    printf("hi\n");
-                    return ctx->builder.CreateZExt(input, to_llvm, "cast_int_unsigned_ext");
+                    return ctx->builder.CreateZExt(input, to_llvm, "cast");
                 }
             }
             else
                 return input;
         }
-        // TODO else if ... (see  src/ptlang_ir_builder_old/ptlang_ir_builder.c:723)
-        return NULL;
+        else if (ptlang_rc_deref(from).type == ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER &&
+                 ptlang_rc_deref(to).type == ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT)
+        {
+            if (ptlang_rc_deref(from).content.integer.is_signed)
+            {
+                return ctx->builder.CreateSIToFP(input, to_llvm, "cast");
+            }
+            else
+            {
+
+                return ctx->builder.CreateUIToFP(input, to_llvm, "cast");
+            }
+        }
+        else if (ptlang_rc_deref(from).type == ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT &&
+                 ptlang_rc_deref(to).type == ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
+        {
+
+            if (ptlang_rc_deref(to).content.integer.is_signed)
+            {
+                return ctx->builder.CreateFPToSI(input, to_llvm, "cast");
+            }
+            else
+            {
+                return ctx->builder.CreateFPToUI(input, to_llvm, "cast");
+            }
+        }
+        else if (ptlang_rc_deref(from).type == ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT &&
+                 ptlang_rc_deref(to).type == ptlang_ast_type_s::PTLANG_AST_TYPE_FLOAT)
+        {
+            if (ptlang_rc_deref(from).content.float_size < ptlang_rc_deref(to).content.float_size)
+            {
+                return ctx->builder.CreateFPExt(input, to_llvm, "cast");
+            }
+            else if (ptlang_rc_deref(from).content.float_size > ptlang_rc_deref(to).content.float_size)
+            {
+                return ctx->builder.CreateFPTrunc(input, to_llvm, "cast");
+            }
+            else
+            {
+                return input;
+            }
+        }
+        else
+        {
+            return input;
+        }
     }
 
     static llvm::Value *ptlang_ir_builder_exp_ptr(ptlang_ast_exp exp, ptlang_ir_builder_fun_ctx *ctx)
