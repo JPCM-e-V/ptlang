@@ -218,6 +218,7 @@ struct ptlang_ast_exp_s
         PTLANG_AST_EXP_REFERENCE,
         PTLANG_AST_EXP_DEREFERENCE,
         PTLANG_AST_EXP_BINARY,
+        PTLANG_AST_EXP_EMPTY_HEAP_ARRAY,
     } type;
     union
     {

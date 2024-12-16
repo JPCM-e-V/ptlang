@@ -636,7 +636,7 @@ ptlang_ast_stmt ptlang_ast_stmt_return_value_new(ptlang_ast_exp return_ptr, ptla
     };
     return stmt;
 }
-ptlang_ast_stmt ptlang_ast_stmt_return_new( ptlang_ast_code_position pos)
+ptlang_ast_stmt ptlang_ast_stmt_return_new(ptlang_ast_code_position pos)
 {
     ptlang_ast_stmt stmt;
     ptlang_rc_alloc(stmt);
@@ -956,6 +956,8 @@ void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)
         break;
     case PTLANG_AST_EXP_BINARY:
         ptlang_free(exp->content.binary);
+        break;
+    case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         break;
     }
 }
@@ -1291,6 +1293,11 @@ ptlang_utils_str ptlang_ast_exp_to_string(ptlang_ast_exp exp)
         // TODO writeable
         ptlang_utils_build_str(str, CONST_STR(ptlang_ast_exp_type_get_symbol(exp)),
                                ptlang_ast_exp_to_string(ptlang_rc_deref(exp).content.reference.value));
+        break;
+    }
+    case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
+    {
+        // TODO
         break;
     }
     case PTLANG_AST_EXP_BINARY:

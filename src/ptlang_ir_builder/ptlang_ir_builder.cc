@@ -42,13 +42,14 @@ extern "C"
 
         ptlang_ir_builder_module(module, &ctx);
 
+        ctx.module_.print(llvm::dbgs(), NULL, false, true);
+
 #ifndef NDEBUG
         bool broken_debug_info;
         ptlang_assert(!llvm::verifyModule(ctx.module_, &llvm::dbgs(), &broken_debug_info));
         ptlang_assert(!broken_debug_info);
 #endif
 
-        ctx.module_.print(llvm::dbgs(), NULL, false, true);
         // ctx.module_.
 
         // llvm::TargetMachine
@@ -139,8 +140,19 @@ extern "C"
 
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(module).declarations); i++)
         {
-            glob_vars[i]->setInitializer(ptlang_ir_builder_exp_const(
-                ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init, ctx));
+            printf("%s\n", ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).name.name);
+            if (ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init != NULL)
+            {
+                printf("1\n");
+                glob_vars[i]->setInitializer(ptlang_ir_builder_exp_const(
+                    ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).init, ctx));
+            }
+            else
+            {
+                printf("2\n");
+                glob_vars[i]->setInitializer(llvm::PoisonValue::get(ptlang_ir_builder_type(
+                    ptlang_rc_deref(ptlang_rc_deref(module).declarations[i]).type, ctx)));
+            }
         }
 
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(module).functions); i++)
@@ -531,6 +543,8 @@ extern "C"
                     ctx->llvm_ctx,
                     llvm::ArrayRef(elements, arrlenu(ptlang_rc_deref(entry.value.struct_def).members)))));
 
+                ptlang_free(elements);
+
                 ret_type = struct_;
             }
             else
@@ -712,6 +726,14 @@ extern "C"
             //     value, ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx));
             return value;
         }
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
+        {
+            return llvm::ConstantStruct::get(
+                (llvm::StructType *)ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx),
+                llvm::PoisonValue::get(llvm::PointerType::getUnqual(ptlang_ir_builder_type(
+                    ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.heap_array.type, ctx))),
+                llvm::ConstantInt::get(ctx->integer_ptrsize_type, 0));
+        }
         default:
             abort();
         }
@@ -768,7 +790,7 @@ extern "C"
             if (ptlang_rc_deref(ptlang_rc_deref(exp).content.binary_operator.left_value).type !=
                 ptlang_ast_exp_s::PTLANG_AST_EXP_LENGTH)
             {
-                
+
                 llvm::Value *ptr =
                     ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.binary_operator.left_value, ctx);
                 ctx->ctx->builder.CreateStore(val, ptr);
@@ -1180,6 +1202,7 @@ extern "C"
         case ptlang_ast_exp_s::PTLANG_AST_EXP_INTEGER:
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
         case ptlang_ast_exp_s::PTLANG_AST_EXP_BINARY:
+        case ptlang_ast_exp_s::PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         {
             return ptlang_ir_builder_exp_const(exp, ctx->ctx);
         }

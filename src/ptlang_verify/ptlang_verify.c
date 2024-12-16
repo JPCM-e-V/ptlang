@@ -1064,7 +1064,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
 
             ptlang_verify_make_and_check_implicit_cast(
                 &ptlang_rc_deref(exp).content.struct_.members[i].exp, member_type_in_struct_def,
-                ptlang_rc_deref(ptlang_rc_deref(exp).content.array.values[i]).pos, ctx, errors);
+                ptlang_rc_deref(ptlang_rc_deref(exp).content.struct_.members[i].exp).pos, ctx, errors);
         }
 
         break;
@@ -1346,6 +1346,8 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     {
         abort();
     }
+    case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
+        break;
     }
 }
 
@@ -1979,6 +1981,9 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
     case PTLANG_AST_EXP_BINARY:
     {
         abort();
+    }
+    case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
+    {
         break;
     }
     }
@@ -2281,14 +2286,22 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
         {
             ptlang_ast_exp value = ptlang_verify_eval(ptlang_rc_deref(exp).content.cast.value, eval_mode,
                                                       node, nodes, node_table, module, ctx, errors);
-            ptlang_rc_alloc(substituted);
-            ptlang_rc_deref(substituted) = (struct ptlang_ast_exp_s){
-                .type = ptlang_rc_deref(exp).type,
-                .content.cast.type = ptlang_rc_add_ref(ptlang_rc_deref(exp).content.cast.type),
-                .content.cast.value = value,
-                .pos = ptlang_rc_add_ref(ptlang_rc_deref(exp).pos),
-                .ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type),
-            };
+            if (ptlang_context_type_equals(ptlang_rc_deref(value).ast_type,
+                                           ptlang_rc_deref(exp).content.cast.type, ctx->type_scope))
+            {
+                evaluated = value;
+            }
+            else
+            {
+                ptlang_rc_alloc(substituted);
+                ptlang_rc_deref(substituted) = (struct ptlang_ast_exp_s){
+                    .type = ptlang_rc_deref(exp).type,
+                    .content.cast.type = ptlang_rc_add_ref(ptlang_rc_deref(exp).content.cast.type),
+                    .content.cast.value = value,
+                    .pos = ptlang_rc_add_ref(ptlang_rc_deref(exp).pos),
+                    .ast_type = ptlang_rc_add_ref(ptlang_rc_deref(exp).ast_type),
+                };
+            }
             break;
         }
         case PTLANG_AST_EXP_STRUCT_MEMBER:
@@ -2419,6 +2432,7 @@ static ptlang_ast_exp ptlang_verify_eval(ptlang_ast_exp exp, enum ptlang_verify_
             break;
         }
         case PTLANG_AST_EXP_BINARY:
+        case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         {
             evaluated = ptlang_rc_add_ref(exp);
             break;
@@ -2479,16 +2493,15 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
 {
     if (type == NULL)
         return NULL;
-    switch (ptlang_rc_deref(type).type)
-    {
-    case PTLANG_AST_TYPE_VOID:
-    case PTLANG_AST_TYPE_HEAP_ARRAY:
-    case PTLANG_AST_TYPE_FUNCTION:
-    case PTLANG_AST_TYPE_REFERENCE:
-        return NULL;
-    default:
-        break;
-    }
+    // switch (ptlang_rc_deref(type).type)
+    // {
+    // case PTLANG_AST_TYPE_VOID:
+    // case PTLANG_AST_TYPE_HEAP_ARRAY:
+    // case PTLANG_AST_TYPE_FUNCTION:
+    // case PTLANG_AST_TYPE_REFERENCE:
+    // default:
+    //     break;
+    // }
     type = ptlang_context_unname_type(type, ctx->type_scope);
 
     ptlang_ast_exp default_value;
@@ -2563,14 +2576,19 @@ ptlang_ast_exp ptlang_verify_get_default_value(ptlang_ast_type type, ptlang_cont
                str_size);
         break;
     }
+    case PTLANG_AST_TYPE_HEAP_ARRAY:
+    {
+        ptlang_rc_deref(default_value) = (struct ptlang_ast_exp_s){
+            .type = PTLANG_AST_EXP_EMPTY_HEAP_ARRAY,
+        };
+        break;
+    }
 
     case PTLANG_AST_TYPE_VOID:
-    case PTLANG_AST_TYPE_HEAP_ARRAY:
     case PTLANG_AST_TYPE_FUNCTION:
     case PTLANG_AST_TYPE_REFERENCE:
     {
-        abort();
-        break;
+        return NULL;
     }
     }
     ptlang_rc_deref(default_value).ast_type = ptlang_rc_add_ref(type);
@@ -2997,6 +3015,7 @@ static bool ptlang_verify_build_graph(ptlang_utils_graph_node *node, ptlang_ast_
         ptlang_verify_build_graph(node, ptlang_rc_deref(exp).content.unary_operator, false, node_table, ctx);
         return false;
     case PTLANG_AST_EXP_BINARY:
+    case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         break;
     case PTLANG_AST_EXP_ASSIGNMENT:
     case PTLANG_AST_EXP_FUNCTION_CALL:

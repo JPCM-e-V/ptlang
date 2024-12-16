@@ -45,21 +45,21 @@ extern "C"
         // LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
         llvm::Value *value = ptlang_ir_builder_exp(exp, &fun_ctx);
         llvm::Constant *dyn_casted = llvm::dyn_cast<llvm::Constant>(value);
-        if (dyn_casted != NULL)
-        {
-            llvm::Value *global = new llvm::GlobalVariable(
-                type, true, llvm::GlobalValue::LinkageTypes::InternalLinkage, dyn_casted, "evaled_const");
-            // ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt , global, std::nullopt,
-            // llvm::ConstantInt::get(ir_ctx.integer_ptrsize_type, byte_size, false));
-            ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt, global, std::nullopt,
-                                        byte_size);
-        }
-        else
-        {
+        // if (dyn_casted != NULL)
+        // {
+        //     llvm::Value *global = new llvm::GlobalVariable(
+        //         type, true, llvm::GlobalValue::LinkageTypes::InternalLinkage, dyn_casted, "evaled_const");
+        //     // ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt , global, std::nullopt,
+        //     // llvm::ConstantInt::get(ir_ctx.integer_ptrsize_type, byte_size, false));
+        //     ir_ctx.builder.CreateMemCpy(fun_ctx.func->getArg(0), std::nullopt, global, std::nullopt,
+        //                                 byte_size);
+        // }
+        // else
+        // {
             // llvm::dyn_cast
             // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
             ir_ctx.builder.CreateStore(value, fun_ctx.func->getArg(0));
-        }
+        // }
 
         // LLVMBuildRetVoid(B);
         ir_ctx.builder.CreateRetVoid();
