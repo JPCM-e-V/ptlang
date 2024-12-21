@@ -44,7 +44,7 @@ extern "C"
 
         // LLVMValueRef value = ptlang_ir_builder_exp(exp, &cxt);
         llvm::Value *value = ptlang_ir_builder_exp(exp, &fun_ctx);
-        llvm::Constant *dyn_casted = llvm::dyn_cast<llvm::Constant>(value);
+        // llvm::Constant *dyn_casted = llvm::dyn_cast<llvm::Constant>(value);
         // if (dyn_casted != NULL)
         // {
         //     llvm::Value *global = new llvm::GlobalVariable(
@@ -56,9 +56,9 @@ extern "C"
         // }
         // else
         // {
-            // llvm::dyn_cast
-            // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
-            ir_ctx.builder.CreateStore(value, fun_ctx.func->getArg(0));
+        // llvm::dyn_cast
+        // LLVMBuildStore(B, value, LLVMGetParam(function, 0));
+        ir_ctx.builder.CreateStore(value, fun_ctx.func->getArg(0));
         // }
 
         // LLVMBuildRetVoid(B);

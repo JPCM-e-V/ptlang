@@ -117,7 +117,7 @@ extern "C"
         /*Add external(memory) functions*/                                                                   \
                                                                                                              \
         variable.integer_ptrsize_type =                                                                      \
-            llvm::IntegerType::get(variable.llvm_ctx, variable.ctx->pointer_bytes >> 3);                     \
+            llvm::IntegerType::get(variable.llvm_ctx, variable.ctx->pointer_bytes << 3);                     \
                                                                                                              \
         llvm::Type *ptr_type = llvm::PointerType::getUnqual(variable.llvm_ctx);                              \
                                                                                                              \

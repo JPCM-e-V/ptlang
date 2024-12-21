@@ -16,10 +16,11 @@
 #include <llvm/TargetParser/Host.h>
 
 #include "stb_ds.h"
+#include <llvm/IR/NoFolder.h>
 
-#define FOLDER llvm::ConstantFolder
-#include "ptlang_ir_builder_llvm.h"
+#define FOLDER llvm::NoFolder
 #include "ptlang_eval.h"
+#include "ptlang_ir_builder_llvm.h"
 
 extern "C"
 {
@@ -66,4 +67,6 @@ extern "C"
 
     static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_type type,
                                                            ptlang_ir_builder_context *ctx);
+    static llvm::StructType *ptlang_ir_builder_get_heap_array_struct(ptlang_ast_type ast_type,
+                                                                     ptlang_ir_builder_context *ctx);
 }

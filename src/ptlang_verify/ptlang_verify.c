@@ -272,6 +272,10 @@ static void ptlang_verify_decl_init(ptlang_ast_decl decl, size_t scope_offset, p
         ptlang_verify_make_and_check_implicit_cast(&ptlang_rc_deref(decl).init, ptlang_rc_deref(decl).type,
                                                    ptlang_rc_deref(decl).pos, ctx, errors);
     }
+    else if (ptlang_rc_deref(decl).type != NULL)
+    {
+        ptlang_rc_deref(decl).init = ptlang_verify_get_default_value(ptlang_rc_deref(decl).type, ctx);
+    }
 }
 
 // Algo to init global vars:
@@ -1343,9 +1347,6 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         break;
     }
     case PTLANG_AST_EXP_BINARY:
-    {
-        abort();
-    }
     case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         break;
     }
@@ -1979,9 +1980,6 @@ static void ptlang_verify_exp_check_const(ptlang_ast_exp exp, ptlang_context *ct
         break;
     }
     case PTLANG_AST_EXP_BINARY:
-    {
-        abort();
-    }
     case PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
     {
         break;
