@@ -384,7 +384,10 @@ extern "C"
         }
         case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
         {
-            return llvm::PointerType::getUnqual(ptlang_ir_builder_get_heap_array_struct(ast_type, ctx));
+            llvm::Type *member_types[2] = {llvm::PointerType::getUnqual(ptlang_ir_builder_type(
+                                               ptlang_rc_deref(ast_type).content.heap_array.type, ctx)),
+                                           ctx->integer_ptrsize_type};
+            return llvm::StructType::get(ctx->llvm_ctx, llvm::ArrayRef(member_types, 2), false);
         }
         case ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY:
             return llvm::ArrayType::get(
@@ -726,7 +729,11 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_EMPTY_HEAP_ARRAY:
         {
-            return llvm::ConstantPointerNull::get((llvm::PointerType *)type);
+            return llvm::ConstantStruct::get(
+                (llvm::StructType *)ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx),
+                llvm::PoisonValue::get(llvm::PointerType::getUnqual(ptlang_ir_builder_type(
+                    ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.heap_array.type, ctx))),
+                llvm::ConstantInt::get(ctx->integer_ptrsize_type, 0));
         }
         default:
             abort();
@@ -1476,17 +1483,35 @@ extern "C"
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_ARRAY_ELEMENT:
         {
-            llvm::Value *arr_ptr =
-                ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.array_element.array, ctx);
-            if (arr_ptr == NULL)
-                return NULL;
 
-            llvm::Value *index = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.index, ctx);
+            llvm::Value *index;
+            llvm::Value *length;
+            llvm::Value *exp_ptr;
+
+            llvm::BasicBlock *no_overflow_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "no_overflow", ctx->func);
+
+            llvm::BasicBlock *old_block = ctx->ctx->builder.GetInsertBlock();
 
             if (ptlang_rc_deref(ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type)
                     .type == ptlang_ast_type_s::PTLANG_AST_TYPE_ARRAY)
             {
-                ctx->ctx->builder.CreateInBoundsGEP(
+                llvm::Value *arr_ptr =
+                    ptlang_ir_builder_exp_ptr(ptlang_rc_deref(exp).content.array_element.array, ctx);
+                if (arr_ptr == NULL)
+                    return NULL;
+
+                index = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.index, ctx);
+
+                length = llvm::ConstantInt::get(
+                    ctx->ctx->integer_ptrsize_type,
+                    ptlang_rc_deref(
+                        ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type)
+                        .content.array.len);
+
+                ctx->ctx->builder.SetInsertPoint(no_overflow_block);
+
+                exp_ptr = ctx->ctx->builder.CreateInBoundsGEP(
                     ptlang_ir_builder_type(
                         ptlang_rc_deref(
                             ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type)
@@ -1497,7 +1522,41 @@ extern "C"
             }
             else
             {
+
+                llvm::Value *heap_array_struct =
+                    ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.array, ctx);
+                index = ptlang_ir_builder_exp(ptlang_rc_deref(exp).content.array_element.index, ctx);
+
+                llvm::Value *heap_array_ptr =
+                    ctx->ctx->builder.CreateExtractValue(heap_array_struct, 0, "arrayelementextractptr");
+                length =
+                    ctx->ctx->builder.CreateExtractValue(heap_array_struct, 1, "arrayelementextractlength");
+
+                ctx->ctx->builder.SetInsertPoint(no_overflow_block);
+
+                llvm::Type *elem_type = ptlang_ir_builder_type(ptlang_rc_deref(exp).ast_type, ctx->ctx);
+
+                exp_ptr = ctx->ctx->builder.CreateInBoundsGEP(elem_type, heap_array_ptr,
+                                                              llvm::ArrayRef(index), "arrayelementgep");
             }
+            ctx->ctx->builder.SetInsertPoint(old_block);
+
+            llvm::Value *is_in_bounds =
+                ctx->ctx->builder.CreateCmp(llvm::ICmpInst::ICMP_ULT, index, length, "outofboundscmp");
+
+            llvm::BasicBlock *overflow_block =
+                llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "overflow", ctx->func);
+
+            ctx->ctx->builder.CreateAssumption()
+
+            ctx->ctx->builder.CreateCondBr(is_in_bounds, no_overflow_block, overflow_block);
+
+            ctx->ctx->builder.SetInsertPoint(overflow_block);
+            ctx->ctx->builder.CreateUnreachable();
+
+            ctx->ctx->builder.SetInsertPoint(no_overflow_block);
+
+            return exp_ptr;
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_DEREFERENCE:
         {
@@ -1709,15 +1768,5 @@ extern "C"
         }
 
         abort();
-    }
-
-    static llvm::StructType *ptlang_ir_builder_get_heap_array_struct(ptlang_ast_type ast_type,
-                                                                     ptlang_ir_builder_context *ctx)
-    {
-        llvm::Type *member_types[2] = {
-            ctx->integer_ptrsize_type,
-            llvm::ArrayType::get(
-                ptlang_ir_builder_type(ptlang_rc_deref(ast_type).content.heap_array.type, ctx), 0)};
-        return llvm::StructType::get(ctx->llvm_ctx, llvm::ArrayRef(member_types, 2), false);
     }
 }

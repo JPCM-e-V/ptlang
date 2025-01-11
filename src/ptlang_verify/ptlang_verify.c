@@ -1322,27 +1322,33 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         ptlang_verify_exp(unary, ctx, errors);
         if (ptlang_rc_deref(unary).ast_type != NULL)
         {
-            size_t type_str_size =
-                ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, NULL, ctx->type_scope);
-            char *message = ptlang_malloc(sizeof("Dereferenced expression must be a reference, but is a ") -
-                                          1 + type_str_size + sizeof("."));
-            char *message_ptr = message;
-            memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
-                   sizeof("Dereferenced expression must be a reference, but is a ") - 1);
-            message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
-            message_ptr +=
-                ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, message_ptr, ctx->type_scope);
-            memcpy(message_ptr, ".", 2);
+            if (ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).type != PTLANG_AST_TYPE_REFERENCE)
             {
+                size_t type_str_size =
+                    ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, NULL, ctx->type_scope);
+                char *message =
+                    ptlang_malloc(sizeof("Dereferenced expression must be a reference, but is a ") - 1 +
+                                  type_str_size + sizeof("."));
+                char *message_ptr = message;
+                memcpy(message_ptr, "Dereferenced expression must be a reference, but is a ",
+                       sizeof("Dereferenced expression must be a reference, but is a ") - 1);
+                message_ptr += sizeof("Dereferenced expression must be a reference, but is a ") - 1;
+                message_ptr += ptlang_context_type_to_string(ptlang_rc_deref(unary).ast_type, message_ptr,
+                                                             ctx->type_scope);
+                memcpy(message_ptr, ".", 2);
+
                 arrput(*errors, ((ptlang_error){
                                     .type = PTLANG_ERROR_TYPE,
                                     .pos = ptlang_rc_deref(ptlang_rc_deref(unary).pos),
                                     .message = message,
                                 }));
-                break;
             }
-            ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
-                ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).content.reference.type, ctx->type_scope));
+            else
+            {
+                ptlang_rc_deref(exp).ast_type = ptlang_rc_add_ref(ptlang_context_unname_type(
+                    ptlang_rc_deref(ptlang_rc_deref(unary).ast_type).content.reference.type,
+                    ctx->type_scope));
+            }
         }
         break;
     }

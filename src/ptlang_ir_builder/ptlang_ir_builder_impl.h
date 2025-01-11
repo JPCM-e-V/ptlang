@@ -67,6 +67,4 @@ extern "C"
 
     static unsigned int ptlang_ir_builder_get_struct_index(char *member_name, ptlang_ast_type type,
                                                            ptlang_ir_builder_context *ctx);
-    static llvm::StructType *ptlang_ir_builder_get_heap_array_struct(ptlang_ast_type ast_type,
-                                                                     ptlang_ir_builder_context *ctx);
 }
