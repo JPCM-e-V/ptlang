@@ -3,6 +3,7 @@
 
 #include <llvm/IR/DebugInfoMetadata.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/Module.h>
 #include <llvm/IR/Verifier.h>
 
 extern "C"

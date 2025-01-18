@@ -81,37 +81,46 @@ static void ptlang_verify_function(ptlang_ast_func function, ptlang_context *ctx
 {
     bool validate_return_type = ptlang_verify_type(ptlang_rc_deref(function).return_type, ctx, errors);
 
-    size_t function_scope_offset = arrlenu(ctx->scope);
-
     for (size_t i = 0; i < arrlenu(ptlang_rc_deref(function).parameters); i++)
     {
         if (!ptlang_verify_type(ptlang_rc_deref(ptlang_rc_deref(function).parameters[i]).type, ctx, errors))
         {
             ptlang_rc_deref(ptlang_rc_deref(function).parameters[i]).type = NULL;
         }
-        arrput(ctx->scope, ptlang_rc_deref(function).parameters[i]);
     }
 
-    size_t function_stmt_scope_offset = arrlenu(ctx->scope);
+    printf("hi\n");
 
-    bool has_return_value = false;
-    bool is_unreachable = false;
-
-    ptlang_verify_statement(ptlang_rc_deref(function).stmt, 0, validate_return_type,
-                            ptlang_rc_deref(function).return_type, function_stmt_scope_offset,
-                            &has_return_value, &is_unreachable, ctx, errors);
-
-    if (ptlang_rc_deref(ptlang_rc_deref(function).return_type).type != PTLANG_AST_TYPE_VOID &&
-        !has_return_value)
+    if (ptlang_rc_deref(function).stmt != NULL)
     {
-        arrput(*errors, ((ptlang_error){
-                            .type = PTLANG_ERROR_MISSING_RETURN_VALUE,
-                            .pos = ptlang_rc_deref(ptlang_rc_deref(function).pos),
-                            .message = "Non void function must always have a return value.",
-                        }));
+        size_t function_scope_offset = arrlenu(ctx->scope);
+
+        for (size_t i = 0; i < arrlenu(ptlang_rc_deref(function).parameters); i++)
+        {
+            arrput(ctx->scope, ptlang_rc_deref(function).parameters[i]);
+        }
+
+        size_t function_stmt_scope_offset = arrlenu(ctx->scope);
+
+        bool has_return_value = false;
+        bool is_unreachable = false;
+
+        ptlang_verify_statement(ptlang_rc_deref(function).stmt, 0, validate_return_type,
+                                ptlang_rc_deref(function).return_type, function_stmt_scope_offset,
+                                &has_return_value, &is_unreachable, ctx, errors);
+
+        if (ptlang_rc_deref(ptlang_rc_deref(function).return_type).type != PTLANG_AST_TYPE_VOID &&
+            !has_return_value)
+        {
+            arrput(*errors, ((ptlang_error){
+                                .type = PTLANG_ERROR_MISSING_RETURN_VALUE,
+                                .pos = ptlang_rc_deref(ptlang_rc_deref(function).pos),
+                                .message = "Non void function must always have a return value.",
+                            }));
+        }
+        // arrsetlen(ctx->scope, function_stmt_scope_offset);
+        arrsetlen(ctx->scope, function_scope_offset);
     }
-    // arrsetlen(ctx->scope, function_stmt_scope_offset);
-    arrsetlen(ctx->scope, function_scope_offset);
 }
 
 // returns false, if there was any error
@@ -209,6 +218,7 @@ static void ptlang_verify_statement(ptlang_ast_stmt statement, uint64_t nesting_
         *is_unreachable = true;
         break;
     case PTLANG_AST_STMT_RETURN_VAL:
+        printf("jo\n");
         *is_unreachable = true;
     case PTLANG_AST_STMT_RET_VAL:
         *has_return_value = true;
@@ -861,7 +871,7 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
     {
         errno = 0;
         char *suffix_begin;
-        uint64_t number = strtoull(ptlang_rc_deref(exp).content.str_prepresentation, &suffix_begin, 10);
+        uint64_t number = strtoull(ptlang_rc_deref(exp).content.str_prepresentation, &suffix_begin, 0);
         bool overflow = errno == ERANGE;
 
         uint32_t bits = 64;
@@ -1250,15 +1260,22 @@ static void ptlang_verify_exp(ptlang_ast_exp exp, ptlang_context *ctx, ptlang_er
         ptlang_verify_exp(ptlang_rc_deref(exp).content.array_element.index, ctx, errors);
         ptlang_verify_exp(ptlang_rc_deref(exp).content.array_element.array, ctx, errors);
 
-        ptlang_ast_type index_type =
-            ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.index).ast_type;
-        if (index_type != NULL && (ptlang_rc_deref(index_type).type != PTLANG_AST_TYPE_INTEGER ||
-                                   ptlang_rc_deref(index_type).content.integer.is_signed))
-        {
-            arrput(*errors, ptlang_verify_generate_type_error(
-                                "Array index must be an unsigned integer, but is of type ",
-                                ptlang_rc_deref(exp).content.array_element.index, ".", ctx->type_scope));
-        }
+        // ptlang_ast_type index_type =
+        //     ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.index).ast_type;
+        // if (index_type != NULL && (ptlang_rc_deref(index_type).type != PTLANG_AST_TYPE_INTEGER ||
+        //                            ptlang_rc_deref(index_type).content.integer.is_signed))
+        // {
+        //     arrput(*errors, ptlang_verify_generate_type_error(
+        //                         "Array index must be an unsigned integer, but is of type ",
+        //                         ptlang_rc_deref(exp).content.array_element.index, ".", ctx->type_scope));
+        // }
+
+        ptlang_ast_type ptr_size_int = ptlang_ast_type_integer(true, ctx->pointer_bytes * 8, NULL);
+
+        ptlang_verify_make_and_check_implicit_cast(
+            &ptlang_rc_deref(exp).content.array_element.index, ptr_size_int,
+            ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.index).pos, ctx, errors);
+        ptlang_rc_remove_ref(ptr_size_int, ptlang_ast_type_destroy);
 
         ptlang_ast_type array_type =
             ptlang_rc_deref(ptlang_rc_deref(exp).content.array_element.array).ast_type;

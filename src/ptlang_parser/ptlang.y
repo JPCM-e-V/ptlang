@@ -67,6 +67,8 @@
 %token <float_size> FLOAT_TYPE "floating point number type"
 %token <str> INT_VAL "integer value with type suffix"
 %token <str> INT "integer value"
+%token <str> HEX_VAL "hexadecimal integer value with type suffix"
+%token <str> HEX "hexadecimal integer value"
 %token <str> FLOAT_VAL "floating point number value"
 %token OPEN_SQUARE_BRACKET "'['"
 %token CLOSE_SQUARE_BRACKET "']'"
@@ -106,7 +108,7 @@
 %type <type> type type_or_void void
 %type <stmt> stmt block stmt_no_decl
 //%type <module> module
-%type <func> func function
+%type <func> func function extern_func
 %type <exp> exp const_exp
 %type <decl> const_decl decl decl_statement module_decl declaration declaration_without_export non_const_decl
 %type <decl_list> params one_or_more_params struct_members one_or_more_struct_members
@@ -200,6 +202,7 @@
 module:
       | module declaration { ptlang_ast_module_add_declaration(out, $2); }
       | module function { ptlang_ast_module_add_function(out, $2); }
+      | module extern_func { ptlang_ast_module_add_function(out, $2); }
       | module struct_def { ptlang_ast_module_add_struct_def(out, $2); }
       | module TYPE_ALIAS ident type SEMICOLON { ptlang_ast_module_add_type_alias(out, $3, $4, ppcpft(&@2, &@$)); }
 
@@ -221,6 +224,8 @@ one_or_more_struct_members: non_const_decl { $$ = NULL; arrput($$, $1); }
 func: type_and_ident OPEN_BRACKET params CLOSE_BRACKET stmt_no_decl {$$ = ptlang_ast_func_new($1.ident, $1.type, $3, $5, false, ppcpft(&@$, &@4)); }
     | void ident OPEN_BRACKET params CLOSE_BRACKET stmt_no_decl {$$ = ptlang_ast_func_new($2, $1, $4, $6, false, ppcpft(&@$, &@5));}
 
+extern_func: type_and_ident OPEN_BRACKET params CLOSE_BRACKET SEMICOLON {$$ = ptlang_ast_func_new($1.ident, $1.type, $3, NULL, false, ppcpft(&@$, &@4)); }
+           | void ident OPEN_BRACKET params CLOSE_BRACKET SEMICOLON {$$ = ptlang_ast_func_new($2, $1, $4, NULL, false, ppcpft(&@$, &@5));}
 
 params: { $$ = NULL; }
       | one_or_more_params { $$ = $1; }
@@ -355,4 +360,6 @@ one_or_more_members: ident exp { $$ = NULL; ptlang_ast_struct_member_list_add(&$
 
 int_val: INT { $$ = $1; }
        | INT_VAL { $$ = $1; }
+       | HEX { $$ = $1; }
+       | HEX_VAL { $$ = $1; }
 %%

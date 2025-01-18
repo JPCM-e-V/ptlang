@@ -874,7 +874,8 @@ void ptlang_ast_func_destroy(struct ptlang_ast_func_s *func)
     if (func->return_type != NULL)
         ptlang_rc_remove_ref(func->return_type, ptlang_ast_type_destroy);
     ptlang_ast_decl_list_destroy(func->parameters);
-    ptlang_rc_remove_ref(func->stmt, ptlang_ast_stmt_destroy);
+    if (func->stmt != NULL)
+        ptlang_rc_remove_ref(func->stmt, ptlang_ast_stmt_destroy);
 }
 
 void ptlang_ast_exp_destroy(struct ptlang_ast_exp_s *exp)

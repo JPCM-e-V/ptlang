@@ -157,7 +157,10 @@ extern "C"
 
         for (size_t i = 0; i < arrlenu(ptlang_rc_deref(module).functions); i++)
         {
-            ptlang_ir_builder_func_body(ptlang_rc_deref(module).functions[i], functions[i], ctx);
+            if (ptlang_rc_deref(ptlang_rc_deref(module).functions[i]).stmt != NULL)
+            {
+                ptlang_ir_builder_func_body(ptlang_rc_deref(module).functions[i], functions[i], ctx);
+            }
         }
 
         ptlang_free(glob_vars);
@@ -234,11 +237,12 @@ extern "C"
                                     llvm::ArrayRef(param_types, param_count), false);
         ptlang_free(param_types);
 
-        llvm::Function *function = llvm::Function::Create(
-            function_type,
-            ptlang_rc_deref(func).exported ? llvm::GlobalValue::LinkageTypes::ExternalLinkage
-                                           : llvm::GlobalValue::LinkageTypes::InternalLinkage,
-            0, ptlang_rc_deref(func).name.name, &ctx->module_);
+        llvm::Function *function =
+            llvm::Function::Create(function_type,
+                                   (ptlang_rc_deref(func).exported || ptlang_rc_deref(func).stmt == NULL)
+                                       ? llvm::GlobalValue::LinkageTypes::ExternalLinkage
+                                       : llvm::GlobalValue::LinkageTypes::InternalLinkage,
+                                   0, ptlang_rc_deref(func).name.name, &ctx->module_);
 
         shput(ctx->scope->variables, ptlang_rc_deref(func).name.name,
               (ptlang_ir_builder_scope_entry{function, function_type, true}));
@@ -454,8 +458,8 @@ extern "C"
         case ptlang_ast_type_s::PTLANG_AST_TYPE_FUNCTION:
             ret_type = llvm::DIDerivedType::get(
                 ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, type_name, NULL, 0, NULL,
-                ptlang_ir_builder_di_function_type(ast_type, ctx), (ctx->ctx->pointer_bytes) >> 3, 0, 0,
-                std::nullopt, llvm::DINode::FlagZero);
+                ptlang_ir_builder_di_function_type(ast_type, ctx), (ctx->ctx->pointer_bytes) << 3, 0, 0,
+                std::nullopt, std::nullopt, llvm::DINode::FlagZero);
             break;
 
         case ptlang_ast_type_s::PTLANG_AST_TYPE_HEAP_ARRAY:
@@ -470,16 +474,16 @@ extern "C"
             ptlang_ast_type len_type = ptlang_ast_type_integer(false, ctx->ctx->pointer_bytes >> 3, NULL);
             elements[0] = llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "len", NULL, 0,
                                                    heap_array, ptlang_ir_builder_di_type(len_type, ctx), 0, 0,
-                                                   0, std::nullopt, llvm::DINode::FlagZero);
+                                                   0, std::nullopt, std::nullopt, llvm::DINode::FlagZero);
             ptlang_rc_remove_ref(len_type, ptlang_ast_type_destroy);
 
             llvm::DIType *ptr_type = llvm::DIDerivedType::get(
                 ctx->llvm_ctx, llvm::dwarf::DW_TAG_pointer_type, llvm::StringRef(), NULL, 0, NULL,
                 ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.heap_array.type, ctx), 0, 0, 0,
-                std::nullopt, llvm::DINode::FlagZero);
-            elements[1] =
-                llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "ptr", NULL, 0,
-                                         heap_array, ptr_type, 0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+                std::nullopt, std::nullopt, llvm::DINode::FlagZero);
+            elements[1] = llvm::DIDerivedType::get(ctx->llvm_ctx, llvm::dwarf::DW_TAG_member, "ptr", NULL, 0,
+                                                   heap_array, ptr_type, 0, 0, 0, std::nullopt, std::nullopt,
+                                                   llvm::DINode::FlagZero);
 
             heap_array->replaceElements(
                 llvm::DINodeArray(llvm::MDTuple::get(ctx->llvm_ctx, llvm::ArrayRef(elements, 2))));
@@ -505,7 +509,7 @@ extern "C"
                 ctx->llvm_ctx, llvm::dwarf::DW_TAG_reference_type, type_name, ctx->di_file,
                 ptlang_rc_deref(ptlang_rc_deref(ast_type).pos).from_line, NULL,
                 ptlang_ir_builder_di_type(ptlang_rc_deref(ast_type).content.reference.type, ctx), 0, 0, 0,
-                std::nullopt, llvm::DINode::FlagZero);
+                std::nullopt, std::nullopt, llvm::DINode::FlagZero);
             break;
         }
 
@@ -536,7 +540,7 @@ extern "C"
                         struct_,
                         ptlang_ir_builder_di_type(
                             ptlang_rc_deref(ptlang_rc_deref(entry.value.struct_def).members[i]).type, ctx),
-                        0, 0, 0, std::nullopt, llvm::DINode::FlagZero);
+                        0, 0, 0, std::nullopt, std::nullopt, llvm::DINode::FlagZero);
                 }
 
                 struct_->replaceElements(llvm::DINodeArray(llvm::MDTuple::get(
@@ -553,7 +557,7 @@ extern "C"
                     ctx->llvm_ctx, llvm::dwarf::DW_TAG_typedef, type_name, ctx->di_file,
                     ptlang_rc_deref(ptlang_rc_deref(entry.value.ptlang_type).pos).from_line, ctx->di_scope,
                     ptlang_ir_builder_di_type(entry.value.ptlang_type, ctx), 0, 0, 0, std::nullopt,
-                    llvm::DINode::FlagZero);
+                    std::nullopt, llvm::DINode::FlagZero);
             }
 
             break;
@@ -588,11 +592,16 @@ extern "C"
             //     size = strtoul(size_str + 1, NULL, 10);
             // }
 
-            return llvm::ConstantInt::get(
-                (llvm::IntegerType *)type,
-                llvm::StringRef(ptlang_rc_deref(exp).content.str_prepresentation,
-                                size_str - ptlang_rc_deref(exp).content.str_prepresentation),
-                10);
+            char *number = ptlang_rc_deref(exp).content.str_prepresentation;
+            uint8_t radix = 10;
+            if (number[0] == '0' && number[1] == 'x')
+            {
+                number += 2;
+                radix = 16;
+            }
+
+            return llvm::ConstantInt::get((llvm::IntegerType *)type,
+                                          llvm::StringRef(number, size_str - number), radix);
         }
         case ptlang_ast_exp_s::PTLANG_AST_EXP_FLOAT:
             return llvm::ConstantFP::get(type, ptlang_rc_deref(exp).content.str_prepresentation);
@@ -709,12 +718,12 @@ extern "C"
             llvm::Type *type = llvm::IntegerType::get(ctx->llvm_ctx, byte_size << 3);
 
             llvm::Constant *value = llvm::ConstantInt::get(type, 0, false);
-            llvm::Constant *eight = llvm::ConstantInt::get(type, 8, false);
+            llvm::Constant *byte = llvm::ConstantInt::get(type, 256, false);
 
             for (uint32_t i = 0; i < byte_size; i++)
             {
                 if (i != 0)
-                    value = llvm::ConstantExpr::getShl(value, eight);
+                    value = llvm::ConstantExpr::getNUWMul(value, byte);
                 value = llvm::ConstantExpr::getAdd(
                     value,
                     llvm::ConstantInt::get(
@@ -933,7 +942,7 @@ extern "C"
                 ptlang_ast_type_s::PTLANG_AST_TYPE_INTEGER)
             {
                 bool is_signed = ptlang_rc_deref(ptlang_rc_deref(exp).ast_type).content.integer.is_signed;
-                return ctx->ctx->builder.CreateNeg(operand, "neg", false, is_signed);
+                return ctx->ctx->builder.CreateNeg(operand, "neg", is_signed);
             }
             else
             { // PTLANG_AST_TYPE_FLOAT
@@ -1204,8 +1213,7 @@ extern "C"
 
             llvm::Value *ret_val = ctx->ctx->builder.CreateCall(
                 function_type, func,
-                llvm::ArrayRef(args, arrlenu(ptlang_rc_deref(exp).content.function_call.parameters)),
-                "funccall");
+                llvm::ArrayRef(args, arrlenu(ptlang_rc_deref(exp).content.function_call.parameters)));
 
             ptlang_free(args);
             return ret_val;
@@ -1541,13 +1549,17 @@ extern "C"
             }
             ctx->ctx->builder.SetInsertPoint(old_block);
 
-            llvm::Value *is_in_bounds =
-                ctx->ctx->builder.CreateCmp(llvm::ICmpInst::ICMP_ULT, index, length, "outofboundscmp");
+            llvm::Value *index_as_ptrsizeint =
+                ctx->ctx->builder.CreateZExtOrTrunc(index, ctx->ctx->integer_ptrsize_type, "outofboundscast");
+
+            llvm::Value *is_in_bounds = ctx->ctx->builder.CreateCmp(
+                llvm::ICmpInst::ICMP_ULT, index_as_ptrsizeint, length, "outofboundscmp");
 
             llvm::BasicBlock *overflow_block =
                 llvm::BasicBlock::Create(ctx->ctx->llvm_ctx, "overflow", ctx->func);
 
-            ctx->ctx->builder.CreateAssumption()
+            // ctx->ctx->builder
+            //     .CreateAssumption()
 
             ctx->ctx->builder.CreateCondBr(is_in_bounds, no_overflow_block, overflow_block);
 
